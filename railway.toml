@@ -1,6 +1,5 @@
 [build]
 builder = "NIXPACKS"
-installCommand = "cd backend && npm install"
 buildCommand = "echo 'Skipping frontend build on Railway'"
 
 [deploy]
