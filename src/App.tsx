@@ -608,26 +608,40 @@ export default function App() {
     } catch (err: any) { showToast(err.message || 'เกิดข้อผิดพลาด') }
   }
 
-  function handleSaveRoom(r: Room) {
+  async function handleSaveRoom(r: Room) {
     const wasEditing = !!editingRoom
-    setRooms(prev => {
-      const idx = prev.findIndex(room => room.id === r.id)
-      if (idx >= 0) {
-        const next = [...prev]
-        next[idx] = r
-        return next
+    try {
+      if (wasEditing) {
+        await api.editRoom(r.id, r)
+      } else {
+        await api.addRoom(r)
       }
-      return [...prev, r]
-    })
-    setShowRoomModal(false)
-    setEditingRoom(undefined)
-    showToast(wasEditing ? t.toastRoomEdited : t.toastRoomAdded)
+      setRooms(prev => {
+        const idx = prev.findIndex(room => room.id === r.id)
+        if (idx >= 0) {
+          const next = [...prev]
+          next[idx] = r
+          return next
+        }
+        return [...prev, r]
+      })
+      setShowRoomModal(false)
+      setEditingRoom(undefined)
+      showToast(wasEditing ? t.toastRoomEdited : t.toastRoomAdded)
+    } catch (err: any) {
+      showToast(err.message || 'เกิดข้อผิดพลาด')
+    }
   }
 
-  function handleDeleteRoom(id: string) {
+  async function handleDeleteRoom(id: string) {
     if (window.confirm(t.confirmDeleteRoom)) {
-      setRooms(prev => prev.filter(r => r.id !== id))
-      showToast(t.toastRoomDeleted)
+      try {
+        await api.deleteRoom(id)
+        setRooms(prev => prev.filter(r => r.id !== id))
+        showToast(t.toastRoomDeleted)
+      } catch (err: any) {
+        showToast(err.message || 'เกิดข้อผิดพลาด')
+      }
     }
   }
 

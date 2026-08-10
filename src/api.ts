@@ -56,6 +56,18 @@ export async function fetchRooms() {
   return request<any[]>('/api/rooms')
 }
 
+export async function addRoom(data: any) {
+  return request<any>('/api/rooms', { method: 'POST', body: JSON.stringify(data) })
+}
+
+export async function editRoom(id: string, data: any) {
+  return request<any>(`/api/rooms/${id}`, { method: 'PUT', body: JSON.stringify(data) })
+}
+
+export async function deleteRoom(id: string) {
+  return request<any>(`/api/rooms/${id}`, { method: 'DELETE' })
+}
+
 export async function updateRoomStatus(id: string, status: string) {
   return request(`/api/rooms/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) })
 }
