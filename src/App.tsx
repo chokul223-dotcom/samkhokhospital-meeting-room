@@ -176,11 +176,12 @@ function LoginScreen({ onLogin }: { onLogin: (u: string, p: string) => void }) {
   const [password, setPassword] = useState('')
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false)
   const [isVideoOpen, setIsVideoOpen] = useState(true)
-  const [pos, setPos] = useState(() => ({
-    x: 24,
-    y: typeof window !== 'undefined' ? Math.max(0, window.innerHeight - 230) : 500
-  }))
-  const dragRef = useRef<{ startMX: number; startMY: number; startPX: number; startPY: number } | null>(null)
+  const [videoSide, setVideoSide] = useState<'left' | 'right'>('left')
+  const [videoPosY, setVideoPosY] = useState<number>(() =>
+    typeof window !== 'undefined' ? Math.max(0, window.innerHeight - 230) : 500
+  )
+  const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null)
+  const dragRef = useRef<{ startMX: number; startMY: number; startX: number; startY: number } | null>(null)
   const hasMoved = useRef(false)
   const [bgIndex, setBgIndex] = useState(0)
 
@@ -206,6 +207,16 @@ function LoginScreen({ onLogin }: { onLogin: (u: string, p: string) => void }) {
     e.preventDefault()
     onLogin(username, password)
   }
+
+  // Snap-to-edge computed values
+  const isDragging = dragPos !== null
+  const TOGGLE_W = 36
+  const VID_W = 288
+  const totalW = isVideoOpen ? VID_W + TOGGLE_W : TOGGLE_W
+  const snappedX = isDragging
+    ? dragPos.x
+    : videoSide === 'left' ? 0 : Math.max(0, (typeof window !== 'undefined' ? window.innerWidth : 400) - totalW)
+  const snappedY = isDragging ? dragPos.y : videoPosY
 
   return (
     <div className="relative min-h-screen flex items-center justify-center px-4 overflow-hidden">
@@ -250,13 +261,26 @@ function LoginScreen({ onLogin }: { onLogin: (u: string, p: string) => void }) {
         </form>
       </div>
 
-      {/* ── Draggable Floating Video Player ── */}
+      {/* ── Draggable Snap-to-Edge Video Player ── */}
       <div
-        style={{ position: 'fixed', left: pos.x, top: pos.y, zIndex: 40, display: 'flex', alignItems: 'center', touchAction: 'none' }}
+        style={{
+          position: 'fixed',
+          left: snappedX,
+          top: snappedY,
+          zIndex: 40,
+          display: 'flex',
+          alignItems: 'center',
+          flexDirection: videoSide === 'right' ? 'row-reverse' : 'row',
+          touchAction: 'none',
+          transition: isDragging ? 'none' : 'left 0.35s cubic-bezier(0.25,0.46,0.45,0.94), top 0.3s ease',
+          userSelect: 'none',
+        }}
         onPointerDown={e => {
           if ((e.target as HTMLElement).closest('button')) return
-          dragRef.current = { startMX: e.clientX, startMY: e.clientY, startPX: pos.x, startPY: pos.y }
+          const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect()
+          dragRef.current = { startMX: e.clientX, startMY: e.clientY, startX: rect.left, startY: rect.top }
           hasMoved.current = false
+          setDragPos({ x: rect.left, y: rect.top })
           ;(e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId)
         }}
         onPointerMove={e => {
@@ -264,19 +288,31 @@ function LoginScreen({ onLogin }: { onLogin: (u: string, p: string) => void }) {
           const dx = e.clientX - dragRef.current.startMX
           const dy = e.clientY - dragRef.current.startMY
           if (Math.abs(dx) > 4 || Math.abs(dy) > 4) hasMoved.current = true
-          setPos({
-            x: Math.max(0, Math.min(window.innerWidth - 60, dragRef.current.startPX + dx)),
-            y: Math.max(0, Math.min(window.innerHeight - 60, dragRef.current.startPY + dy))
+          setDragPos({
+            x: Math.max(0, Math.min(window.innerWidth - 60, dragRef.current.startX + dx)),
+            y: Math.max(0, Math.min(window.innerHeight - 60, dragRef.current.startY + dy))
           })
         }}
-        onPointerUp={() => { dragRef.current = null }}
-        onPointerCancel={() => { dragRef.current = null }}
+        onPointerUp={() => {
+          if (hasMoved.current && dragPos) {
+            const centerX = dragPos.x + totalW / 2
+            const newSide = centerX > window.innerWidth / 2 ? 'right' : 'left'
+            setVideoSide(newSide)
+            setVideoPosY(Math.max(0, Math.min(window.innerHeight - 60, dragPos.y)))
+          }
+          dragRef.current = null
+          setDragPos(null)
+        }}
+        onPointerCancel={() => { dragRef.current = null; setDragPos(null) }}
       >
         {/* Video panel */}
-        <div className={`transition-all duration-400 ease-in-out overflow-hidden rounded-2xl shadow-2xl ${isVideoOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-             style={{ width: isVideoOpen ? 288 : 0 }}>
+        <div
+          className={`overflow-hidden rounded-2xl shadow-2xl ${isVideoOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+          style={{ width: isVideoOpen ? VID_W : 0, transition: 'width 0.4s ease, opacity 0.4s ease' }}
+        >
           <div
-            className={`w-72 group border border-slate-200/20 bg-black/5 backdrop-blur-md rounded-2xl overflow-hidden ${hasMoved.current ? 'cursor-grabbing' : 'cursor-grab'}`}
+            className="w-72 group border border-slate-200/20 bg-black/5 backdrop-blur-md rounded-2xl overflow-hidden"
+            style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
             onClick={() => { if (!hasMoved.current) setIsVideoModalOpen(true) }}
           >
             <div className="relative pt-[56.25%] bg-slate-900">
@@ -300,9 +336,14 @@ function LoginScreen({ onLogin }: { onLogin: (u: string, p: string) => void }) {
         {/* Toggle button */}
         <button
           onClick={e => { e.stopPropagation(); setIsVideoOpen(v => !v) }}
-          className="flex-none ml-1 w-7 h-10 flex items-center justify-center rounded-full bg-black/50 hover:bg-black/70 backdrop-blur-sm shadow-lg text-white transition-all duration-300"
+          className="flex-none w-7 h-10 flex items-center justify-center rounded-full bg-black/50 hover:bg-black/70 backdrop-blur-sm shadow-lg text-white transition-colors"
+          style={{ marginLeft: videoSide === 'left' ? 4 : 0, marginRight: videoSide === 'right' ? 4 : 0 }}
         >
-          <span className={`text-xs font-bold transition-transform duration-300 ${isVideoOpen ? 'rotate-180' : ''}`}>❯</span>
+          <span className={`text-xs font-bold transition-transform duration-300 ${
+            isVideoOpen
+              ? (videoSide === 'left' ? 'rotate-180' : '')
+              : (videoSide === 'right' ? 'rotate-180' : '')
+          }`}>❯</span>
         </button>
       </div>
 
