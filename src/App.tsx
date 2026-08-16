@@ -124,8 +124,8 @@ function LanguageSwitcher() {
   const [open, setOpen] = useState(false)
 
   const options = [
-    { value: 'th' as Language, label: 'ไทย', flag: '🇹🇭' },
-    { value: 'en' as Language, label: 'English', flag: '🇬🇧' },
+    { value: 'th' as Language, label: 'ไทย', flagSrc: 'https://flagcdn.com/w40/th.png' },
+    { value: 'en' as Language, label: 'English', flagSrc: 'https://flagcdn.com/w40/gb.png' },
   ]
   const current = options.find(o => o.value === language)!
 
@@ -135,7 +135,7 @@ function LanguageSwitcher() {
         onClick={() => setOpen(v => !v)}
         className="flex items-center gap-2 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm text-slate-700 dark:text-slate-200 border border-slate-200/60 dark:border-slate-700/60 rounded-full px-3.5 py-2 text-sm font-medium shadow-md hover:bg-white dark:hover:bg-slate-800 transition-all"
       >
-        <span className="text-base leading-none">{current.flag}</span>
+        <img src={current.flagSrc} alt={current.label} className="w-5 h-auto rounded-sm shadow-sm" />
         <span>Language</span>
         <svg
           className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
@@ -159,7 +159,7 @@ function LanguageSwitcher() {
                     : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/50'
                 }`}
               >
-                <span className="text-xl leading-none">{opt.flag}</span>
+                <img src={opt.flagSrc} alt={opt.label} className="w-6 h-auto rounded-sm shadow-sm" />
                 <span>{opt.label}</span>
               </button>
             ))}
