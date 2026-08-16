@@ -175,6 +175,7 @@ function LoginScreen({ onLogin }: { onLogin: (u: string, p: string) => void }) {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false)
+  const [isVideoOpen, setIsVideoOpen] = useState(false)
   const [bgIndex, setBgIndex] = useState(0)
 
   const backgrounds = [
@@ -243,26 +244,58 @@ function LoginScreen({ onLogin }: { onLogin: (u: string, p: string) => void }) {
         </form>
       </div>
 
-      {/* Floating Video Player (Clickable) */}
-      <div 
-        onClick={() => setIsVideoModalOpen(true)}
-        className="fixed bottom-6 left-6 z-40 w-72 rounded-2xl overflow-hidden shadow-2xl border border-slate-200/20 dark:border-slate-700/50 bg-black/5 backdrop-blur-md cursor-pointer transition-transform hover:scale-105 duration-300 group"
-      >
-        <div className="relative pt-[56.25%] bg-slate-900">
-          <video
-            className="absolute inset-0 w-full h-full object-cover pointer-events-none"
-            src="/video.mp4"
-            autoPlay
-            muted
-            loop
-            playsInline
-          />
-          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 flex items-center justify-center transition-colors">
-             <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                <div className="w-0 h-0 border-t-[8px] border-t-transparent border-l-[12px] border-l-white border-b-[8px] border-b-transparent ml-1"></div>
-             </div>
+      {/* ── Collapsible Video Drawer (left side) ── */}
+      <div className="fixed left-0 top-1/2 -translate-y-1/2 z-40 flex items-center">
+        {/* Slide-out panel */}
+        <div
+          className={`transition-all duration-500 ease-in-out overflow-hidden ${
+            isVideoOpen ? 'w-64 sm:w-72 opacity-100' : 'w-0 opacity-0'
+          }`}
+        >
+          <div className="w-64 sm:w-72 bg-black/80 backdrop-blur-md rounded-r-2xl shadow-2xl border border-white/10 overflow-hidden">
+            {/* Close bar */}
+            <div className="flex items-center justify-between px-3 py-2 bg-black/40">
+              <span className="text-white/70 text-xs font-medium">วิดีโอแนะนำ</span>
+              <button
+                onClick={() => setIsVideoOpen(false)}
+                className="text-white/60 hover:text-white text-sm transition-colors"
+              >✕</button>
+            </div>
+            {/* Video thumbnail – click to fullscreen */}
+            <div
+              className="relative pt-[56.25%] bg-slate-900 cursor-pointer group"
+              onClick={() => setIsVideoModalOpen(true)}
+            >
+              <video
+                className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+                src="/video.mp4"
+                autoPlay
+                muted
+                loop
+                playsInline
+              />
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 flex items-center justify-center transition-colors">
+                <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="w-0 h-0 border-t-[8px] border-t-transparent border-l-[14px] border-l-white border-b-[8px] border-b-transparent ml-1" />
+                </div>
+              </div>
+            </div>
+            <div className="px-3 py-2 bg-black/40">
+              <p className="text-white/60 text-xs">คลิกเพื่อดูแบบเต็มจอ</p>
+            </div>
           </div>
         </div>
+
+        {/* Toggle tab */}
+        <button
+          onClick={() => setIsVideoOpen(v => !v)}
+          className="flex flex-col items-center justify-center w-7 h-16 bg-[#1a5fa8]/90 hover:bg-[#1a5fa8] backdrop-blur-sm rounded-r-xl shadow-xl border border-white/10 transition-all duration-300 text-white"
+          title={isVideoOpen ? 'ซ่อนวิดีโอ' : 'ดูวิดีโอแนะนำ'}
+        >
+          <span className={`text-xs font-bold transition-transform duration-300 ${isVideoOpen ? 'rotate-180' : ''}`}>
+            ▶
+          </span>
+        </button>
       </div>
 
       {/* Fullscreen Video Modal */}
