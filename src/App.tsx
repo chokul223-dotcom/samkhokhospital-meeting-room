@@ -706,30 +706,31 @@ export default function App() {
   return (
     <AppContext.Provider value={contextValue}>
       {/* ── Floating theme toggle – always visible ── */}
+      {/* Mobile: icon only | Desktop: icon + label */}
       <button
         onClick={() => setTheme(isDark ? 'light' : 'dark')}
         title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-        className={`fixed bottom-6 right-6 z-[100] flex items-center overflow-hidden rounded-full shadow-xl border-2 transition-all duration-300 select-none
+        className={`fixed bottom-6 right-4 z-[100] flex items-center overflow-hidden rounded-full shadow-xl border-2 transition-all duration-300 select-none
           ${ isDark
-            ? 'bg-[#0f1f3d] border-[#1a3a6e] text-white w-44'
-            : 'bg-white border-slate-200 text-slate-800 w-44'
+            ? 'bg-[#0f1f3d] border-[#1a3a6e] text-white md:w-44 w-12'
+            : 'bg-white border-slate-200 text-slate-800 md:w-44 w-12'
           }`}
       >
         {isDark ? (
           <>
-            <span className="flex-1 text-center text-xs font-bold tracking-wide pl-3 py-3">
+            <span className="hidden md:block flex-1 text-center text-xs font-bold tracking-wide pl-3 py-3">
               {language === 'th' ? 'โหมดมืด' : 'DARK MODE'}
             </span>
-            <span className="w-14 h-14 flex-none rounded-full bg-[#1a3a8f] flex items-center justify-center text-2xl shadow-inner">
+            <span className="w-12 h-12 md:w-14 md:h-14 flex-none rounded-full bg-[#1a3a8f] flex items-center justify-center text-xl shadow-inner">
               🌙
             </span>
           </>
         ) : (
           <>
-            <span className="w-14 h-14 flex-none rounded-full bg-sky-100 flex items-center justify-center text-2xl shadow-inner">
+            <span className="w-12 h-12 md:w-14 md:h-14 flex-none rounded-full bg-sky-100 flex items-center justify-center text-xl shadow-inner">
               ☀️
             </span>
-            <span className="flex-1 text-center text-xs font-bold tracking-wide pr-3 py-3">
+            <span className="hidden md:block flex-1 text-center text-xs font-bold tracking-wide pr-3 py-3">
               {language === 'th' ? 'โหมดสว่าง' : 'LIGHT MODE'}
             </span>
           </>
@@ -746,7 +747,7 @@ export default function App() {
           }
         }} />
       ) : (
-        <div className="min-h-screen bg-[#f0f4f9] dark:bg-slate-950 flex transition-colors text-slate-800 dark:text-slate-100">
+        <div className="min-h-screen bg-[#f0f4f9] dark:bg-slate-950 flex transition-colors text-slate-800 dark:text-slate-100 overflow-x-hidden">
           {/* Sidebar */}
           <aside className="w-64 bg-[#1a5fa8] dark:bg-[#0f3c6e] text-white flex flex-col min-h-screen shadow-xl hidden md:flex transition-colors">
             <div
@@ -800,7 +801,7 @@ export default function App() {
           </aside>
 
           {/* Main */}
-          <main className="flex-1 flex flex-col min-h-screen">
+          <main className="flex-1 flex flex-col min-h-screen min-w-0 w-full overflow-x-hidden">
             {/* Mobile header */}
             <header className="md:hidden bg-[#1a5fa8] dark:bg-[#0f3c6e] text-white px-4 py-3 flex items-center justify-between transition-colors">
               <p className="font-bold text-sm cursor-pointer" onClick={() => setActiveTab('dashboard')}>
@@ -826,7 +827,7 @@ export default function App() {
               ))}
             </nav>
 
-            <div className="flex-1 p-6 overflow-y-auto">
+            <div className="flex-1 p-4 md:p-6 overflow-y-auto overflow-x-hidden">
               {/* Header row */}
               <div className="flex items-center justify-between mb-6">
                 <div>
