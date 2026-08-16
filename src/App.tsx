@@ -245,7 +245,7 @@ function LoginScreen({ onLogin }: { onLogin: (u: string, p: string) => void }) {
       </div>
 
       {/* ── Floating Video Player + Collapse Toggle ── */}
-      <div className={`fixed bottom-6 left-6 z-40 flex items-end transition-all duration-500 ease-in-out`}>
+      <div className={`fixed bottom-6 left-6 z-40 flex items-center transition-all duration-500 ease-in-out`}>
         {/* Video panel */}
         <div className={`transition-all duration-500 ease-in-out overflow-hidden rounded-2xl shadow-2xl ${isVideoOpen ? 'w-72 opacity-100' : 'w-0 opacity-0'}`}>
           <div
@@ -273,7 +273,7 @@ function LoginScreen({ onLogin }: { onLogin: (u: string, p: string) => void }) {
         {/* Toggle button — always visible */}
         <button
           onClick={() => setIsVideoOpen(v => !v)}
-          className="flex-none mb-2 ml-1 w-7 h-10 flex items-center justify-center rounded-full bg-black/50 hover:bg-black/70 backdrop-blur-sm shadow-lg text-white transition-all duration-300"
+          className="flex-none ml-1 w-7 h-10 flex items-center justify-center rounded-full bg-black/50 hover:bg-black/70 backdrop-blur-sm shadow-lg text-white transition-all duration-300"
         >
           <span className={`text-xs font-bold transition-transform duration-300 ${isVideoOpen ? 'rotate-180' : ''}`}>❯</span>
         </button>
