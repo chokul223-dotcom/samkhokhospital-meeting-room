@@ -119,6 +119,57 @@ function Stat({ label, value, icon, color, onClick }: { label: string; value: nu
 
 // ─── Login Screen ─────────────────────────────────────────────────────────────
 
+function LanguageSwitcher() {
+  const { language, setLanguage } = useContext(AppContext)
+  const [open, setOpen] = useState(false)
+
+  const options = [
+    { value: 'th' as Language, label: 'ไทย', flag: '🇹🇭' },
+    { value: 'en' as Language, label: 'English', flag: '🇬🇧' },
+  ]
+  const current = options.find(o => o.value === language)!
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="flex items-center gap-2 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm text-slate-700 dark:text-slate-200 border border-slate-200/60 dark:border-slate-700/60 rounded-full px-3.5 py-2 text-sm font-medium shadow-md hover:bg-white dark:hover:bg-slate-800 transition-all"
+      >
+        <span className="text-base leading-none">{current.flag}</span>
+        <span>Language</span>
+        <svg
+          className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+          fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {open && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 top-full mt-2 z-20 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl overflow-hidden min-w-[160px] py-1">
+            {options.map(opt => (
+              <button
+                key={opt.value}
+                onClick={() => { setLanguage(opt.value); setOpen(false) }}
+                className={`w-full flex items-center gap-3 px-4 py-3 text-sm transition-colors ${
+                  language === opt.value
+                    ? 'bg-emerald-500 text-white font-semibold'
+                    : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/50'
+                }`}
+              >
+                <span className="text-xl leading-none">{opt.flag}</span>
+                <span>{opt.label}</span>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 function LoginScreen({ onLogin }: { onLogin: (u: string, p: string) => void }) {
   const { t } = useContext(AppContext)
   const [username, setUsername] = useState('')
@@ -160,6 +211,11 @@ function LoginScreen({ onLogin }: { onLogin: (u: string, p: string) => void }) {
         />
       ))}
       <div className="absolute inset-0 bg-black/40 dark:bg-black/60 transition-colors" />
+
+      {/* Language Switcher – top right */}
+      <div className="absolute top-4 right-4 z-20">
+        <LanguageSwitcher />
+      </div>
 
       {/* Login Form Container */}
       <div className="relative z-10 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm rounded-2xl shadow-xl p-8 w-full max-w-md border border-slate-200/50 dark:border-slate-800/50">
