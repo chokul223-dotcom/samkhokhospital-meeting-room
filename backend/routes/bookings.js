@@ -14,7 +14,9 @@ router.get('/', authMiddleware, async (req, res) => {
     res.json(result.rows.map(b => ({
       id: b.id, roomId: b.room_id, userId: b.user_id,
       date: b.date, startTime: b.start_time, endTime: b.end_time,
-      purpose: b.purpose, attendees: b.attendees, status: b.status, createdAt: b.created_at
+      purpose: b.purpose, attendees: b.attendees, status: b.status,
+      rejectReason: b.reject_reason || null,
+      createdAt: b.created_at
     })))
   } catch (err) {
     console.error(err)
@@ -60,7 +62,7 @@ router.post('/', authMiddleware, async (req, res) => {
 
 // PATCH /api/bookings/:id — update status (admin approve/reject, user cancel)
 router.patch('/:id', authMiddleware, async (req, res) => {
-  const { status } = req.body
+  const { status, rejectReason } = req.body
   try {
     const booking = await pool.query('SELECT * FROM bookings WHERE id = $1', [req.params.id])
     if (!booking.rows[0]) return res.status(404).json({ error: 'Booking not found' })
@@ -71,7 +73,11 @@ router.patch('/:id', authMiddleware, async (req, res) => {
       return res.status(403).json({ error: 'Forbidden' })
     }
 
-    await pool.query('UPDATE bookings SET status = $1 WHERE id = $2', [status, req.params.id])
+    if (status === 'rejected' && rejectReason) {
+      await pool.query('UPDATE bookings SET status = $1, reject_reason = $2 WHERE id = $3', [status, rejectReason, req.params.id])
+    } else {
+      await pool.query('UPDATE bookings SET status = $1 WHERE id = $2', [status, req.params.id])
+    }
     if (req.notifyClients) req.notifyClients()
     res.json({ success: true })
   } catch (err) {

@@ -87,8 +87,11 @@ export async function createBooking(data: {
   return request<any>('/api/bookings', { method: 'POST', body: JSON.stringify(data) })
 }
 
-export async function updateBookingStatus(id: string, status: string) {
-  return request(`/api/bookings/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) })
+export async function updateBookingStatus(id: string, status: string, rejectReason?: string) {
+  return request(`/api/bookings/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status, ...(rejectReason ? { rejectReason } : {}) })
+  })
 }
 
 export async function deleteBooking(id: string) {

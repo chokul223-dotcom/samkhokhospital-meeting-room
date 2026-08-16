@@ -45,8 +45,14 @@ async function initDB() {
         purpose TEXT NOT NULL,
         attendees INTEGER NOT NULL,
         status TEXT DEFAULT 'pending' CHECK(status IN ('pending','approved','rejected','cancelled')),
+        reject_reason TEXT DEFAULT NULL,
         created_at TEXT NOT NULL
       )
+    `)
+
+    // Add reject_reason column if it doesn't exist (for existing databases)
+    await client.query(`
+      ALTER TABLE bookings ADD COLUMN IF NOT EXISTS reject_reason TEXT DEFAULT NULL
     `)
 
     // Seed admin user if not exists

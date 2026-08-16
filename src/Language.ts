@@ -91,6 +91,11 @@ export const translations = {
     deleteAllBookings: '🗑️ ลบประวัติการจองทั้งหมด',
     confirmDeleteAllBookings: 'คุณต้องการลบประวัติการจองทั้งหมดใช่หรือไม่? การดำเนินการนี้ไม่สามารถย้อนกลับได้',
     toastAllBookingsDeleted: 'ลบประวัติการจองทั้งหมดเรียบร้อยแล้ว',
+    rejectReason: 'เหตุผลการปฏิเสธ',
+    rejectReasonPlaceholder: 'ระบุเหตุผลที่ปฏิเสธการจอง (ไม่จำเป็น)',
+    confirmRejectTitle: 'ยืนยันการปฏิเสธ',
+    rejectBooking: 'ปฏิเสธการจอง',
+    rejectedReasonLabel: 'เหตุผลที่ปฏิเสธ:',
     
     // Booking Form
     bookRoom: '+ จองห้องประชุม',
@@ -228,6 +233,11 @@ export const translations = {
     deleteAllBookings: '🗑️ Clear All Booking History',
     confirmDeleteAllBookings: 'Are you sure you want to delete ALL booking history? This action cannot be undone.',
     toastAllBookingsDeleted: 'All booking history has been cleared.',
+    rejectReason: 'Reason for Rejection',
+    rejectReasonPlaceholder: 'Enter reason for rejection (optional)',
+    confirmRejectTitle: 'Confirm Rejection',
+    rejectBooking: 'Reject Booking',
+    rejectedReasonLabel: 'Rejected reason:',
     
     // Booking Form
     bookRoom: '+ Book Room',

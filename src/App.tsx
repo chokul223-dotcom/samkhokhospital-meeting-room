@@ -36,6 +36,7 @@ interface Booking {
   purpose: string
   attendees: number
   status: 'pending' | 'approved' | 'rejected' | 'cancelled'
+  rejectReason?: string | null
   createdAt: string
   note?: string
 }
@@ -555,6 +556,37 @@ function RoomModal({
   )
 }
 
+// ─── Reject Modal ─────────────────────────────────────────────────────────────
+
+function RejectModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (reason: string) => void }) {
+  const { t } = useContext(AppContext)
+  const [reason, setReason] = useState('')
+  return (
+    <div className="fixed inset-0 bg-black/50 dark:bg-black/70 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md border border-slate-200 dark:border-slate-800">
+        <div className="flex items-center justify-between p-6 border-b border-slate-100 dark:border-slate-800">
+          <h2 className="text-lg font-bold text-slate-800 dark:text-white">❌ {t.confirmRejectTitle}</h2>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 transition-colors">✕</button>
+        </div>
+        <div className="p-6">
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">{t.rejectReason}</label>
+          <textarea
+            value={reason}
+            onChange={e => setReason(e.target.value)}
+            placeholder={t.rejectReasonPlaceholder}
+            rows={3}
+            className="w-full bg-white dark:bg-slate-800 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 resize-none transition-colors"
+          />
+        </div>
+        <div className="flex gap-3 p-6 border-t border-slate-100 dark:border-slate-800">
+          <button onClick={onClose} className="flex-1 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">{t.cancelBtn}</button>
+          <button onClick={() => onSubmit(reason)} className="flex-1 py-2 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700 transition-colors">{t.rejectBooking}</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── User Modal ───────────────────────────────────────────────────────────────
 
 function UserModal({
@@ -779,6 +811,7 @@ export default function App() {
   const [editingRoom, setEditingRoom] = useState<Room | undefined>(undefined)
   const [showUserModal, setShowUserModal] = useState(false)
   const [editingUser, setEditingUser] = useState<User | undefined>(undefined)
+  const [rejectingBookingId, setRejectingBookingId] = useState<string | null>(null)
   const [filterStatus, setFilterStatus] = useState<string>('all')
   const [filterDate, setFilterDate] = useState('')
   const [calendarDate, setCalendarDate] = useState(TODAY)
@@ -825,12 +858,18 @@ export default function App() {
     } catch (err: any) { showToast(err.message || 'เกิดข้อผิดพลาด') }
   }
 
-  async function handleReject(id: string) {
+  function handleReject(id: string) {
+    setRejectingBookingId(id)
+  }
+
+  async function handleRejectConfirm(reason: string) {
+    if (!rejectingBookingId) return
     try {
-      await api.updateBookingStatus(id, 'rejected')
-      setBookings(prev => prev.map(b => b.id === id ? { ...b, status: 'rejected' } : b))
+      await api.updateBookingStatus(rejectingBookingId, 'rejected', reason || undefined)
+      setBookings(prev => prev.map(b => b.id === rejectingBookingId ? { ...b, status: 'rejected', rejectReason: reason || null } : b))
       showToast(t.toastRejectSuccess)
     } catch (err: any) { showToast(err.message || 'เกิดข้อผิดพลาด') }
+    setRejectingBookingId(null)
   }
 
   async function handleCancel(id: string) {
@@ -1264,7 +1303,11 @@ export default function App() {
                                     <span>👥 {b.attendees} {t.people}</span>
                                     {isAdmin && <span>👤 {user?.name} ({user?.department})</span>}
                                   </div>
-                                </div>
+                                  {b.status === 'rejected' && b.rejectReason && (
+                                    <p className="text-xs text-red-600 dark:text-red-400 mt-2 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/50 rounded-lg px-3 py-2">
+                                      {t.rejectedReasonLabel} {b.rejectReason}
+                                    </p>
+                                  )}                                </div>
                                 <div className="flex gap-2 flex-none">
                                   {isAdmin && b.status === 'pending' && (
                                     <>
@@ -1407,6 +1450,13 @@ export default function App() {
               user={editingUser}
               onClose={() => { setShowUserModal(false); setEditingUser(undefined); }}
               onSubmit={handleSaveUser}
+            />
+          )}
+
+          {rejectingBookingId && (
+            <RejectModal
+              onClose={() => setRejectingBookingId(null)}
+              onSubmit={handleRejectConfirm}
             />
           )}
 
