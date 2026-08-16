@@ -50,6 +50,7 @@ router.post('/', authMiddleware, async (req, res) => {
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'pending',$9)
     `, [id, roomId, req.user.id, date, startTime, endTime, purpose, attendees, today])
 
+    if (req.notifyClients) req.notifyClients()
     res.status(201).json({ id, roomId, userId: req.user.id, date, startTime, endTime, purpose, attendees, status: 'pending', createdAt: today })
   } catch (err) {
     console.error(err)
@@ -71,6 +72,7 @@ router.patch('/:id', authMiddleware, async (req, res) => {
     }
 
     await pool.query('UPDATE bookings SET status = $1 WHERE id = $2', [status, req.params.id])
+    if (req.notifyClients) req.notifyClients()
     res.json({ success: true })
   } catch (err) {
     console.error(err)
@@ -83,6 +85,7 @@ router.delete('/:id', authMiddleware, async (req, res) => {
   if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' })
   try {
     await pool.query('DELETE FROM bookings WHERE id = $1', [req.params.id])
+    if (req.notifyClients) req.notifyClients()
     res.json({ success: true })
   } catch (err) {
     res.status(500).json({ error: 'Server error' })

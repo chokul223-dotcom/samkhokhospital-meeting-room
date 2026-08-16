@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, createContext, useContext, useRef } from 'react'
 import { Language, useTranslation } from './Language'
 import * as api from './api'
+import { API_URL } from './api'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -758,7 +759,18 @@ export default function App() {
   }
 
   useEffect(() => {
-    if (currentUser) refreshData()
+    if (!currentUser) return
+    refreshData()
+
+    // Real-time: connect SSE and reload data when server pushes an update
+    const es = new EventSource(`${API_URL}/api/stream`)
+    es.onmessage = (e) => {
+      if (e.data === 'update') refreshData()
+    }
+    es.onerror = () => {
+      // Browser will auto-reconnect; no action needed
+    }
+    return () => es.close()
   }, [currentUser])
 
   const [activeTab, setActiveTab] = useState('dashboard')

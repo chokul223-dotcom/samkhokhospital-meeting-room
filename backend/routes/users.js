@@ -27,6 +27,7 @@ router.post('/', authMiddleware, async (req, res) => {
       'INSERT INTO users (id, name, department, role, username, password) VALUES ($1,$2,$3,$4,$5,$6)',
       [id, name, department || '-', role || 'user', username, hash]
     )
+    if (req.notifyClients) req.notifyClients()
     res.status(201).json({ id, name, department, role, username })
   } catch (err) {
     if (err.code === '23505') return res.status(409).json({ error: 'Username already exists' })
@@ -53,6 +54,7 @@ router.put('/:id', authMiddleware, async (req, res) => {
         [name, department || '-', role, username, req.params.id]
       )
     }
+    if (req.notifyClients) req.notifyClients()
     res.json({ id: req.params.id, name, department, role, username })
   } catch (err) {
     if (err.code === '23505') return res.status(409).json({ error: 'Username already exists' })
@@ -66,6 +68,7 @@ router.delete('/:id', authMiddleware, async (req, res) => {
   if (req.params.id === req.user.id) return res.status(400).json({ error: 'Cannot delete yourself' })
   try {
     await pool.query('DELETE FROM users WHERE id = $1', [req.params.id])
+    if (req.notifyClients) req.notifyClients()
     res.json({ success: true })
   } catch (err) {
     res.status(500).json({ error: 'Server error' })

@@ -22,6 +22,7 @@ router.patch('/:id/status', authMiddleware, async (req, res) => {
   const { status } = req.body
   try {
     await pool.query('UPDATE rooms SET status = $1 WHERE id = $2', [status, req.params.id])
+    if (req.notifyClients) req.notifyClients()
     res.json({ success: true })
   } catch (err) {
     res.status(500).json({ error: 'Server error' })
@@ -37,6 +38,7 @@ router.post('/', authMiddleware, async (req, res) => {
       'INSERT INTO rooms (id, name, capacity, location, equipment) VALUES ($1, $2, $3, $4, $5)',
       [id, name, capacity, location, equipment || []]
     )
+    if (req.notifyClients) req.notifyClients()
     res.json({ success: true, id })
   } catch (err) {
     res.status(500).json({ error: 'Server error' })
@@ -52,6 +54,7 @@ router.put('/:id', authMiddleware, async (req, res) => {
       'UPDATE rooms SET name = $1, capacity = $2, location = $3, equipment = $4 WHERE id = $5',
       [name, capacity, location, equipment || [], req.params.id]
     )
+    if (req.notifyClients) req.notifyClients()
     res.json({ success: true })
   } catch (err) {
     res.status(500).json({ error: 'Server error' })
@@ -65,6 +68,7 @@ router.delete('/:id', authMiddleware, async (req, res) => {
     // Delete associated bookings first
     await pool.query('DELETE FROM bookings WHERE room_id = $1', [req.params.id])
     await pool.query('DELETE FROM rooms WHERE id = $1', [req.params.id])
+    if (req.notifyClients) req.notifyClients()
     res.json({ success: true })
   } catch (err) {
     res.status(500).json({ error: 'Server error' })
