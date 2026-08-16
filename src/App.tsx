@@ -1147,7 +1147,9 @@ export default function App() {
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                     <Stat label={t.roomsReady} value={rooms.filter(r => r.status === 'available').length} icon="🚪" color="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300" onClick={() => setActiveTab('rooms')} />
                     <Stat label={t.todayBookings} value={bookings.filter(b => b.date === TODAY && b.status === 'approved').length} icon="✅" color="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300" onClick={() => { setActiveTab('bookings'); setFilterStatus('today'); }} />
-                    <Stat label={t.pendingApprovals} value={bookings.filter(b => b.status === 'pending').length} icon="⏳" color="bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300" onClick={() => { setActiveTab('bookings'); setFilterStatus('pending'); }} />
+                    {isAdmin && (
+                      <Stat label={t.pendingApprovals} value={bookings.filter(b => b.status === 'pending').length} icon="⏳" color="bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300" onClick={() => { setActiveTab('bookings'); setFilterStatus('pending'); }} />
+                    )}
                     <Stat label={t.totalBookings} value={isAdmin ? bookings.length : myBookings.length} icon="📋" color="bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300" onClick={() => { setActiveTab('bookings'); setFilterStatus('all'); }} />
                   </div>
 
@@ -1157,12 +1159,17 @@ export default function App() {
                       <span className="text-sm text-slate-500 dark:text-slate-400">{formatDate(TODAY, language)}</span>
                     </div>
                     <div className="divide-y divide-slate-100 dark:divide-slate-700">
-                      {bookings.filter(b => b.date === TODAY && b.status !== 'cancelled' && b.status !== 'rejected').length === 0 ? (
-                        <p className="text-center text-slate-400 dark:text-slate-500 py-8 text-sm">{t.noMeetingToday}</p>
-                      ) : (
-                        bookings.filter(b => b.date === TODAY && b.status !== 'cancelled' && b.status !== 'rejected')
-                          .sort((a, b) => a.startTime.localeCompare(b.startTime))
-                          .map(b => {
+                      {(() => {
+                        const todayBookings = bookings.filter(b =>
+                          b.date === TODAY &&
+                          b.status !== 'cancelled' &&
+                          b.status !== 'rejected' &&
+                          (isAdmin || b.status === 'approved')
+                        ).sort((a, b) => a.startTime.localeCompare(b.startTime))
+                        return todayBookings.length === 0 ? (
+                          <p className="text-center text-slate-400 dark:text-slate-500 py-8 text-sm">{t.noMeetingToday}</p>
+                        ) : (
+                          todayBookings.map(b => {
                             const room = rooms.find(r => r.id === b.roomId)
                             const user = users.find(u => u.id === b.userId)
                             return (
@@ -1180,7 +1187,8 @@ export default function App() {
                               </div>
                             )
                           })
-                      )}
+                        )
+                      })()}
                     </div>
                   </div>
 
