@@ -828,7 +828,11 @@ export default function App() {
 
   const filteredBookings = useMemo(() => {
     return myBookings.filter(b => {
-      if (filterStatus !== 'all' && b.status !== filterStatus) return false
+      if (filterStatus === 'today') {
+        if (b.date !== TODAY) return false
+      } else if (filterStatus !== 'all' && b.status !== filterStatus) {
+        return false
+      }
       if (filterDate && b.date !== filterDate) return false
       return true
     })
@@ -1123,9 +1127,9 @@ export default function App() {
                 <div className="space-y-6">
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                     <Stat label={t.roomsReady} value={rooms.filter(r => r.status === 'available').length} icon="🚪" color="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300" />
-                    <Stat label={t.todayBookings} value={bookings.filter(b => b.date === TODAY && b.status === 'approved').length} icon="✅" color="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300" />
+                    <Stat label={t.todayBookings} value={bookings.filter(b => b.date === TODAY && b.status === 'approved').length} icon="✅" color="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300" onClick={() => { setActiveTab('bookings'); setFilterStatus('today'); }} />
                     <Stat label={t.pendingApprovals} value={bookings.filter(b => b.status === 'pending').length} icon="⏳" color="bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300" onClick={() => { setActiveTab('bookings'); setFilterStatus('pending'); }} />
-                    <Stat label={t.totalBookings} value={isAdmin ? bookings.length : myBookings.length} icon="📋" color="bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300" />
+                    <Stat label={t.totalBookings} value={isAdmin ? bookings.length : myBookings.length} icon="📋" color="bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300" onClick={() => { setActiveTab('bookings'); setFilterStatus('all'); }} />
                   </div>
 
                   <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm transition-colors">
@@ -1252,6 +1256,7 @@ export default function App() {
                       <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
                         className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                         <option value="all">{t.all}</option>
+                        <option value="today">{t.todayBookings}</option>
                         <option value="pending">{t.pending}</option>
                         <option value="approved">{t.approved}</option>
                         <option value="rejected">{t.rejected}</option>
