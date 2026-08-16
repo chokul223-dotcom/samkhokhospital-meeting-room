@@ -908,6 +908,18 @@ export default function App() {
     }
   }
 
+  async function handleClearAllBookings() {
+    if (window.confirm(t.confirmDeleteAllBookings)) {
+      try {
+        await api.deleteAllBookings()
+        setBookings([])
+        showToast(t.toastAllBookingsDeleted)
+      } catch (err: any) {
+        showToast(err.message || 'เกิดข้อผิดพลาด')
+      }
+    }
+  }
+
   const isDark = theme === 'dark'
 
   return (
@@ -1217,7 +1229,15 @@ export default function App() {
                         <button onClick={() => setFilterDate('')} className="border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700">{t.clearFilter}</button>
                       </div>
                     )}
-                    <div className="ml-auto self-end text-sm text-slate-500 dark:text-slate-400">{filteredBookings.length} {t.items}</div>
+                    <div className="ml-auto self-end flex items-center gap-3">
+                      <span className="text-sm text-slate-500 dark:text-slate-400">{filteredBookings.length} {t.items}</span>
+                      {isAdmin && bookings.length > 0 && (
+                        <button onClick={handleClearAllBookings}
+                          className="px-3 py-1.5 text-xs font-medium rounded-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 border border-red-200 dark:border-red-800 transition-colors">
+                          {t.deleteAllBookings}
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden transition-colors">

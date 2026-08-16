@@ -88,6 +88,9 @@ export const translations = {
     role: 'สิทธิ์การใช้งาน',
     confirmDeleteUser: 'คุณต้องการลบผู้ใช้งานนี้ใช่หรือไม่?',
     leaveBlankToKeep: '(ปล่อยว่างไว้หากไม่ต้องการเปลี่ยนรหัสผ่าน)',
+    deleteAllBookings: '🗑️ ลบประวัติการจองทั้งหมด',
+    confirmDeleteAllBookings: 'คุณต้องการลบประวัติการจองทั้งหมดใช่หรือไม่? การดำเนินการนี้ไม่สามารถย้อนกลับได้',
+    toastAllBookingsDeleted: 'ลบประวัติการจองทั้งหมดเรียบร้อยแล้ว',
     
     // Booking Form
     bookRoom: '+ จองห้องประชุม',
@@ -222,6 +225,9 @@ export const translations = {
     role: 'Role',
     confirmDeleteUser: 'Are you sure you want to delete this user?',
     leaveBlankToKeep: '(Leave blank to keep current password)',
+    deleteAllBookings: '🗑️ Clear All Booking History',
+    confirmDeleteAllBookings: 'Are you sure you want to delete ALL booking history? This action cannot be undone.',
+    toastAllBookingsDeleted: 'All booking history has been cleared.',
     
     // Booking Form
     bookRoom: '+ Book Room',

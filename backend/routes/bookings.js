@@ -92,4 +92,16 @@ router.delete('/:id', authMiddleware, async (req, res) => {
   }
 })
 
+// DELETE /api/bookings — admin clears all booking history
+router.delete('/', authMiddleware, async (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' })
+  try {
+    await pool.query('DELETE FROM bookings')
+    if (req.notifyClients) req.notifyClients()
+    res.json({ success: true })
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' })
+  }
+})
+
 module.exports = router

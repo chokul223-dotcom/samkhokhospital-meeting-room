@@ -95,6 +95,10 @@ export async function deleteBooking(id: string) {
   return request(`/api/bookings/${id}`, { method: 'DELETE' })
 }
 
+export async function deleteAllBookings() {
+  return request('/api/bookings', { method: 'DELETE' })
+}
+
 // ─── Users ────────────────────────────────────────────────────────────────────
 
 export async function fetchUsers() {
