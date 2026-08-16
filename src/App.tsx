@@ -403,7 +403,7 @@ function BookingModal({
 
   function handleSubmit() {
     if (!purpose.trim()) { setError(t.errPurpose); return }
-    if (startTime >= endTime) { setError(t.errTime); return }
+    // if (startTime >= endTime) { setError(t.errTime); return }
     if (conflicts.length > 0) { setError(t.errConflict); return }
     if (selectedRoom && attendees > selectedRoom.capacity) { setError(`${t.errCapacity} (${selectedRoom.capacity} ${t.people})`); return }
     onSubmit({ id: genId(), roomId, userId, date, startTime, endTime, purpose, attendees, status: 'pending', createdAt: TODAY })
