@@ -99,9 +99,15 @@ export async function fetchUsers() {
 }
 
 export async function createUser(data: {
-  name: string; department: string; role: string; username: string; password: string
+  name: string; department: string; role: string; username: string; password?: string
 }) {
   return request<any>('/api/users', { method: 'POST', body: JSON.stringify(data) })
+}
+
+export async function updateUser(id: string, data: {
+  name: string; department: string; role: string; username: string; password?: string
+}) {
+  return request<any>(`/api/users/${id}`, { method: 'PUT', body: JSON.stringify(data) })
 }
 
 export async function deleteUser(id: string) {

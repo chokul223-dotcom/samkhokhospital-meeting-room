@@ -34,6 +34,32 @@ router.post('/', authMiddleware, async (req, res) => {
   }
 })
 
+// PUT /api/users/:id — admin edits user
+router.put('/:id', authMiddleware, async (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' })
+  const { name, department, role, username, password } = req.body
+  if (!name || !username || !role) return res.status(400).json({ error: 'Missing fields' })
+
+  try {
+    if (password) {
+      const hash = await bcrypt.hash(password, 10)
+      await pool.query(
+        'UPDATE users SET name = $1, department = $2, role = $3, username = $4, password = $5 WHERE id = $6',
+        [name, department || '-', role, username, hash, req.params.id]
+      )
+    } else {
+      await pool.query(
+        'UPDATE users SET name = $1, department = $2, role = $3, username = $4 WHERE id = $5',
+        [name, department || '-', role, username, req.params.id]
+      )
+    }
+    res.json({ id: req.params.id, name, department, role, username })
+  } catch (err) {
+    if (err.code === '23505') return res.status(409).json({ error: 'Username already exists' })
+    res.status(500).json({ error: 'Server error' })
+  }
+})
+
 // DELETE /api/users/:id — admin deletes user
 router.delete('/:id', authMiddleware, async (req, res) => {
   if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' })

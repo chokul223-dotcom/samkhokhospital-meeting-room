@@ -81,6 +81,13 @@ export const translations = {
     userList: 'รายชื่อผู้ใช้งานระบบ',
     changePassword: 'เปลี่ยนรหัสผ่าน',
     setNewPassword: 'ตั้งรหัสผ่านใหม่สำหรับ',
+    addUser: '+ เพิ่มผู้ใช้งาน',
+    editUser: 'แก้ไขผู้ใช้งาน',
+    fullName: 'ชื่อ-นามสกุล',
+    department: 'แผนก',
+    role: 'สิทธิ์การใช้งาน',
+    confirmDeleteUser: 'คุณต้องการลบผู้ใช้งานนี้ใช่หรือไม่?',
+    leaveBlankToKeep: '(ปล่อยว่างไว้หากไม่ต้องการเปลี่ยนรหัสผ่าน)',
     
     // Booking Form
     bookRoom: '+ จองห้องประชุม',
@@ -103,6 +110,9 @@ export const translations = {
     errRoomName: 'กรุณาระบุชื่อห้อง',
     errLocation: 'กรุณาระบุสถานที่/ที่ตั้ง',
     errCapacityZero: 'ความจุต้องมากกว่า 0',
+    errFullName: 'กรุณาระบุชื่อ-นามสกุล',
+    errUsername: 'กรุณาระบุชื่อผู้ใช้งาน',
+    errPasswordCreate: 'กรุณาระบุรหัสผ่านสำหรับการสร้างผู้ใช้ใหม่',
     
     // Toasts
     toastBookingSuccess: 'ส่งคำขอจองห้องประชุมเรียบร้อยแล้ว',
@@ -113,6 +123,9 @@ export const translations = {
     toastRoomEdited: 'แก้ไขข้อมูลห้องประชุมเรียบร้อยแล้ว',
     toastRoomDeleted: 'ลบห้องประชุมเรียบร้อยแล้ว',
     toastPasswordChanged: 'เปลี่ยนรหัสผ่านเรียบร้อยแล้ว',
+    toastUserAdded: 'เพิ่มผู้ใช้เรียบร้อยแล้ว',
+    toastUserEdited: 'แก้ไขข้อมูลผู้ใช้เรียบร้อยแล้ว',
+    toastUserDeleted: 'ลบผู้ใช้เรียบร้อยแล้ว',
     
     // Settings
     settingsTitle: 'การตั้งค่าระบบ',
@@ -202,6 +215,13 @@ export const translations = {
     userList: 'System Users',
     changePassword: 'Change Password',
     setNewPassword: 'Set new password for',
+    addUser: '+ Add User',
+    editUser: 'Edit User',
+    fullName: 'Full Name',
+    department: 'Department',
+    role: 'Role',
+    confirmDeleteUser: 'Are you sure you want to delete this user?',
+    leaveBlankToKeep: '(Leave blank to keep current password)',
     
     // Booking Form
     bookRoom: '+ Book Room',
@@ -224,6 +244,9 @@ export const translations = {
     errRoomName: 'Please enter a room name.',
     errLocation: 'Please enter the location/floor.',
     errCapacityZero: 'Capacity must be greater than 0.',
+    errFullName: 'Please enter full name.',
+    errUsername: 'Please enter username.',
+    errPasswordCreate: 'Please enter a password for the new user.',
     
     // Toasts
     toastBookingSuccess: 'Booking request submitted successfully.',
@@ -234,6 +257,9 @@ export const translations = {
     toastRoomEdited: 'Room updated successfully.',
     toastRoomDeleted: 'Room deleted successfully.',
     toastPasswordChanged: 'Password changed successfully.',
+    toastUserAdded: 'User added successfully.',
+    toastUserEdited: 'User updated successfully.',
+    toastUserDeleted: 'User deleted successfully.',
     
     // Settings
     settingsTitle: 'System Settings',

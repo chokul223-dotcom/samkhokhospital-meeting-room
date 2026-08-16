@@ -554,6 +554,87 @@ function RoomModal({
   )
 }
 
+// ─── User Modal ───────────────────────────────────────────────────────────────
+
+function UserModal({
+  user, onClose, onSubmit
+}: {
+  user?: User
+  onClose: () => void
+  onSubmit: (u: any) => void
+}) {
+  const { t } = useContext(AppContext)
+  const [name, setName] = useState(user?.name || '')
+  const [department, setDepartment] = useState(user?.department || '')
+  const [role, setRole] = useState<Role>(user?.role || 'user')
+  const [username, setUsername] = useState(user?.username || '')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+
+  function handleSubmit() {
+    if (!name.trim()) { setError(t.errFullName); return }
+    if (!username.trim()) { setError(t.errUsername); return }
+    if (!user && !password.trim()) { setError(t.errPasswordCreate); return }
+
+    onSubmit({
+      id: user?.id,
+      name: name.trim(),
+      department: department.trim() || '-',
+      role,
+      username: username.trim(),
+      password: password.trim()
+    })
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/50 dark:bg-black/70 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto border border-slate-200 dark:border-slate-800">
+        <div className="flex items-center justify-between p-6 border-b border-slate-100 dark:border-slate-800">
+          <h2 className="text-lg font-bold text-slate-800 dark:text-white">{user ? t.editUser : t.addUser}</h2>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 dark:text-slate-500 transition-colors">✕</button>
+        </div>
+        <div className="p-6 space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.fullName} <span className="text-red-400">*</span></label>
+            <input type="text" value={name} onChange={e => setName(e.target.value)}
+              className="w-full bg-white dark:bg-slate-800 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.department}</label>
+              <input type="text" value={department} onChange={e => setDepartment(e.target.value)}
+                className="w-full bg-white dark:bg-slate-800 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.role}</label>
+              <select value={role} onChange={e => setRole(e.target.value as Role)}
+                className="w-full bg-white dark:bg-slate-800 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors">
+                <option value="user">{t.user}</option>
+                <option value="admin">{t.admin}</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.username} <span className="text-red-400">*</span></label>
+            <input type="text" value={username} onChange={e => setUsername(e.target.value)}
+              className="w-full bg-white dark:bg-slate-800 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t.password} {user ? <span className="text-slate-400 text-xs font-normal">{t.leaveBlankToKeep}</span> : <span className="text-red-400">*</span>}</label>
+            <input type="password" value={password} onChange={e => setPassword(e.target.value)}
+              className="w-full bg-white dark:bg-slate-800 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors" />
+          </div>
+          {error && <p className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/50 rounded-lg p-2">{error}</p>}
+        </div>
+        <div className="flex gap-3 p-6 border-t border-slate-100 dark:border-slate-800">
+          <button onClick={onClose} className="flex-1 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">{t.cancelBtn}</button>
+          <button onClick={handleSubmit} className="flex-1 py-2 rounded-lg bg-[#1a5fa8] text-white text-sm font-medium hover:bg-[#134a86] transition-colors">{t.save}</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Settings Screen ──────────────────────────────────────────────────────────
 function SettingsScreen() {
   const { t, language, setLanguage } = useContext(AppContext)
@@ -684,6 +765,8 @@ export default function App() {
   const [showBookingModal, setShowBookingModal] = useState(false)
   const [showRoomModal, setShowRoomModal] = useState(false)
   const [editingRoom, setEditingRoom] = useState<Room | undefined>(undefined)
+  const [showUserModal, setShowUserModal] = useState(false)
+  const [editingUser, setEditingUser] = useState<User | undefined>(undefined)
   const [filterStatus, setFilterStatus] = useState<string>('all')
   const [filterDate, setFilterDate] = useState('')
   const [calendarDate, setCalendarDate] = useState(TODAY)
@@ -777,6 +860,36 @@ export default function App() {
         await api.deleteRoom(id)
         setRooms(prev => prev.filter(r => r.id !== id))
         showToast(t.toastRoomDeleted)
+      } catch (err: any) {
+        showToast(err.message || 'เกิดข้อผิดพลาด')
+      }
+    }
+  }
+
+  async function handleSaveUser(u: User) {
+    const wasEditing = !!editingUser
+    try {
+      if (wasEditing) {
+        const updated = await api.updateUser(u.id, u)
+        setUsers(prev => prev.map(user => user.id === updated.id ? updated : user))
+      } else {
+        const created = await api.createUser(u as any)
+        setUsers(prev => [...prev, created])
+      }
+      setShowUserModal(false)
+      setEditingUser(undefined)
+      showToast(wasEditing ? t.toastUserEdited : t.toastUserAdded)
+    } catch (err: any) {
+      showToast(err.message || 'เกิดข้อผิดพลาด')
+    }
+  }
+
+  async function handleDeleteUser(id: string) {
+    if (window.confirm(t.confirmDeleteUser)) {
+      try {
+        await api.deleteUser(id)
+        setUsers(prev => prev.filter(u => u.id !== id))
+        showToast(t.toastUserDeleted)
       } catch (err: any) {
         showToast(err.message || 'เกิดข้อผิดพลาด')
       }
@@ -929,7 +1042,12 @@ export default function App() {
                     className="flex items-center gap-2 bg-[#0891b2] hover:bg-[#067a96] text-white text-sm font-medium px-4 py-2.5 rounded-xl shadow-sm transition-colors">
                     {t.addRoom}
                   </button>
-                ) : activeTab !== 'settings' && activeTab !== 'users' ? (
+                ) : activeTab === 'users' ? (
+                  <button onClick={() => { setEditingUser(undefined); setShowUserModal(true); }}
+                    className="flex items-center gap-2 bg-[#1a5fa8] hover:bg-[#134a86] text-white text-sm font-medium px-4 py-2.5 rounded-xl shadow-sm transition-colors">
+                    {t.addUser}
+                  </button>
+                ) : activeTab !== 'settings' ? (
                   <button onClick={() => setShowBookingModal(true)}
                     className="flex items-center gap-2 bg-[#1a5fa8] hover:bg-[#134a86] text-white text-sm font-medium px-4 py-2.5 rounded-xl shadow-sm transition-colors">
                     {t.bookRoom}
@@ -1204,21 +1322,23 @@ export default function App() {
                           </div>
                           <div>
                             <p className="font-medium text-slate-800 dark:text-white">{u.name}</p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400">{t.username}: {u.username} · {u.role === 'admin' ? t.admin : t.user}</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">{t.username}: {u.username} · {u.role === 'admin' ? t.admin : t.user} · {u.department}</p>
                           </div>
                         </div>
-                        <button
-                          onClick={() => {
-                            const newPassword = window.prompt(`${t.setNewPassword} ${u.name}:`)
-                            if (newPassword) {
-                              setUsers(prev => prev.map(user => user.id === u.id ? { ...user, password: newPassword } : user))
-                              showToast(t.toastPasswordChanged)
-                            }
-                          }}
-                          className="px-4 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 text-sm font-medium rounded-lg transition-colors"
-                        >
-                          {t.changePassword}
-                        </button>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => { setEditingUser(u); setShowUserModal(true); }}
+                            className="px-4 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 text-sm font-medium rounded-lg transition-colors"
+                          >
+                            {t.edit}
+                          </button>
+                          <button
+                            onClick={() => handleDeleteUser(u.id)}
+                            className="px-4 py-2 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 text-sm font-medium rounded-lg transition-colors"
+                          >
+                            {t.delete}
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -1247,6 +1367,14 @@ export default function App() {
               room={editingRoom}
               onClose={() => { setShowRoomModal(false); setEditingRoom(undefined); }}
               onSubmit={handleSaveRoom}
+            />
+          )}
+
+          {showUserModal && (
+            <UserModal
+              user={editingUser}
+              onClose={() => { setShowUserModal(false); setEditingUser(undefined); }}
+              onSubmit={handleSaveUser}
             />
           )}
 
