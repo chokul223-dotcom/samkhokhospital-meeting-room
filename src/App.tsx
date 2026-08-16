@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, createContext, useContext } from 'react'
+import { useState, useMemo, useEffect, createContext, useContext, useRef } from 'react'
 import { Language, useTranslation } from './Language'
 import * as api from './api'
 
@@ -176,6 +176,12 @@ function LoginScreen({ onLogin }: { onLogin: (u: string, p: string) => void }) {
   const [password, setPassword] = useState('')
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false)
   const [isVideoOpen, setIsVideoOpen] = useState(true)
+  const [pos, setPos] = useState(() => ({
+    x: 24,
+    y: typeof window !== 'undefined' ? Math.max(0, window.innerHeight - 230) : 500
+  }))
+  const dragRef = useRef<{ startMX: number; startMY: number; startPX: number; startPY: number } | null>(null)
+  const hasMoved = useRef(false)
   const [bgIndex, setBgIndex] = useState(0)
 
   const backgrounds = [
@@ -244,13 +250,34 @@ function LoginScreen({ onLogin }: { onLogin: (u: string, p: string) => void }) {
         </form>
       </div>
 
-      {/* ── Floating Video Player + Collapse Toggle ── */}
-      <div className={`fixed bottom-6 left-6 z-40 flex items-center transition-all duration-500 ease-in-out`}>
+      {/* ── Draggable Floating Video Player ── */}
+      <div
+        style={{ position: 'fixed', left: pos.x, top: pos.y, zIndex: 40, display: 'flex', alignItems: 'center', touchAction: 'none' }}
+        onPointerDown={e => {
+          if ((e.target as HTMLElement).closest('button')) return
+          dragRef.current = { startMX: e.clientX, startMY: e.clientY, startPX: pos.x, startPY: pos.y }
+          hasMoved.current = false
+          ;(e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId)
+        }}
+        onPointerMove={e => {
+          if (!dragRef.current) return
+          const dx = e.clientX - dragRef.current.startMX
+          const dy = e.clientY - dragRef.current.startMY
+          if (Math.abs(dx) > 4 || Math.abs(dy) > 4) hasMoved.current = true
+          setPos({
+            x: Math.max(0, Math.min(window.innerWidth - 60, dragRef.current.startPX + dx)),
+            y: Math.max(0, Math.min(window.innerHeight - 60, dragRef.current.startPY + dy))
+          })
+        }}
+        onPointerUp={() => { dragRef.current = null }}
+        onPointerCancel={() => { dragRef.current = null }}
+      >
         {/* Video panel */}
-        <div className={`transition-all duration-500 ease-in-out overflow-hidden rounded-2xl shadow-2xl ${isVideoOpen ? 'w-72 opacity-100' : 'w-0 opacity-0'}`}>
+        <div className={`transition-all duration-400 ease-in-out overflow-hidden rounded-2xl shadow-2xl ${isVideoOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+             style={{ width: isVideoOpen ? 288 : 0 }}>
           <div
-            className="w-72 cursor-pointer group border border-slate-200/20 dark:border-slate-700/50 bg-black/5 backdrop-blur-md rounded-2xl overflow-hidden"
-            onClick={() => setIsVideoModalOpen(true)}
+            className={`w-72 group border border-slate-200/20 bg-black/5 backdrop-blur-md rounded-2xl overflow-hidden ${hasMoved.current ? 'cursor-grabbing' : 'cursor-grab'}`}
+            onClick={() => { if (!hasMoved.current) setIsVideoModalOpen(true) }}
           >
             <div className="relative pt-[56.25%] bg-slate-900">
               <video
@@ -270,9 +297,9 @@ function LoginScreen({ onLogin }: { onLogin: (u: string, p: string) => void }) {
           </div>
         </div>
 
-        {/* Toggle button — always visible */}
+        {/* Toggle button */}
         <button
-          onClick={() => setIsVideoOpen(v => !v)}
+          onClick={e => { e.stopPropagation(); setIsVideoOpen(v => !v) }}
           className="flex-none ml-1 w-7 h-10 flex items-center justify-center rounded-full bg-black/50 hover:bg-black/70 backdrop-blur-sm shadow-lg text-white transition-all duration-300"
         >
           <span className={`text-xs font-bold transition-transform duration-300 ${isVideoOpen ? 'rotate-180' : ''}`}>❯</span>
