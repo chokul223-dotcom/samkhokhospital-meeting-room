@@ -1029,7 +1029,7 @@ export default function App() {
                 { id: 'dashboard', label: t.dashboard, icon: '📊' },
                 { id: 'calendar', label: t.calendar, icon: '📅' },
                 { id: 'bookings', label: isAdmin ? t.allBookings : t.myBookings, icon: '📋' },
-                ...(isAdmin ? [{ id: 'rooms', label: t.rooms, icon: '🚪' }] : []),
+                { id: 'rooms', label: t.rooms, icon: '🚪' },
                 ...(isAdmin ? [{ id: 'users', label: t.users, icon: '👥' }] : []),
                 { id: 'settings', label: t.settings, icon: '⚙️' },
               ].map(item => (
@@ -1077,7 +1077,7 @@ export default function App() {
                 { id: 'dashboard', label: t.dashboard, icon: '📊' },
                 { id: 'calendar', label: t.calendar, icon: '📅' },
                 { id: 'bookings', label: isAdmin ? t.allBookings : t.myBookings, icon: '📋' },
-                ...(isAdmin ? [{ id: 'rooms', label: t.rooms, icon: '🚪' }] : []),
+                { id: 'rooms', label: t.rooms, icon: '🚪' },
                 ...(isAdmin ? [{ id: 'users', label: t.users, icon: '👥' }] : []),
                 { id: 'settings', label: t.settings, icon: '⚙️' },
               ].map(item => (
@@ -1104,7 +1104,7 @@ export default function App() {
                     {formatDate(TODAY, language)}
                   </p>
                 </div>
-                {activeTab === 'rooms' ? (
+                {activeTab === 'rooms' && isAdmin ? (
                   <button onClick={() => { setEditingRoom(undefined); setShowRoomModal(true); }}
                     className="flex items-center gap-2 bg-[#0891b2] hover:bg-[#067a96] text-white text-sm font-medium px-4 py-2.5 rounded-xl shadow-sm transition-colors">
                     {t.addRoom}
@@ -1343,8 +1343,8 @@ export default function App() {
                 </div>
               )}
 
-              {/* ── Rooms (Admin) ── */}
-              {activeTab === 'rooms' && isAdmin && (
+              {/* ── Rooms ── */}
+              {activeTab === 'rooms' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                   {rooms.map(room => {
                     const todayCount = bookings.filter(b => b.roomId === room.id && b.date === TODAY && b.status === 'approved').length
@@ -1371,16 +1371,18 @@ export default function App() {
                             ))}
                           </div>
                         </div>
-                        <div className="px-5 py-3 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 flex justify-end gap-3">
-                          <button onClick={() => { setEditingRoom(room); setShowRoomModal(true); }}
-                            className="text-sm text-[#1a5fa8] dark:text-blue-400 hover:text-[#134a86] dark:hover:text-blue-300 font-medium transition-colors">
-                            {t.edit}
-                          </button>
-                          <button onClick={() => handleDeleteRoom(room.id)}
-                            className="text-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 font-medium transition-colors">
-                            {t.delete}
-                          </button>
-                        </div>
+                        {isAdmin && (
+                          <div className="px-5 py-3 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 flex justify-end gap-3">
+                            <button onClick={() => { setEditingRoom(room); setShowRoomModal(true); }}
+                              className="text-sm text-[#1a5fa8] dark:text-blue-400 hover:text-[#134a86] dark:hover:text-blue-300 font-medium transition-colors">
+                              {t.edit}
+                            </button>
+                            <button onClick={() => handleDeleteRoom(room.id)}
+                              className="text-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 font-medium transition-colors">
+                              {t.delete}
+                            </button>
+                          </div>
+                        )}
                       </div>
                     )
                   })}
