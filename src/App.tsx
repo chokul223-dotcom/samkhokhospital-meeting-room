@@ -813,15 +813,22 @@ export default function App() {
     if (!currentUser) return
     refreshData()
 
-    // Real-time: connect SSE and reload data when server pushes an update
+    // Real-time: SSE
     const es = new EventSource(`${API_URL}/api/stream`)
     es.onmessage = (e) => {
       if (e.data === 'update') refreshData()
     }
     es.onerror = () => {
-      // Browser will auto-reconnect; no action needed
+      // Browser will auto-reconnect
     }
-    return () => es.close()
+
+    // Polling fallback every 10s for reliability
+    const poll = setInterval(() => refreshData(), 10000)
+
+    return () => {
+      es.close()
+      clearInterval(poll)
+    }
   }, [currentUser])
 
   const [activeTab, setActiveTab] = useState('dashboard')
