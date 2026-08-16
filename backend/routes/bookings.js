@@ -32,14 +32,30 @@ router.post('/', authMiddleware, async (req, res) => {
   }
 
   // Check conflicts
-  const conflicts = await pool.query(`
-    SELECT id FROM bookings
+  const allBookings = await pool.query(`
+    SELECT * FROM bookings
     WHERE room_id = $1 AND date = $2
     AND status NOT IN ('rejected','cancelled')
-    AND NOT (end_time <= $3 OR start_time >= $4)
-  `, [roomId, date, startTime, endTime])
+  `, [roomId, date])
 
-  if (conflicts.rows.length > 0) {
+  const toMinutes = (t) => {
+    const [h, m] = t.split(':').map(Number)
+    return h * 60 + m
+  }
+
+  const isConflict = allBookings.rows.some(b => {
+    let bStart = toMinutes(b.start_time)
+    let bEnd = toMinutes(b.end_time)
+    let newStart = toMinutes(startTime)
+    let newEnd = toMinutes(endTime)
+
+    if (bEnd <= bStart) bEnd += 24 * 60
+    if (newEnd <= newStart) newEnd += 24 * 60
+
+    return newStart < bEnd && bStart < newEnd
+  })
+
+  if (isConflict) {
     return res.status(409).json({ error: 'Time slot conflict' })
   }
 

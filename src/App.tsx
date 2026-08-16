@@ -382,7 +382,7 @@ function BookingModal({
   userId: string
   bookings: Booking[]
   onClose: () => void
-  onSubmit: (b: Booking) => void
+  onSubmit: (b: Booking) => Promise<void> | void
 }) {
   const { t } = useContext(AppContext)
   const [roomId, setRoomId] = useState(rooms.find(r => r.status === 'available')?.id || '')
@@ -396,17 +396,36 @@ function BookingModal({
   const availableRooms = rooms.filter(r => r.status === 'available')
   const selectedRoom = rooms.find(r => r.id === roomId)
 
-  const conflicts = bookings.filter(b =>
-    b.roomId === roomId && b.date === date && b.status !== 'rejected' && b.status !== 'cancelled' &&
-    !(endTime <= b.startTime || startTime >= b.endTime)
-  )
+  const conflicts = bookings.filter(b => {
+    if (b.roomId !== roomId || b.date !== date || b.status === 'rejected' || b.status === 'cancelled') return false
+    
+    const toMins = (t: string) => { const [h,m] = t.split(':').map(Number); return h*60+m }
+    let bStart = toMins(b.startTime)
+    let bEnd = toMins(b.endTime)
+    let newStart = toMins(startTime)
+    let newEnd = toMins(endTime)
 
-  function handleSubmit() {
+    if (bEnd <= bStart) bEnd += 24 * 60
+    if (newEnd <= newStart) newEnd += 24 * 60
+
+    return newStart < bEnd && bStart < newEnd
+  })
+
+  async function handleSubmit() {
     if (!purpose.trim()) { setError(t.errPurpose); return }
     // if (startTime >= endTime) { setError(t.errTime); return }
-    if (conflicts.length > 0) { setError(t.errConflict); return }
+    if (conflicts.length > 0) { setError("เวลาดังกล่าวได้มีการจองแล้ว กรุณาเปลี่ยนเวลาหรือวันที่การจอง"); return }
     if (selectedRoom && attendees > selectedRoom.capacity) { setError(`${t.errCapacity} (${selectedRoom.capacity} ${t.people})`); return }
-    onSubmit({ id: genId(), roomId, userId, date, startTime, endTime, purpose, attendees, status: 'pending', createdAt: TODAY })
+    
+    try {
+      await onSubmit({ id: genId(), roomId, userId, date, startTime, endTime, purpose, attendees, status: 'pending', createdAt: TODAY })
+    } catch (err: any) {
+      if (err.message === 'Time slot conflict') {
+        setError("เวลาดังกล่าวได้มีการจองแล้ว กรุณาเปลี่ยนเวลาหรือวันที่การจอง")
+      } else {
+        setError(err.message || 'เกิดข้อผิดพลาด')
+      }
+    }
   }
 
   return (
@@ -850,7 +869,7 @@ export default function App() {
       setShowBookingModal(false)
       showToast(t.toastBookingSuccess)
     } catch (err: any) {
-      showToast(err.message || 'เกิดข้อผิดพลาด')
+      throw err // Let the modal catch and display it
     }
   }
 
