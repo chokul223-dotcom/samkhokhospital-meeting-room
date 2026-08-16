@@ -1350,7 +1350,7 @@ export default function App() {
                     const todayCount = bookings.filter(b => b.roomId === room.id && b.date === TODAY && b.status === 'approved').length
                     return (
                       <div key={room.id} className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden flex flex-col transition-colors">
-                        <div className="h-2 bg-gradient-to-r from-[#1a5fa8] to-[#0891b2]" />
+                        <div className={`h-2 bg-gradient-to-r ${room.status === 'available' ? 'from-[#1a5fa8] to-[#0891b2]' : 'from-red-600 to-orange-500'}`} />
                         <div className="p-5 flex-1">
                           <div className="flex items-start justify-between mb-3">
                             <div>

@@ -32,11 +32,11 @@ router.patch('/:id/status', authMiddleware, async (req, res) => {
 // POST /api/rooms — create room
 router.post('/', authMiddleware, async (req, res) => {
   if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' })
-  const { id, name, capacity, location, equipment } = req.body
+  const { id, name, capacity, location, equipment, status } = req.body
   try {
     await pool.query(
-      'INSERT INTO rooms (id, name, capacity, location, equipment) VALUES ($1, $2, $3, $4, $5)',
-      [id, name, capacity, location, equipment || []]
+      'INSERT INTO rooms (id, name, capacity, location, equipment, status) VALUES ($1, $2, $3, $4, $5, $6)',
+      [id, name, capacity, location, equipment || [], status || 'available']
     )
     if (req.notifyClients) req.notifyClients()
     res.json({ success: true, id })
@@ -48,11 +48,11 @@ router.post('/', authMiddleware, async (req, res) => {
 // PUT /api/rooms/:id — update room
 router.put('/:id', authMiddleware, async (req, res) => {
   if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' })
-  const { name, capacity, location, equipment } = req.body
+  const { name, capacity, location, equipment, status } = req.body
   try {
     await pool.query(
-      'UPDATE rooms SET name = $1, capacity = $2, location = $3, equipment = $4 WHERE id = $5',
-      [name, capacity, location, equipment || [], req.params.id]
+      'UPDATE rooms SET name = $1, capacity = $2, location = $3, equipment = $4, status = $5 WHERE id = $6',
+      [name, capacity, location, equipment || [], status || 'available', req.params.id]
     )
     if (req.notifyClients) req.notifyClients()
     res.json({ success: true })
