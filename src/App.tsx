@@ -788,31 +788,30 @@ export default function App() {
   return (
     <AppContext.Provider value={contextValue}>
       {/* ── Floating theme toggle – always visible ── */}
-      {/* Mobile: icon only | Desktop: icon + label */}
       <button
         onClick={() => setTheme(isDark ? 'light' : 'dark')}
         title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
         className={`fixed bottom-6 right-4 z-[100] flex items-center overflow-hidden rounded-full shadow-xl border-2 transition-all duration-300 select-none
           ${ isDark
-            ? 'bg-[#0f1f3d] border-[#1a3a6e] text-white md:w-44 w-12'
-            : 'bg-white border-slate-200 text-slate-800 md:w-44 w-12'
+            ? 'bg-[#0f1f3d] border-[#1a3a6e] text-white w-auto pr-1'
+            : 'bg-white border-slate-200 text-slate-800 w-auto pr-1'
           }`}
       >
         {isDark ? (
           <>
-            <span className="hidden md:block flex-1 text-center text-xs font-bold tracking-wide pl-3 py-3">
+            <span className="block flex-1 text-center text-[10px] md:text-xs font-bold tracking-wide px-3 py-2 md:py-3">
               {language === 'th' ? 'โหมดมืด' : 'DARK MODE'}
             </span>
-            <span className="w-12 h-12 md:w-14 md:h-14 flex-none rounded-full bg-[#1a3a8f] flex items-center justify-center text-xl shadow-inner">
+            <span className="w-10 h-10 md:w-12 md:h-12 flex-none rounded-full bg-[#1a3a8f] flex items-center justify-center text-lg md:text-xl shadow-inner my-1 mr-1">
               🌙
             </span>
           </>
         ) : (
           <>
-            <span className="w-12 h-12 md:w-14 md:h-14 flex-none rounded-full bg-sky-100 flex items-center justify-center text-xl shadow-inner">
+            <span className="w-10 h-10 md:w-12 md:h-12 flex-none rounded-full bg-sky-100 flex items-center justify-center text-lg md:text-xl shadow-inner my-1 ml-1">
               ☀️
             </span>
-            <span className="hidden md:block flex-1 text-center text-xs font-bold tracking-wide pr-3 py-3">
+            <span className="block flex-1 text-center text-[10px] md:text-xs font-bold tracking-wide px-3 py-2 md:py-3">
               {language === 'th' ? 'โหมดสว่าง' : 'LIGHT MODE'}
             </span>
           </>
