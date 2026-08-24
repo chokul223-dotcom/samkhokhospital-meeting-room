@@ -206,7 +206,7 @@ interface AppContextType {
   handleSaveRoom: (r: Room) => Promise<void>
   handleDeleteRoom: (id: string) => Promise<void>
   handleSaveUser: (
-    u: Partial<User> & { username: string name: string },
+    u: Partial<User> & { username: string; name: string },
   ) => Promise<void>
   handleDeleteUser: (id: string) => Promise<void>
   handleClearAllBookings: () => Promise<void>
@@ -442,7 +442,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   }
 
   const handleSaveUser = async (
-    userData: Partial<User> & { username: string name: string },
+    userData: Partial<User> & { username: string; name: string },
   ) => {
     const isEdit = !!userData.id
     try {

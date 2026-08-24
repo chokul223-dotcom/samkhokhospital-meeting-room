@@ -59,8 +59,8 @@ export async function fetchRooms(): Promise<Room[]> {
 
 export async function addRoom(
   data: Omit<Room, "id"> & { id?: string },
-): Promise<{ success: boolean id: string }> {
-  return request<{ success: boolean id: string }>("/api/rooms", {
+): Promise<{ success: boolean; id: string }> {
+  return request<{ success: boolean; id: string }>("/api/rooms", {
     method: "POST",
     body: JSON.stringify(data),
   })

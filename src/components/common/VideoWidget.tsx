@@ -8,7 +8,7 @@ export const VideoWidget: React.FC = () => {
   const [videoPosY, setVideoPosY] = useState<number>(() =>
     typeof window !== "undefined" ? Math.max(0, window.innerHeight - 240) : 500,
   )
-  const [dragPos, setDragPos] = useState<{ x: number y: number } | null>(null)
+  const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null)
   const dragRef = useRef<{
     startMX: number
     startMY: number

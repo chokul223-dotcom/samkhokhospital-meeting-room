@@ -26,7 +26,7 @@ export const Header: React.FC<HeaderProps> = ({
   const { t, language, currentUser, refreshData, loading } = useApp()
   const isAdmin = currentUser?.role === "admin"
 
-  const titles: Record<string, { title: string subtitle: string }> = {
+  const titles: Record<string, { title: string; subtitle: string }> = {
     dashboard: {
       title: t.dashboard,
       subtitle: `${t.appName} — ${t.appDesc}`,
