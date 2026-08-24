@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react'
-import { X, Calendar, AlertCircle, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react'
+import { X, Calendar, AlertCircle, ChevronDown, ChevronLeft, ChevronRight, Clock } from 'lucide-react'
 import { Room, Booking } from '../../types'
 import { useApp } from '../../context/AppContext'
 
@@ -15,13 +15,6 @@ const THAI_MONTHS = [
   'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม',
 ]
 const THAI_DAYS_SHORT = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส']
-
-// Generate hour options (06:00 – 22:00)
-const HOURS = Array.from({ length: 17 }, (_, i) => {
-  const h = i + 6
-  return String(h).padStart(2, '0')
-})
-const MINUTES = ['00', '15', '30', '45']
 
 // ─── Mini Date Picker (Thai) ───────────────────────────────────────────────────
 interface ThaiDatePickerProps {
@@ -155,46 +148,6 @@ const ThaiDatePicker: React.FC<ThaiDatePickerProps> = ({ value, min, onChange })
           </div>
         </div>
       )}
-    </div>
-  )
-}
-
-// ─── Thai Time Picker (24h) ────────────────────────────────────────────────────
-interface ThaiTimePickerProps {
-  value: string // HH:mm
-  onChange: (v: string) => void
-  label?: string
-}
-const ThaiTimePicker: React.FC<ThaiTimePickerProps> = ({ value, onChange }) => {
-  const [hh, mm] = value.split(':')
-
-  return (
-    <div className="flex gap-1.5 items-center">
-      <div className="relative flex-1">
-        <select
-          value={hh}
-          onChange={e => onChange(`${e.target.value}:${mm}`)}
-          className="w-full appearance-none rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 pl-3 pr-8 py-2.5 text-sm font-bold text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer text-center"
-        >
-          {HOURS.map(h => (
-            <option key={h} value={h}>{h} น.</option>
-          ))}
-        </select>
-        <ChevronDown className="pointer-events-none absolute right-2.5 top-3 h-3.5 w-3.5 text-slate-400" />
-      </div>
-      <span className="text-slate-500 dark:text-slate-400 font-bold text-sm">:</span>
-      <div className="relative flex-1">
-        <select
-          value={mm}
-          onChange={e => onChange(`${hh}:${e.target.value}`)}
-          className="w-full appearance-none rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 pl-3 pr-8 py-2.5 text-sm font-bold text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer text-center"
-        >
-          {MINUTES.map(m => (
-            <option key={m} value={m}>{m} นาที</option>
-          ))}
-        </select>
-        <ChevronDown className="pointer-events-none absolute right-2.5 top-3 h-3.5 w-3.5 text-slate-400" />
-      </div>
     </div>
   )
 }
@@ -370,20 +323,34 @@ export const BookingModal: React.FC<BookingModalProps> = ({
             <ThaiDatePicker value={date} min={todayStr} onChange={setDate} />
           </div>
 
-          {/* Time Slot — Custom Thai 24h Selectors */}
+          {/* Time Slot — Native Input */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">
                 {t.startTime} <span className="text-rose-500">*</span>
               </label>
-              <ThaiTimePicker value={startTime} onChange={setStartTime} />
+              <div className="relative">
+                <input
+                  type="time"
+                  value={startTime}
+                  onChange={e => setStartTime(e.target.value)}
+                  className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer"
+                />
+              </div>
             </div>
 
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">
                 {t.endTime} <span className="text-rose-500">*</span>
               </label>
-              <ThaiTimePicker value={endTime} onChange={setEndTime} />
+              <div className="relative">
+                <input
+                  type="time"
+                  value={endTime}
+                  onChange={e => setEndTime(e.target.value)}
+                  className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer"
+                />
+              </div>
             </div>
           </div>
 
