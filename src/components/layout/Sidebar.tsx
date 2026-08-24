@@ -21,7 +21,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   activeTab,
   setActiveTab,
 }) => {
-  const { t, currentUser, setCurrentUser, bookings } = useApp()
+  const { t, language, currentUser, setCurrentUser, bookings } = useApp()
 
   if (!currentUser) return null
 
