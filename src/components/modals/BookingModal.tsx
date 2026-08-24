@@ -1,7 +1,12 @@
 import React, { useState, useMemo } from 'react'
-import { X, Calendar, AlertCircle, ChevronDown, ChevronLeft, ChevronRight, Clock } from 'lucide-react'
-import { Room, Booking } from '../../types'
+import { X, Calendar, AlertCircle, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Room } from '../../types'
 import { useApp } from '../../context/AppContext'
+import {
+  formatRoomName,
+  formatRoomLocation,
+  formatEquipment,
+} from '../../constants/translations'
 
 interface BookingModalProps {
   initialRoomId?: string
@@ -9,20 +14,27 @@ interface BookingModalProps {
   onClose: () => void
 }
 
-// ─── Thai Month Names ──────────────────────────────────────────────────────────
+// ─── Month & Day Names (Thai / English) ─────────────────────────────────────────
 const THAI_MONTHS = [
   'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
   'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม',
 ]
+const ENG_MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+]
 const THAI_DAYS_SHORT = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส']
+const ENG_DAYS_SHORT = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
 
-// ─── Mini Date Picker (Thai) ───────────────────────────────────────────────────
-interface ThaiDatePickerProps {
+// ─── Localized Mini Date Picker ───────────────────────────────────────────────
+interface DatePickerProps {
   value: string // YYYY-MM-DD
   min: string
   onChange: (v: string) => void
+  lang: 'th' | 'en'
 }
-const ThaiDatePicker: React.FC<ThaiDatePickerProps> = ({ value, min, onChange }) => {
+
+const LocalizedDatePicker: React.FC<DatePickerProps> = ({ value, min, onChange, lang }) => {
   const [open, setOpen] = useState(false)
 
   const selected = value ? new Date(value + 'T00:00:00') : new Date()
@@ -33,9 +45,18 @@ const ThaiDatePicker: React.FC<ThaiDatePickerProps> = ({ value, min, onChange })
   today.setHours(0, 0, 0, 0)
   const minDate = new Date(min + 'T00:00:00')
 
+  const monthNames = lang === 'th' ? THAI_MONTHS : ENG_MONTHS
+  const dayNames = lang === 'th' ? THAI_DAYS_SHORT : ENG_DAYS_SHORT
+
   const displayText = value
-    ? `${selected.getDate()} ${THAI_MONTHS[selected.getMonth()]} ${selected.getFullYear() + 543}`
-    : 'เลือกวันที่'
+    ? lang === 'th'
+      ? `${selected.getDate()} ${THAI_MONTHS[selected.getMonth()]} ${selected.getFullYear() + 543}`
+      : `${ENG_MONTHS[selected.getMonth()]} ${selected.getDate()}, ${selected.getFullYear()}`
+    : lang === 'th' ? 'เลือกวันที่' : 'Select Date'
+
+  const headerMonthYear = lang === 'th'
+    ? `${THAI_MONTHS[viewMonth]} ${viewYear + 543}`
+    : `${ENG_MONTHS[viewMonth]} ${viewYear}`
 
   const prevMonth = () => {
     if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1) }
@@ -90,7 +111,7 @@ const ThaiDatePicker: React.FC<ThaiDatePickerProps> = ({ value, min, onChange })
               <ChevronLeft className="h-4 w-4 text-slate-500" />
             </button>
             <span className="text-sm font-bold text-slate-900 dark:text-white">
-              {THAI_MONTHS[viewMonth]} {viewYear + 543}
+              {headerMonthYear}
             </span>
             <button type="button" onClick={nextMonth} className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer">
               <ChevronRight className="h-4 w-4 text-slate-500" />
@@ -99,7 +120,7 @@ const ThaiDatePicker: React.FC<ThaiDatePickerProps> = ({ value, min, onChange })
 
           {/* Day headers */}
           <div className="grid grid-cols-7 mb-1">
-            {THAI_DAYS_SHORT.map(d => (
+            {dayNames.map(d => (
               <div key={d} className="text-center text-[11px] font-bold text-slate-400 py-1">{d}</div>
             ))}
           </div>
@@ -135,15 +156,15 @@ const ThaiDatePicker: React.FC<ThaiDatePickerProps> = ({ value, min, onChange })
             <button
               type="button"
               onClick={() => {
-                const t = new Date()
-                onChange(`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`)
-                setViewYear(t.getFullYear())
-                setViewMonth(t.getMonth())
+                const tDate = new Date()
+                onChange(`${tDate.getFullYear()}-${String(tDate.getMonth()+1).padStart(2,'0')}-${String(tDate.getDate()).padStart(2,'0')}`)
+                setViewYear(tDate.getFullYear())
+                setViewMonth(tDate.getMonth())
                 setOpen(false)
               }}
               className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
             >
-              วันนี้
+              {lang === 'th' ? 'วันนี้' : 'Today'}
             </button>
           </div>
         </div>
@@ -158,7 +179,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   initialDate,
   onClose,
 }) => {
-  const { t, rooms, bookings, currentUser, handleBookingSubmit } = useApp()
+  const { t, language, rooms, bookings, handleBookingSubmit } = useApp()
 
   const availableRooms = useMemo(() => rooms.filter(r => r.status === 'available'), [rooms])
   const todayStr = new Date().toISOString().split('T')[0]
@@ -187,8 +208,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       )
         return false
 
-      const toMins = (t: string) => {
-        const [h, m] = t.split(':').map(Number)
+      const toMins = (timeStr: string) => {
+        const [h, m] = timeStr.split(':').map(Number)
         return h * 60 + m
       }
       let bStart = toMins(b.startTime)
@@ -239,7 +260,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       if (err.message === 'Time slot conflict') {
         setError(t.conflictWarning)
       } else {
-        setError(err.message || 'เกิดข้อผิดพลาดในการส่งคำขอจอง')
+        setError(err.message || (language === 'th' ? 'เกิดข้อผิดพลาดในการส่งคำขอจอง' : 'Failed to submit booking request'))
       }
     } finally {
       setIsSubmitting(false)
@@ -287,7 +308,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
               >
                 {availableRooms.map(r => (
                   <option key={r.id} value={r.id}>
-                    {r.name} ({r.capacity} {t.people}) — {r.location}
+                    {formatRoomName(r, language)} ({r.capacity} {t.people}) — {formatRoomLocation(r.location, language)}
                   </option>
                 ))}
               </select>
@@ -299,8 +320,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
           {selectedRoom && (
             <div className="rounded-2xl bg-blue-50/80 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/50 p-3.5 text-xs text-blue-900 dark:text-blue-200 space-y-1.5">
               <div className="flex items-center justify-between font-semibold">
-                <span>{selectedRoom.location}</span>
-                <span>รองรับสูงสุด {selectedRoom.capacity} {t.people}</span>
+                <span>{formatRoomLocation(selectedRoom.location, language)}</span>
+                <span>{t.maxCapacity} {selectedRoom.capacity} {t.people}</span>
               </div>
               <div className="flex flex-wrap gap-1.5 pt-1">
                 {selectedRoom.equipment.map((eq, i) => (
@@ -308,19 +329,19 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                     key={i}
                     className="inline-flex items-center rounded-lg bg-blue-100/70 dark:bg-blue-900/50 px-2 py-0.5 text-[11px] font-medium text-blue-800 dark:text-blue-300"
                   >
-                    {eq}
+                    {formatEquipment(eq, language)}
                   </span>
                 ))}
               </div>
             </div>
           )}
 
-          {/* Date Selector — Custom Thai Calendar */}
+          {/* Date Selector — Localized Calendar */}
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">
               {t.date} <span className="text-rose-500">*</span>
             </label>
-            <ThaiDatePicker value={date} min={todayStr} onChange={setDate} />
+            <LocalizedDatePicker value={date} min={todayStr} onChange={setDate} lang={language} />
           </div>
 
           {/* Time Slot — Native Input */}
@@ -390,7 +411,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
               <div>
                 <p className="text-xs font-bold">{t.conflictWarning}</p>
                 <p className="text-[11px] text-rose-600 dark:text-rose-400 mt-1">
-                  มีการจองแล้ว: {conflicts.map(c => `${c.startTime}–${c.endTime} (${c.purpose})`).join(', ')}
+                  {language === 'th' ? 'มีการจองแล้ว:' : 'Already booked:'}{' '}
+                  {conflicts.map(c => `${c.startTime}–${c.endTime} (${c.purpose})`).join(', ')}
                 </p>
               </div>
             </div>

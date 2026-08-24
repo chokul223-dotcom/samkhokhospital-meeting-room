@@ -145,6 +145,8 @@ export const translations = {
     quickBook: "จองห้องนี้ทันที",
     room: "ห้องประชุม",
     equipmentInRoom: "อุปกรณ์ภายในห้องนี้",
+    maxCapacity: "รองรับสูงสุด",
+    selectDatePlaceholder: "เลือกวันที่",
     date: "วันที่ต้องการจอง",
     startTime: "เวลาเริ่มต้น",
     endTime: "เวลาสิ้นสุด",
@@ -337,6 +339,8 @@ export const translations = {
     quickBook: "Book This Room",
     room: "Meeting Room",
     equipmentInRoom: "Room Amenities & Equipment",
+    maxCapacity: "Max capacity",
+    selectDatePlaceholder: "Select date",
     date: "Booking Date",
     startTime: "Start Time",
     endTime: "End Time",
@@ -489,4 +493,34 @@ export function formatRoomLocation(loc: string | null | undefined, lang: Languag
   return loc
     .replace(/อาคาร\s*([A-Za-z0-9]+)/g, "Building $1")
     .replace(/ชั้น\s*([0-9]+)/g, "Floor $1")
+}
+
+/**
+ * Translates standard equipment names across Thai and English
+ */
+export function formatEquipment(eq: string | null | undefined, lang: Language): string {
+  if (!eq) return ""
+  if (lang === "th") return eq
+
+  if (eq.includes("โปรเจคเตอร์ 4K")) return "4K Projector"
+  if (eq.includes("โปรเจคเตอร์ HD")) return "HD Projector"
+  if (eq.includes("โปรเจคเตอร์ x2")) return "Dual Projectors"
+  if (eq.includes("โปรเจคเตอร์")) return "Projector"
+  if (eq.includes("ไมโครโฟนไร้สาย 4 ตัว")) return "4x Wireless Microphones"
+  if (eq.includes("ไมโครโฟน 6 ตัว")) return "6x Microphones"
+  if (eq.includes("ไมโครโฟนตั้งโต๊ะ")) return "Desktop Microphones"
+  if (eq.includes("ไมโครโฟน")) return "Microphone"
+  if (eq.includes("จอภาพ LED ขนาดใหญ่")) return "Large LED Display"
+  if (eq.includes("จอภาพ LED") || eq.includes("จอภาพ")) return "LED Display"
+  if (eq.includes("ระบบเสียงรอบทิศทาง")) return "Surround Sound System"
+  if (eq.includes("ระบบเสียงห้องประชุม") || eq.includes("ระบบเสียง")) return "Audio Sound System"
+  if (eq.includes("ระบบบันทึกเสียง")) return "Audio Recording System"
+  if (eq.includes("กระดานไวท์บอร์ดอัจฉริยะ")) return "Smart Whiteboard"
+  if (eq.includes("กระดานไวท์บอร์ด")) return "Whiteboard"
+  if (eq.includes("ระบบวิดีโอคอนเฟอเรนซ์")) return "Video Conference System"
+  if (eq.includes("ระบบ Zoom Meeting")) return "Zoom Meeting System"
+  if (eq.includes("สมาร์ททีวี 75 นิ้ว")) return "75-inch Smart TV"
+  if (eq.includes("เวทีบรรยาย")) return "Lecture Stage & Podium"
+
+  return eq
 }
