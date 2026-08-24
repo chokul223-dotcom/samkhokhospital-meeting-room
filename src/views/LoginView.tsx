@@ -84,12 +84,12 @@ export const LoginView: React.FC = () => {
 
   return (
     <div className="min-h-screen w-full flex flex-col bg-slate-900 select-none">
-      {/* ─── Top Hospital Header Bar (Style from samkhokhospital.com without website URL) ─── */}
-      <header className="relative z-30 w-full bg-gradient-to-r from-sky-100 via-sky-50 to-blue-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 border-b border-sky-200/80 dark:border-slate-800 px-4 md:px-8 py-3.5 shadow-sm">
-        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
-          {/* Hospital Logo & Official Title (Without www.samkhokhospital.com) */}
-          <div className="flex items-center gap-3.5">
-            <div className="h-13 w-13 md:h-15 md:w-15 flex-none rounded-full bg-white p-1 shadow-md border border-sky-200/80 dark:border-slate-700">
+      {/* ─── Top Hospital Header Bar (Full width: Logo on far left, Phone & Theme/Lang on far right) ─── */}
+      <header className="relative z-30 w-full bg-gradient-to-r from-sky-100 via-sky-50 to-blue-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 border-b border-sky-200/80 dark:border-slate-800 px-4 md:px-6 py-2.5 shadow-sm">
+        <div className="w-full flex flex-wrap items-center justify-between gap-4">
+          {/* Hospital Logo & Official Title (Far Left) */}
+          <div className="flex items-center gap-3 md:gap-4">
+            <div className="h-12 w-12 md:h-14 md:w-14 flex-none rounded-full bg-white p-1 shadow-md border border-sky-200/80 dark:border-slate-700">
               <img
                 src="/logo.png"
                 alt="โรงพยาบาลสามโคก"
@@ -97,7 +97,7 @@ export const LoginView: React.FC = () => {
               />
             </div>
             <div>
-              <h1 className="text-2xl md:text-3xl font-black tracking-tight text-[#1e3a8a] dark:text-sky-300">
+              <h1 className="text-xl md:text-2xl lg:text-3xl font-black tracking-tight text-[#1e3a8a] dark:text-sky-300">
                 โรงพยาบาลสามโคก
               </h1>
               <p className="text-xs md:text-sm font-semibold text-sky-700 dark:text-sky-400">
@@ -106,16 +106,16 @@ export const LoginView: React.FC = () => {
             </div>
           </div>
 
-          {/* Right Header Info: Phone & Controls */}
-          <div className="flex items-center gap-3 md:gap-4">
+          {/* Right Header Info: Phone, Language & Light/Dark Mode Switcher (Far Right) */}
+          <div className="flex items-center gap-3 md:gap-4 ml-auto">
             {/* Phone contact */}
-            <div className="hidden sm:flex items-center gap-2 text-sky-900 dark:text-sky-200 bg-white/80 dark:bg-slate-800/90 px-3.5 py-1.5 rounded-full border border-sky-200/80 dark:border-slate-700 text-xs md:text-sm font-bold shadow-xs">
+            <div className="hidden sm:flex items-center gap-2 text-sky-900 dark:text-sky-200 bg-white/85 dark:bg-slate-800/90 px-3.5 py-2 rounded-full border border-sky-200/80 dark:border-slate-700 text-xs md:text-sm font-bold shadow-xs">
               <Phone className="h-4 w-4 text-sky-600 dark:text-sky-400" />
               <span>โทรศัพท์ : 02-199-3791-2</span>
             </div>
 
             {/* Language & Theme Switchers */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2.5">
               <LanguageSwitcher variant="floating" />
               <ThemeToggle variant="inline" />
             </div>
