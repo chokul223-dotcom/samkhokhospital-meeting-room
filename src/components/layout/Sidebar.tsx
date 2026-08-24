@@ -127,13 +127,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="flex items-center gap-3 rounded-2xl bg-slate-800/50 p-3 border border-slate-800">
           <div className="h-10 w-10 flex-none rounded-xl overflow-hidden border border-slate-700 bg-slate-900 shadow-inner">
             <img
-              src="/User.jpg"
+              src="/user.jpg"
               alt={userDisplayName}
               className="h-full w-full object-cover"
               onError={(e) => {
-                // Fallback to initial letter if image fails
                 const target = e.currentTarget
-                target.style.display = "none"
+                if (!target.dataset.triedImage) {
+                  target.dataset.triedImage = "true"
+                  target.src = "/Image/user.jpg"
+                }
               }}
             />
           </div>

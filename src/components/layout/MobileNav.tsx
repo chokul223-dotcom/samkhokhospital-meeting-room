@@ -61,9 +61,16 @@ export const MobileNav: React.FC<MobileNavProps> = ({
 
         <div className="flex items-center gap-2">
           <img
-            src="/User.jpg"
+            src="/user.jpg"
             alt="User"
             className="h-7 w-7 rounded-lg object-cover border border-slate-200 dark:border-slate-700 shadow-2xs"
+            onError={(e) => {
+              const target = e.currentTarget
+              if (!target.dataset.triedImage) {
+                target.dataset.triedImage = "true"
+                target.src = "/Image/user.jpg"
+              }
+            }}
           />
           <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-200">
             {isAdmin || currentUser.username === "Admin" || currentUser.name.includes("ผู้ดูแลระบบ")
