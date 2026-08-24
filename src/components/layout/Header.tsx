@@ -37,19 +37,15 @@ export const Header: React.FC<HeaderProps> = ({
     },
     bookings: {
       title: isAdmin ? t.allBookings : t.myBookings,
-      subtitle: `${
-        isAdmin
-          ? "จัดการและตรวจสอบการจองห้องประชุมทั้งหมด"
-          : "ประวัติและสถานะคำขอจองห้องประชุมของคุณ"
-      }`,
+      subtitle: isAdmin ? t.manageAllBookingsDesc : t.myBookingsDesc,
     },
     rooms: {
       title: t.rooms,
-      subtitle: "รายละเอียดห้องประชุม อุปกรณ์ และสถานะการใช้งาน",
+      subtitle: t.allRoomsDesc,
     },
     users: {
       title: t.users,
-      subtitle: "จัดการข้อมูลบุคลากรและกำหนดสิทธิ์ผู้ใช้งาน",
+      subtitle: t.allUsersDesc,
     },
     settings: {
       title: t.settings,

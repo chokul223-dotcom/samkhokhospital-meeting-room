@@ -11,6 +11,7 @@ import {
 } from "lucide-react"
 import { User } from "../types"
 import { useApp } from "../context/AppContext"
+import { formatUserName, formatDepartment } from "../constants/translations"
 
 interface UsersViewProps {
   onOpenUserModal: (user?: User) => void
@@ -25,7 +26,7 @@ export const UsersView: React.FC<UsersViewProps> = ({
   onOpenUserModal,
   onOpenConfirmModal,
 }) => {
-  const { t, users, currentUser, handleDeleteUser } = useApp()
+  const { t, language, users, currentUser, handleDeleteUser } = useApp()
   const [searchQuery, setSearchQuery] = useState("")
 
   const filteredUsers = useMemo(() => {
@@ -58,7 +59,7 @@ export const UsersView: React.FC<UsersViewProps> = ({
 
         <div className="flex items-center gap-3">
           <div className="hidden sm:flex items-center gap-2 text-xs font-semibold text-slate-500">
-            <span>ทั้งหมด {users.length} คน</span>
+            <span>{t.totalUsersCount.replace("{count}", String(users.length))}</span>
             <span>•</span>
             <span className="text-blue-600 dark:text-blue-400">
               Admin {adminCount}
@@ -67,7 +68,7 @@ export const UsersView: React.FC<UsersViewProps> = ({
 
           <button
             onClick={() => onOpenUserModal()}
-            className="flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-md shadow-blue-600/20 hover:bg-blue-700 active:scale-95 transition-all"
+            className="flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-md shadow-blue-600/20 hover:bg-blue-700 active:scale-95 transition-all cursor-pointer"
           >
             <UserPlus className="h-4 w-4" />
             <span>{t.addUser}</span>
@@ -102,11 +103,11 @@ export const UsersView: React.FC<UsersViewProps> = ({
                   <div className="min-w-0 space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <h4 className="text-sm font-bold text-slate-900 dark:text-white truncate">
-                        {user.name}
+                        {formatUserName(user, language)}
                       </h4>
                       {isSelf && (
                         <span className="rounded-lg bg-blue-100 dark:bg-blue-900/60 px-2 py-0.5 text-[10px] font-bold text-blue-700 dark:text-blue-300">
-                          (คุณ)
+                          ({t.youBadge})
                         </span>
                       )}
                       <span
@@ -128,7 +129,7 @@ export const UsersView: React.FC<UsersViewProps> = ({
                     <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
                       <span className="flex items-center gap-1">
                         <Building2 className="h-3.5 w-3.5" />
-                        <span>{user.department || "-"}</span>
+                        <span>{formatDepartment(user.department, user.role, language)}</span>
                       </span>
                       <span>•</span>
                       <span>

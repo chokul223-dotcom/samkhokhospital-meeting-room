@@ -11,6 +11,7 @@ import {
   User as UserIcon,
 } from "lucide-react"
 import { useApp } from "../../context/AppContext"
+import { formatUserName, formatDepartment } from "../../constants/translations"
 
 interface SidebarProps {
   activeTab: string
@@ -43,25 +44,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
   ]
 
   const userDisplayName = React.useMemo(() => {
-    if (isAdmin || currentUser.username === "Admin" || currentUser.name.includes("ผู้ดูแลระบบ")) {
-      return language === "th" ? "ผู้ดูแลระบบ" : "Administrator"
-    }
-    if (currentUser.username === "Test" || currentUser.name.includes("สมศรี")) {
-      return language === "th" ? "พว. สมศรี ใจดี" : "Nurse Somsri Jaidee"
-    }
-    return currentUser.name
-  }, [currentUser, isAdmin, language])
+    return formatUserName(currentUser, language)
+  }, [currentUser, language])
 
   const userDepartment = React.useMemo(() => {
-    if (isAdmin) return t.admin
-    if (currentUser.department === "IT" || currentUser.department === "ศูนย์คอมพิวเตอร์และสารสนเทศ") {
-      return language === "th" ? "ศูนย์คอมพิวเตอร์และสารสนเทศ" : "IT & Computer Center"
-    }
-    if (currentUser.department === "กลุ่มงานการพยาบาล") {
-      return language === "th" ? "กลุ่มงานการพยาบาล" : "Nursing Dept"
-    }
-    return currentUser.department || t.user
-  }, [currentUser, isAdmin, language, t])
+    return formatDepartment(currentUser.department, currentUser.role, language)
+  }, [currentUser, language])
 
   return (
     <aside className="hidden md:flex w-64 flex-col bg-slate-900 border-r border-slate-800 transition-all duration-300 select-none min-h-screen">

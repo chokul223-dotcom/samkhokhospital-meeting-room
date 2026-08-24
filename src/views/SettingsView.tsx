@@ -112,8 +112,8 @@ export const SettingsView: React.FC = () => {
                     </p>
                     <p className="text-xs text-slate-500 dark:text-slate-400">
                       {opt.value === "light"
-                        ? "ธีมสีสว่างสะอาดตา"
-                        : "ธีมสีมืดถนอมสายตา"}
+                        ? t.lightThemeDesc
+                        : t.darkThemeDesc}
                     </p>
                   </div>
                 </div>

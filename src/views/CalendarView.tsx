@@ -11,6 +11,12 @@ import {
 } from "lucide-react"
 import { useApp } from "../context/AppContext"
 import { Badge } from "../components/common/Badge"
+import {
+  formatRoomName,
+  formatRoomLocation,
+  formatUserName,
+  formatDepartment,
+} from "../constants/translations"
 
 interface CalendarViewProps {
   onOpenBookingModal: (roomId?: string, date?: string) => void
@@ -131,24 +137,24 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                   </div>
                   <div>
                     <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                      {room.name}
+                      {formatRoomName(room, language)}
                     </h3>
                     <p className="text-xs text-slate-500 dark:text-slate-400">
-                      {room.location} • รองรับ {room.capacity} {t.people}
+                      {formatRoomLocation(room.location, language)} • {t.capacity} {room.capacity} {t.people}
                     </p>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2.5">
                   <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                    {roomBookings.length} รายการจอง
+                    {roomBookings.length} {t.items}
                   </span>
                   <button
                     onClick={() => onOpenBookingModal(room.id, selectedDate)}
-                    className="flex items-center gap-1 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 hover:bg-blue-600 hover:text-white border border-blue-200/80 dark:border-blue-900/60 px-3 py-1.5 text-xs font-bold transition-colors"
+                    className="flex items-center gap-1 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 hover:bg-blue-600 hover:text-white border border-blue-200/80 dark:border-blue-900/60 px-3 py-1.5 text-xs font-bold transition-colors cursor-pointer"
                   >
                     <Plus className="h-3 w-3" />
-                    <span>จองห้องนี้</span>
+                    <span>{t.bookThisRoom}</span>
                   </button>
                 </div>
               </div>
@@ -183,8 +189,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                               {b.purpose}
                             </p>
                             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                              {user?.name || "บุคลากร"} (
-                              {user?.department || "-"}) • {b.attendees}{" "}
+                              {formatUserName(user, language) || t.staff} (
+                              {formatDepartment(user?.department, user?.role, language)}) • {b.attendees}{" "}
                               {t.people}
                             </p>
                           </div>

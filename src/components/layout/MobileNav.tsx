@@ -9,6 +9,7 @@ import {
   LogOut,
 } from "lucide-react"
 import { useApp } from "../../context/AppContext"
+import { formatUserName } from "../../constants/translations"
 
 interface MobileNavProps {
   activeTab: string
@@ -19,7 +20,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
   activeTab,
   setActiveTab,
 }) => {
-  const { t, currentUser, setCurrentUser, bookings } = useApp()
+  const { t, language, currentUser, setCurrentUser, bookings } = useApp()
 
   if (!currentUser) return null
 
@@ -73,9 +74,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
             }}
           />
           <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-200">
-            {isAdmin || currentUser.username === "Admin" || currentUser.name.includes("ผู้ดูแลระบบ")
-              ? t.admin
-              : currentUser.name.split(" ")[0]}
+            {formatUserName(currentUser, language).split(" ")[0]}
           </span>
           <button
             onClick={() => setCurrentUser(null)}

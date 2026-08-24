@@ -16,6 +16,11 @@ import {
 import { useApp } from "../context/AppContext"
 import { Badge } from "../components/common/Badge"
 import { BookingStatus } from "../types"
+import {
+  formatRoomName,
+  formatUserName,
+  formatDepartment,
+} from "../constants/translations"
 
 interface BookingsViewProps {
   initialStatusFilter?: string
@@ -243,7 +248,7 @@ export const BookingsView: React.FC<BookingsViewProps> = ({
                         </span>
                         <span className="flex items-center gap-1">
                           <DoorOpen className="h-3.5 w-3.5" />
-                          {room?.name || "ห้องประชุม"}
+                          {formatRoomName(room, language) || t.room}
                         </span>
                         <span className="flex items-center gap-1">
                           <Users className="h-3.5 w-3.5" />
@@ -251,7 +256,7 @@ export const BookingsView: React.FC<BookingsViewProps> = ({
                         </span>
                         {isAdmin && (
                           <span className="rounded-lg bg-slate-100 dark:bg-slate-800 px-2 py-0.5 font-medium text-slate-700 dark:text-slate-300">
-                            ผู้จอง: {user?.name} ({user?.department})
+                            {t.createdBy}: {formatUserName(user, language)} ({formatDepartment(user?.department, user?.role, language)})
                           </span>
                         )}
                       </div>

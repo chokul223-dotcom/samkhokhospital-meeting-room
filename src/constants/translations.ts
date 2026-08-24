@@ -1,4 +1,4 @@
-import { Language } from "../types"
+import { Language, User, Room } from "../types"
 
 export const translations = {
   th: {
@@ -44,7 +44,11 @@ export const translations = {
     contactAdmin: "กรุณาติดต่อผู้ดูแลระบบเพื่อรีเซ็ตรหัสผ่าน",
     invalidLogin: "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง",
 
-    // Stats
+    // Dashboard & Stats
+    welcomeBanner: "ยินดีต้อนรับสู่ระบบจองห้องประชุม",
+    welcomeGreeting: "สวัสดี",
+    welcomeDesc: "โรงพยาบาลสามโคกพร้อมให้บริการห้องประชุมสำหรับการประชุมและการอบรมวิชาการ",
+    welcomeDescWithRooms: "โรงพยาบาลสามโคกพร้อมให้บริการห้องประชุม {count} ห้องสำหรับการประชุมและการอบรมวิชาการ",
     roomsReady: "ห้องพร้อมใช้งาน",
     todayBookings: "การจองวันนี้",
     pendingApprovals: "รอการอนุมัติ",
@@ -56,6 +60,26 @@ export const translations = {
     people: "คน",
     pax: "ที่นั่ง",
     timeSlot: "ช่วงเวลา",
+    totalAllRooms: "ทั้งหมด {count} ห้อง",
+    readyToUse: "อนุมัติพร้อมใช้งาน",
+    actionRequired: "ต้องตรวจสอบ",
+    awaitingApproval: "รอการตอบรับ",
+    allTimeRecords: "ประวัติทั้งหมด",
+    viewFullCalendar: "ดูปฏิทินเต็ม",
+    liveStatus: "สด",
+    staff: "บุคลากร",
+    generalStaff: "บุคลากรทั่วไป",
+    youBadge: "คุณ",
+    totalUsersCount: "ทั้งหมด {count} คน",
+    maintenanceNotice: "อยู่ระหว่างปิดซ่อมบำรุง",
+    todayItems: "วันนี้ {count} รายการ",
+    allRoomsDesc: "รายละเอียดห้องประชุม อุปกรณ์ และสถานะการใช้งาน",
+    allUsersDesc: "จัดการข้อมูลบุคลากรและกำหนดสิทธิ์ผู้ใช้งาน",
+    manageAllBookingsDesc: "จัดการและตรวจสอบการจองห้องประชุมทั้งหมด",
+    myBookingsDesc: "ประวัติและสถานะคำขอจองห้องประชุมของคุณ",
+    lightThemeDesc: "ธีมสีสว่างสะอาดตา",
+    darkThemeDesc: "ธีมสีมืดถนอมสายตา",
+    bookThisRoom: "จองห้องนี้",
 
     // Calendar
     selectDate: "เลือกวันที่",
@@ -211,7 +235,11 @@ export const translations = {
       "Please contact the system administrator to reset your password.",
     invalidLogin: "Invalid username or password",
 
-    // Stats
+    // Dashboard & Stats
+    welcomeBanner: "Welcome to Meeting Room Booking",
+    welcomeGreeting: "Hello",
+    welcomeDesc: "Samkhok Hospital is ready to serve meeting rooms for conferences and academic training",
+    welcomeDescWithRooms: "Samkhok Hospital has {count} meeting rooms ready for conferences and academic training",
     roomsReady: "Available Rooms",
     todayBookings: "Today's Meetings",
     pendingApprovals: "Pending Approvals",
@@ -223,6 +251,26 @@ export const translations = {
     people: "pax",
     pax: "seats",
     timeSlot: "Time Slot",
+    totalAllRooms: "{count} total rooms",
+    readyToUse: "Approved & ready for use",
+    actionRequired: "Needs Review",
+    awaitingApproval: "Awaiting Response",
+    allTimeRecords: "All History",
+    viewFullCalendar: "View Full Calendar",
+    liveStatus: "LIVE",
+    staff: "Staff Member",
+    generalStaff: "General Staff",
+    youBadge: "You",
+    totalUsersCount: "{count} people in total",
+    maintenanceNotice: "Under scheduled maintenance",
+    todayItems: "Today: {count} bookings",
+    allRoomsDesc: "Meeting room details, equipment, and live availability",
+    allUsersDesc: "Manage staff accounts and permission levels",
+    manageAllBookingsDesc: "Manage and verify all hospital meeting room bookings",
+    myBookingsDesc: "Your meeting room booking history and request statuses",
+    lightThemeDesc: "Clean & bright light interface",
+    darkThemeDesc: "Eye-friendly sleek dark interface",
+    bookThisRoom: "Book This Room",
 
     // Calendar
     selectDate: "Select Date",
@@ -344,4 +392,101 @@ export type TranslationKey = keyof typeof translations.th
 
 export function getTranslation(lang: Language) {
   return translations[lang] || translations.th
+}
+
+/**
+ * Translates standard user names across Thai and English
+ */
+export function formatUserName(user: Partial<User> | null | undefined, lang: Language): string {
+  if (!user) return ""
+  const name = user.name || ""
+  if (lang === "th") return name
+
+  if (user.role === "admin" || user.username === "Admin" || name.includes("ผู้ดูแลระบบ")) {
+    return "Administrator"
+  }
+  if (user.username === "Test" || name.includes("สมศรี")) {
+    return "Nurse Somsri Jaidee"
+  }
+  if (user.username === "Pharma" || name.includes("วินัย")) {
+    return "Pharmacist Winai Chamnankan"
+  }
+  if (user.username === "Doctor" || name.includes("กิตติพงษ์")) {
+    return "Dr. Kittipong Suksawat"
+  }
+  if (name.includes("หัวหน้าแพทย์")) {
+    return "Chief Medical Officer"
+  }
+  if (name === "ทั่วไป" || name === "บุคลากร") {
+    return "Staff Member"
+  }
+  return name
+}
+
+/**
+ * Translates standard departments across Thai and English
+ */
+export function formatDepartment(dept: string | null | undefined, role: string | undefined, lang: Language): string {
+  if (role === "admin") {
+    return lang === "th" ? "ผู้ดูแลระบบ" : "Administrator"
+  }
+  if (!dept || dept === "-") {
+    return lang === "th" ? "บุคลากรทั่วไป" : "General Staff"
+  }
+  if (lang === "th") return dept
+
+  if (dept === "IT" || dept.includes("คอมพิวเตอร์") || dept.includes("สารสนเทศ")) {
+    return "IT & Computer Center"
+  }
+  if (dept.includes("การพยาบาล")) {
+    return "Nursing Department"
+  }
+  if (dept.includes("เภสัชกรรม")) {
+    return "Pharmacy Department"
+  }
+  if (dept.includes("ศัลยศาสตร์")) {
+    return "Surgery Department"
+  }
+  if (dept.includes("อายุรกรรม")) {
+    return "Internal Medicine Department"
+  }
+  if (dept === "ทั่วไป") {
+    return "General Staff"
+  }
+  return dept
+}
+
+/**
+ * Translates standard room names across Thai and English
+ */
+export function formatRoomName(room: Partial<Room> | null | undefined, lang: Language): string {
+  if (!room) return ""
+  const name = room.name || ""
+  if (lang === "th") return name
+
+  if (name.includes("ห้องประชุมใหญ่")) {
+    return "Main Conference Hall (Grand Hall)"
+  }
+  if (name.includes("วิชาการแพทย์") || name.includes("ห้องประชุมเล็ก 1")) {
+    return "Medical Seminar Room 1"
+  }
+  if (name.includes("กลุ่มงานการพยาบาล") || name.includes("ห้องประชุมเล็ก 2")) {
+    return "Nursing Conference Room"
+  }
+  if (name.includes("อบรมสัมมนาบุคลากร") || name.includes("Auditorium")) {
+    return "Staff Auditorium & Seminar Hall"
+  }
+  return name
+}
+
+/**
+ * Translates standard room location across Thai and English
+ */
+export function formatRoomLocation(loc: string | null | undefined, lang: Language): string {
+  if (!loc) return ""
+  if (lang === "th") return loc
+
+  return loc
+    .replace(/อาคาร\s*([A-Za-z0-9]+)/g, "Building $1")
+    .replace(/ชั้น\s*([0-9]+)/g, "Floor $1")
 }
