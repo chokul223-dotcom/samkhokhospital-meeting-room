@@ -9,7 +9,7 @@ interface UserModalProps {
 }
 
 export const UserModal: React.FC<UserModalProps> = ({ user, onClose }) => {
-  const { t, handleSaveUser } = useApp()
+  const { t, language, handleSaveUser } = useApp()
 
   const [name, setName] = useState(user?.name || '')
   const [department, setDepartment] = useState(user?.department || '')
@@ -48,7 +48,7 @@ export const UserModal: React.FC<UserModalProps> = ({ user, onClose }) => {
       })
       onClose()
     } catch (err: any) {
-      setError(err.message || 'เกิดข้อผิดพลาดในการบันทึกข้อมูลผู้ใช้')
+      setError(err.message || (language === 'th' ? 'เกิดข้อผิดพลาดในการบันทึกข้อมูลผู้ใช้' : 'Failed to save user info'))
     } finally {
       setIsSubmitting(false)
     }
@@ -68,7 +68,7 @@ export const UserModal: React.FC<UserModalProps> = ({ user, onClose }) => {
                 {user ? t.editUser : t.addUser}
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                บุคลากรโรงพยาบาลสามโคก
+                {language === 'th' ? 'บุคลากรโรงพยาบาลสามโคก' : 'Samkhok Hospital Staff Member'}
               </p>
             </div>
           </div>
@@ -90,7 +90,7 @@ export const UserModal: React.FC<UserModalProps> = ({ user, onClose }) => {
               type="text"
               value={name}
               onChange={e => setName(e.target.value)}
-              placeholder="เช่น นพ. สมชาย ใจดี"
+              placeholder={language === 'th' ? 'เช่น นพ. สมชาย ใจดี' : 'e.g. Dr. Somchai Jaidee'}
               className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
             />
           </div>
@@ -104,7 +104,7 @@ export const UserModal: React.FC<UserModalProps> = ({ user, onClose }) => {
                 type="text"
                 value={department}
                 onChange={e => setDepartment(e.target.value)}
-                placeholder="เช่น กลุ่มงานพยาบาล"
+                placeholder={language === 'th' ? 'เช่น กลุ่มงานพยาบาล' : 'e.g. Nursing Department'}
                 className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
               />
             </div>
@@ -132,7 +132,7 @@ export const UserModal: React.FC<UserModalProps> = ({ user, onClose }) => {
               type="text"
               value={username}
               onChange={e => setUsername(e.target.value)}
-              placeholder="Username สำหรับเข้าสู่ระบบ"
+              placeholder={t.usernamePlaceholder}
               className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
             />
           </div>
@@ -150,7 +150,7 @@ export const UserModal: React.FC<UserModalProps> = ({ user, onClose }) => {
               type="password"
               value={password}
               onChange={e => setPassword(e.target.value)}
-              placeholder={user ? '••••••••' : 'ระบุรหัสผ่าน'}
+              placeholder={user ? '••••••••' : t.passwordPlaceholder}
               className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
             />
           </div>

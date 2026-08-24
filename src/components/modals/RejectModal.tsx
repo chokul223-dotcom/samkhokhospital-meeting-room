@@ -11,7 +11,7 @@ export const RejectModal: React.FC<RejectModalProps> = ({
   bookingId,
   onClose,
 }) => {
-  const { t, handleReject } = useApp()
+  const { t, language, handleReject } = useApp()
   const [reason, setReason] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -39,7 +39,7 @@ export const RejectModal: React.FC<RejectModalProps> = ({
                 {t.confirmRejectTitle}
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                ระบุเหตุผลในการไม่อนุมัติคำขอ
+                {language === 'th' ? 'ระบุเหตุผลในการไม่อนุมัติคำขอ' : 'Specify the reason for rejecting request'}
               </p>
             </div>
           </div>

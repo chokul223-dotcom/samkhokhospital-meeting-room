@@ -12,7 +12,11 @@ import {
 import { Room } from "../types"
 import { useApp } from "../context/AppContext"
 import { Badge } from "../components/common/Badge"
-import { formatRoomName, formatRoomLocation } from "../constants/translations"
+import {
+  formatRoomName,
+  formatRoomLocation,
+  formatEquipment,
+} from "../constants/translations"
 
 interface RoomsViewProps {
   onOpenRoomModal: (room?: Room) => void
@@ -162,7 +166,7 @@ export const RoomsView: React.FC<RoomsViewProps> = ({
                           key={idx}
                           className="inline-flex items-center rounded-xl bg-slate-100 dark:bg-slate-800 px-2.5 py-1 text-[11px] font-medium text-slate-700 dark:text-slate-300"
                         >
-                          {eq}
+                          {formatEquipment(eq, language)}
                         </span>
                       ))}
                     </div>

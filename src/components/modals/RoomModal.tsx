@@ -9,7 +9,7 @@ interface RoomModalProps {
 }
 
 export const RoomModal: React.FC<RoomModalProps> = ({ room, onClose }) => {
-  const { t, handleSaveRoom } = useApp()
+  const { t, language, handleSaveRoom } = useApp()
 
   const [name, setName] = useState(room?.name || '')
   const [capacity, setCapacity] = useState(room?.capacity || 20)
@@ -51,7 +51,7 @@ export const RoomModal: React.FC<RoomModalProps> = ({ room, onClose }) => {
       })
       onClose()
     } catch (err: any) {
-      setError(err.message || 'เกิดข้อผิดพลาดในการบันทึกห้องประชุม')
+      setError(err.message || (language === 'th' ? 'เกิดข้อผิดพลาดในการบันทึกห้องประชุม' : 'Failed to save meeting room'))
     } finally {
       setIsSubmitting(false)
     }
@@ -71,7 +71,7 @@ export const RoomModal: React.FC<RoomModalProps> = ({ room, onClose }) => {
                 {room ? t.editRoom : t.addRoom}
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                จัดการข้อมูลห้องประชุมและอุปกรณ์
+                {language === 'th' ? 'จัดการข้อมูลห้องประชุมและอุปกรณ์' : 'Manage room details and equipment'}
               </p>
             </div>
           </div>
@@ -93,7 +93,7 @@ export const RoomModal: React.FC<RoomModalProps> = ({ room, onClose }) => {
               type="text"
               value={name}
               onChange={e => setName(e.target.value)}
-              placeholder="เช่น ห้องประชุมใหญ่ (Grand Hall)"
+              placeholder={language === 'th' ? 'เช่น ห้องประชุมใหญ่ (Grand Hall)' : 'e.g. Main Conference Hall (Grand Hall)'}
               className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
             />
           </div>
@@ -107,7 +107,7 @@ export const RoomModal: React.FC<RoomModalProps> = ({ room, onClose }) => {
                 type="text"
                 value={location}
                 onChange={e => setLocation(e.target.value)}
-                placeholder="เช่น อาคาร A ชั้น 2"
+                placeholder={language === 'th' ? 'เช่น อาคาร A ชั้น 2' : 'e.g. Building A, Floor 2'}
                 className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
               />
             </div>
