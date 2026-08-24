@@ -42,35 +42,52 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: "settings", label: t.settings, icon: Settings },
   ]
 
+  const userDisplayName = React.useMemo(() => {
+    if (isAdmin || currentUser.username === "Admin" || currentUser.name.includes("ผู้ดูแลระบบ")) {
+      return language === "th" ? "ผู้ดูแลระบบ" : "Administrator"
+    }
+    if (currentUser.username === "Test" || currentUser.name.includes("สมศรี")) {
+      return language === "th" ? "พว. สมศรี ใจดี" : "Nurse Somsri Jaidee"
+    }
+    return currentUser.name
+  }, [currentUser, isAdmin, language])
+
+  const userDepartment = React.useMemo(() => {
+    if (isAdmin) return t.admin
+    if (currentUser.department === "IT" || currentUser.department === "ศูนย์คอมพิวเตอร์และสารสนเทศ") {
+      return language === "th" ? "ศูนย์คอมพิวเตอร์และสารสนเทศ" : "IT & Computer Center"
+    }
+    if (currentUser.department === "กลุ่มงานการพยาบาล") {
+      return language === "th" ? "กลุ่มงานการพยาบาล" : "Nursing Dept"
+    }
+    return currentUser.department || t.user
+  }, [currentUser, isAdmin, language, t])
+
   return (
-    <aside className="hidden md:flex w-72 flex-col min-h-screen bg-slate-900 border-r border-slate-800 text-slate-200 transition-colors z-30 select-none">
+    <aside className="hidden md:flex w-64 flex-col bg-slate-900 border-r border-slate-800 transition-all duration-300 select-none min-h-screen">
       {/* Brand Header */}
-      <div
-        onClick={() => setActiveTab("dashboard")}
-        className="p-6 border-b border-slate-800/80 cursor-pointer group flex items-center gap-3.5 transition-colors hover:bg-slate-800/40"
-      >
-        <div className="relative flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-blue-600 to-cyan-500 p-0.5 shadow-lg shadow-blue-500/20 group-hover:scale-105 transition-transform">
-          <img
-            src="/logo.png"
-            alt="Hospital Logo"
-            className="h-full w-full object-contain rounded-xl bg-white/10 p-1"
-          />
-        </div>
-        <div className="min-w-0 flex-1">
-          <h2 className="text-sm font-bold text-white tracking-tight leading-snug truncate">
-            {t.appName}
-          </h2>
-          <p className="text-[11px] font-medium text-blue-400 truncate">
-            {t.appDesc}
-          </p>
+      <div className="p-6 border-b border-slate-800">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-tr from-blue-600 to-cyan-500 p-0.5 shadow-lg shadow-blue-600/30">
+            <img
+              src="/logo.png"
+              alt="Hospital Logo"
+              className="h-full w-full object-contain rounded-xl bg-white p-0.5"
+            />
+          </div>
+          <div>
+            <h1 className="text-sm font-extrabold tracking-tight text-white leading-tight">
+              {t.appName}
+            </h1>
+            <p className="text-[11px] font-medium text-blue-400">
+              {t.appDesc}
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* Navigation Menu */}
-      <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto">
-        <div className="px-3 pb-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">
-          Navigation
-        </div>
+      {/* Navigation List */}
+      <nav className="flex-1 space-y-1.5 p-4 overflow-y-auto">
         {navItems.map((item) => {
           const Icon = item.icon
           const isActive = activeTab === item.id
@@ -105,15 +122,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
         })}
       </nav>
 
-      {/* User Profile Footer */}
+      {/* User Profile Footer with User.jpg Avatar */}
       <div className="p-4 border-t border-slate-800/80 bg-slate-950/40">
         <div className="flex items-center gap-3 rounded-2xl bg-slate-800/50 p-3 border border-slate-800">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-bold text-sm shadow-inner">
-            {currentUser.name.charAt(0)}
+          <div className="h-10 w-10 flex-none rounded-xl overflow-hidden border border-slate-700 bg-slate-900 shadow-inner">
+            <img
+              src="/User.jpg"
+              alt={userDisplayName}
+              className="h-full w-full object-cover"
+              onError={(e) => {
+                // Fallback to initial letter if image fails
+                const target = e.currentTarget
+                target.style.display = "none"
+              }}
+            />
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-xs font-semibold text-white truncate leading-tight">
-              {currentUser.name}
+              {userDisplayName}
             </p>
             <div className="flex items-center gap-1.5 mt-0.5">
               <span className="inline-flex items-center gap-1 text-[10px] font-medium text-slate-400">
@@ -127,7 +153,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 ) : (
                   <>
                     <UserIcon className="h-3 w-3 text-slate-400" />
-                    <span>{currentUser.department || t.user}</span>
+                    <span>{userDepartment}</span>
                   </>
                 )}
               </span>
@@ -136,7 +162,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <button
             onClick={() => setCurrentUser(null)}
             title={t.logout}
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-rose-500/20 hover:text-rose-400 transition-colors"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-rose-500/20 hover:text-rose-400 transition-colors cursor-pointer"
           >
             <LogOut className="h-4 w-4" />
           </button>

@@ -60,8 +60,15 @@ export const MobileNav: React.FC<MobileNavProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">
-            {currentUser.name.split(" ")[0]}
+          <img
+            src="/User.jpg"
+            alt="User"
+            className="h-7 w-7 rounded-lg object-cover border border-slate-200 dark:border-slate-700 shadow-2xs"
+          />
+          <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-200">
+            {isAdmin || currentUser.username === "Admin" || currentUser.name.includes("ผู้ดูแลระบบ")
+              ? t.admin
+              : currentUser.name.split(" ")[0]}
           </span>
           <button
             onClick={() => setCurrentUser(null)}
