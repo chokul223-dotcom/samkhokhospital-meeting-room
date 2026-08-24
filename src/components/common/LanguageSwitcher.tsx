@@ -1,11 +1,20 @@
 import React, { useState, useRef, useEffect } from "react"
-import { Globe, ChevronDown } from "lucide-react"
+import { ChevronDown } from "lucide-react"
 import { Language } from "../../types"
 import { useApp } from "../../context/AppContext"
 
 interface LanguageSwitcherProps {
   variant?: "floating" | "header" | "minimal"
 }
+
+const FlagImg: React.FC<{ code: string; size?: number }> = ({ code, size = 20 }) => (
+  <img
+    src={`https://flagcdn.com/w40/${code}.png`}
+    alt={code}
+    className="rounded-sm object-cover flex-none"
+    style={{ width: size, height: Math.round(size * 0.75) }}
+  />
+)
 
 export const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({
   variant = "floating",
@@ -17,11 +26,11 @@ export const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({
   const options: {
     value: Language
     label: string
-    flag: string
+    flagCode: string
     countryCode: string
   }[] = [
-    { value: "th", label: "ไทย (Thai)", flag: "🇹🇭", countryCode: "TH" },
-    { value: "en", label: "English (US)", flag: "🇺🇸", countryCode: "EN" },
+    { value: "th", label: "ไทย (Thai)", flagCode: "th", countryCode: "TH" },
+    { value: "en", label: "English (US)", flagCode: "us", countryCode: "EN" },
   ]
 
   const current = options.find((o) => o.value === language) || options[0]
@@ -50,7 +59,7 @@ export const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({
             : "px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 bg-slate-100/80 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700"
         }`}
       >
-        <span className="text-base leading-none">{current.flag}</span>
+        <FlagImg code={current.flagCode} size={20} />
         <span className="font-semibold">{current.countryCode}</span>
         <ChevronDown
           className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${
@@ -60,7 +69,7 @@ export const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-2 z-50 w-44 origin-top-right rounded-2xl bg-white dark:bg-slate-900 p-1.5 shadow-xl ring-1 ring-black/5 dark:ring-white/10 border border-slate-200/80 dark:border-slate-800 animate-in fade-in zoom-in-95 duration-150">
+        <div className="absolute right-0 top-full mt-2 z-50 w-48 origin-top-right rounded-2xl bg-white dark:bg-slate-900 p-1.5 shadow-xl ring-1 ring-black/5 dark:ring-white/10 border border-slate-200/80 dark:border-slate-800 animate-in fade-in zoom-in-95 duration-150">
           {options.map((opt) => (
             <button
               key={opt.value}
@@ -74,7 +83,7 @@ export const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({
                   : "text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
               }`}
             >
-              <span className="text-lg leading-none">{opt.flag}</span>
+              <FlagImg code={opt.flagCode} size={22} />
               <span>{opt.label}</span>
             </button>
           ))}
