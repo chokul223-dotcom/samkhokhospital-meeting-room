@@ -1,15 +1,7 @@
-import React, { useState, useMemo } from "react"
-import {
-  X,
-  Calendar,
-  Clock,
-  Users,
-  Building,
-  AlertCircle,
-  Sparkles,
-} from "lucide-react"
-import { Room, Booking } from "../../types"
-import { useApp } from "../../context/AppContext"
+import React, { useState, useMemo } from 'react'
+import { X, Calendar, Clock, Users, Building, AlertCircle, ChevronDown } from 'lucide-react'
+import { Room, Booking } from '../../types'
+import { useApp } from '../../context/AppContext'
 
 interface BookingModalProps {
   initialRoomId?: string
@@ -24,38 +16,35 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 }) => {
   const { t, rooms, bookings, currentUser, handleBookingSubmit } = useApp()
 
-  const availableRooms = useMemo(
-    () => rooms.filter((r) => r.status === "available"),
-    [rooms],
-  )
-  const todayStr = new Date().toISOString().split("T")[0]
+  const availableRooms = useMemo(() => rooms.filter(r => r.status === 'available'), [rooms])
+  const todayStr = new Date().toISOString().split('T')[0]
 
   const [roomId, setRoomId] = useState(
-    initialRoomId || (availableRooms.length > 0 ? availableRooms[0].id : ""),
+    initialRoomId || (availableRooms.length > 0 ? availableRooms[0].id : '')
   )
   const [date, setDate] = useState(initialDate || todayStr)
-  const [startTime, setStartTime] = useState("09:00")
-  const [endTime, setEndTime] = useState("11:00")
+  const [startTime, setStartTime] = useState('09:00')
+  const [endTime, setEndTime] = useState('11:00')
   const [attendees, setAttendees] = useState(10)
-  const [purpose, setPurpose] = useState("")
-  const [error, setError] = useState("")
+  const [purpose, setPurpose] = useState('')
+  const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const selectedRoom = rooms.find((r) => r.id === roomId)
+  const selectedRoom = rooms.find(r => r.id === roomId)
 
   // Realtime Conflict Detection
   const conflicts = useMemo(() => {
-    return bookings.filter((b) => {
+    return bookings.filter(b => {
       if (
         b.roomId !== roomId ||
         b.date !== date ||
-        b.status === "rejected" ||
-        b.status === "cancelled"
+        b.status === 'rejected' ||
+        b.status === 'cancelled'
       )
         return false
 
       const toMins = (t: string) => {
-        const [h, m] = t.split(":").map(Number)
+        const [h, m] = t.split(':').map(Number)
         return h * 60 + m
       }
       let bStart = toMins(b.startTime)
@@ -72,7 +61,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError("")
+    setError('')
 
     if (!purpose.trim()) {
       setError(t.errPurpose)
@@ -103,10 +92,10 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       })
       onClose()
     } catch (err: any) {
-      if (err.message === "Time slot conflict") {
+      if (err.message === 'Time slot conflict') {
         setError(t.conflictWarning)
       } else {
-        setError(err.message || "เกิดข้อผิดพลาดในการส่งคำขอจอง")
+        setError(err.message || 'เกิดข้อผิดพลาดในการส่งคำขอจอง')
       }
     } finally {
       setIsSubmitting(false)
@@ -133,17 +122,14 @@ export const BookingModal: React.FC<BookingModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+            className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
         {/* Modal Body */}
-        <form
-          onSubmit={handleSubmit}
-          className="flex-1 overflow-y-auto p-6 space-y-4"
-        >
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4">
           {/* Room Selection */}
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">
@@ -152,16 +138,16 @@ export const BookingModal: React.FC<BookingModalProps> = ({
             <div className="relative">
               <select
                 value={roomId}
-                onChange={(e) => setRoomId(e.target.value)}
-                className="w-full appearance-none rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-4 py-3 text-sm font-medium text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+                onChange={e => setRoomId(e.target.value)}
+                className="w-full appearance-none rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 pl-4 pr-10 py-3 text-sm font-medium text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer"
               >
-                {availableRooms.map((r) => (
+                {availableRooms.map(r => (
                   <option key={r.id} value={r.id}>
                     {r.name} ({r.capacity} {t.people}) — {r.location}
                   </option>
                 ))}
               </select>
-              <Building className="pointer-events-none absolute right-4 top-3.5 h-4 w-4 text-slate-400" />
+              <ChevronDown className="pointer-events-none absolute right-3.5 top-3.5 h-4 w-4 text-slate-400" />
             </div>
           </div>
 
@@ -170,9 +156,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
             <div className="rounded-2xl bg-blue-50/80 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/50 p-3.5 text-xs text-blue-900 dark:text-blue-200 space-y-1.5">
               <div className="flex items-center justify-between font-semibold">
                 <span>{selectedRoom.location}</span>
-                <span>
-                  รองรับสูงสุด {selectedRoom.capacity} {t.people}
-                </span>
+                <span>รองรับสูงสุด {selectedRoom.capacity} {t.people}</span>
               </div>
               <div className="flex flex-wrap gap-1.5 pt-1">
                 {selectedRoom.equipment.map((eq, i) => (
@@ -196,8 +180,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
               type="date"
               value={date}
               min={todayStr}
-              onChange={(e) => setDate(e.target.value)}
-              className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+              onChange={e => setDate(e.target.value)}
+              className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer"
             />
           </div>
 
@@ -207,30 +191,24 @@ export const BookingModal: React.FC<BookingModalProps> = ({
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">
                 {t.startTime} <span className="text-rose-500">*</span>
               </label>
-              <div className="relative">
-                <input
-                  type="time"
-                  value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
-                  className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
-                />
-                <Clock className="pointer-events-none absolute right-3.5 top-3 h-4 w-4 text-slate-400" />
-              </div>
+              <input
+                type="time"
+                value={startTime}
+                onChange={e => setStartTime(e.target.value)}
+                className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer"
+              />
             </div>
 
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">
                 {t.endTime} <span className="text-rose-500">*</span>
               </label>
-              <div className="relative">
-                <input
-                  type="time"
-                  value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
-                  className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
-                />
-                <Clock className="pointer-events-none absolute right-3.5 top-3 h-4 w-4 text-slate-400" />
-              </div>
+              <input
+                type="time"
+                value={endTime}
+                onChange={e => setEndTime(e.target.value)}
+                className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer"
+              />
             </div>
           </div>
 
@@ -239,17 +217,14 @@ export const BookingModal: React.FC<BookingModalProps> = ({
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">
               {t.attendees} <span className="text-rose-500">*</span>
             </label>
-            <div className="relative">
-              <input
-                type="number"
-                min={1}
-                max={selectedRoom ? selectedRoom.capacity : 200}
-                value={attendees}
-                onChange={(e) => setAttendees(Number(e.target.value))}
-                className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
-              />
-              <Users className="pointer-events-none absolute right-3.5 top-3 h-4 w-4 text-slate-400" />
-            </div>
+            <input
+              type="number"
+              min={1}
+              max={selectedRoom ? selectedRoom.capacity : 200}
+              value={attendees}
+              onChange={e => setAttendees(Number(e.target.value))}
+              className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+            />
           </div>
 
           {/* Purpose */}
@@ -260,7 +235,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
             <textarea
               rows={3}
               value={purpose}
-              onChange={(e) => setPurpose(e.target.value)}
+              onChange={e => setPurpose(e.target.value)}
               placeholder={t.purposePlaceholder}
               className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all resize-none"
             />
@@ -268,15 +243,12 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
           {/* Conflict Warning */}
           {conflicts.length > 0 && (
-            <div className="rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 p-4 flex items-start gap-3 text-rose-700 dark:text-rose-300 animate-shake">
+            <div className="rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 p-4 flex items-start gap-3 text-rose-700 dark:text-rose-300">
               <AlertCircle className="h-5 w-5 flex-none mt-0.5" />
               <div>
                 <p className="text-xs font-bold">{t.conflictWarning}</p>
                 <p className="text-[11px] text-rose-600 dark:text-rose-400 mt-1">
-                  มีการจองแล้ว:{" "}
-                  {conflicts
-                    .map((c) => `${c.startTime}–${c.endTime} (${c.purpose})`)
-                    .join(", ")}
+                  มีการจองแล้ว: {conflicts.map(c => `${c.startTime}–${c.endTime} (${c.purpose})`).join(', ')}
                 </p>
               </div>
             </div>
@@ -295,14 +267,14 @@ export const BookingModal: React.FC<BookingModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 rounded-xl border border-slate-200 dark:border-slate-700 py-3 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+              className="flex-1 rounded-xl border border-slate-200 dark:border-slate-700 py-3 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
             >
               {t.cancelBtn}
             </button>
             <button
               type="submit"
               disabled={isSubmitting || conflicts.length > 0}
-              className="flex-1 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 py-3 text-xs font-bold text-white shadow-lg shadow-blue-600/30 hover:from-blue-700 hover:to-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 py-3 text-xs font-bold text-white shadow-lg shadow-blue-600/30 hover:from-blue-700 hover:to-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             >
               {isSubmitting ? t.submitting : t.submitBooking}
             </button>

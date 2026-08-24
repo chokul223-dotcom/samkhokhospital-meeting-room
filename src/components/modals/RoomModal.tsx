@@ -1,7 +1,7 @@
-import React, { useState } from "react"
-import { X, DoorOpen, Users, MapPin, Wrench, AlertCircle } from "lucide-react"
-import { Room } from "../../types"
-import { useApp } from "../../context/AppContext"
+import React, { useState } from 'react'
+import { X, DoorOpen, AlertCircle } from 'lucide-react'
+import { Room } from '../../types'
+import { useApp } from '../../context/AppContext'
 
 interface RoomModalProps {
   room?: Room
@@ -11,19 +11,17 @@ interface RoomModalProps {
 export const RoomModal: React.FC<RoomModalProps> = ({ room, onClose }) => {
   const { t, handleSaveRoom } = useApp()
 
-  const [name, setName] = useState(room?.name || "")
+  const [name, setName] = useState(room?.name || '')
   const [capacity, setCapacity] = useState(room?.capacity || 20)
-  const [location, setLocation] = useState(room?.location || "")
-  const [equipment, setEquipment] = useState(room?.equipment.join(", ") || "")
-  const [status, setStatus] = useState<Room["status"]>(
-    room?.status || "available",
-  )
-  const [error, setError] = useState("")
+  const [location, setLocation] = useState(room?.location || '')
+  const [equipment, setEquipment] = useState(room?.equipment.join(', ') || '')
+  const [status, setStatus] = useState<Room['status']>(room?.status || 'available')
+  const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError("")
+    setError('')
 
     if (!name.trim()) {
       setError(t.errRoomName)
@@ -41,19 +39,19 @@ export const RoomModal: React.FC<RoomModalProps> = ({ room, onClose }) => {
     setIsSubmitting(true)
     try {
       await handleSaveRoom({
-        id: room?.id || "r" + Date.now(),
+        id: room?.id || 'r' + Date.now(),
         name: name.trim(),
         capacity,
         location: location.trim(),
         equipment: equipment
-          .split(",")
-          .map((e) => e.trim())
+          .split(',')
+          .map(e => e.trim())
           .filter(Boolean),
         status,
       })
       onClose()
     } catch (err: any) {
-      setError(err.message || "เกิดข้อผิดพลาดในการบันทึกห้องประชุม")
+      setError(err.message || 'เกิดข้อผิดพลาดในการบันทึกห้องประชุม')
     } finally {
       setIsSubmitting(false)
     }
@@ -79,17 +77,14 @@ export const RoomModal: React.FC<RoomModalProps> = ({ room, onClose }) => {
           </div>
           <button
             onClick={onClose}
-            className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+            className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
         {/* Modal Body */}
-        <form
-          onSubmit={handleSubmit}
-          className="flex-1 overflow-y-auto p-6 space-y-4"
-        >
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4">
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">
               {t.roomName} <span className="text-rose-500">*</span>
@@ -97,7 +92,7 @@ export const RoomModal: React.FC<RoomModalProps> = ({ room, onClose }) => {
             <input
               type="text"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={e => setName(e.target.value)}
               placeholder="เช่น ห้องประชุมใหญ่ (Grand Hall)"
               className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
             />
@@ -108,33 +103,26 @@ export const RoomModal: React.FC<RoomModalProps> = ({ room, onClose }) => {
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">
                 {t.location} <span className="text-rose-500">*</span>
               </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  placeholder="เช่น อาคาร A ชั้น 2"
-                  className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
-                />
-                <MapPin className="pointer-events-none absolute right-3 top-3 h-4 w-4 text-slate-400" />
-              </div>
+              <input
+                type="text"
+                value={location}
+                onChange={e => setLocation(e.target.value)}
+                placeholder="เช่น อาคาร A ชั้น 2"
+                className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+              />
             </div>
 
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">
-                {t.capacity} ({t.people}){" "}
-                <span className="text-rose-500">*</span>
+                {t.capacity} ({t.people}) <span className="text-rose-500">*</span>
               </label>
-              <div className="relative">
-                <input
-                  type="number"
-                  min={1}
-                  value={capacity}
-                  onChange={(e) => setCapacity(Number(e.target.value))}
-                  className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
-                />
-                <Users className="pointer-events-none absolute right-3 top-3 h-4 w-4 text-slate-400" />
-              </div>
+              <input
+                type="number"
+                min={1}
+                value={capacity}
+                onChange={e => setCapacity(Number(e.target.value))}
+                className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+              />
             </div>
           </div>
 
@@ -145,7 +133,7 @@ export const RoomModal: React.FC<RoomModalProps> = ({ room, onClose }) => {
             <textarea
               rows={2}
               value={equipment}
-              onChange={(e) => setEquipment(e.target.value)}
+              onChange={e => setEquipment(e.target.value)}
               placeholder={t.equipmentExample}
               className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all resize-none"
             />
@@ -158,11 +146,11 @@ export const RoomModal: React.FC<RoomModalProps> = ({ room, onClose }) => {
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
-                onClick={() => setStatus("available")}
-                className={`flex items-center justify-center gap-2 rounded-xl p-3 text-xs font-bold border transition-all ${
-                  status === "available"
-                    ? "bg-emerald-500 text-white border-emerald-600 shadow-md shadow-emerald-500/20"
-                    : "bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100"
+                onClick={() => setStatus('available')}
+                className={`flex items-center justify-center gap-2 rounded-xl p-3 text-xs font-bold border transition-all cursor-pointer ${
+                  status === 'available'
+                    ? 'bg-emerald-500 text-white border-emerald-600 shadow-md shadow-emerald-500/20'
+                    : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
                 }`}
               >
                 <span className="h-2 w-2 rounded-full bg-white" />
@@ -171,14 +159,13 @@ export const RoomModal: React.FC<RoomModalProps> = ({ room, onClose }) => {
 
               <button
                 type="button"
-                onClick={() => setStatus("maintenance")}
-                className={`flex items-center justify-center gap-2 rounded-xl p-3 text-xs font-bold border transition-all ${
-                  status === "maintenance"
-                    ? "bg-amber-500 text-white border-amber-600 shadow-md shadow-amber-500/20"
-                    : "bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100"
+                onClick={() => setStatus('maintenance')}
+                className={`flex items-center justify-center gap-2 rounded-xl p-3 text-xs font-bold border transition-all cursor-pointer ${
+                  status === 'maintenance'
+                    ? 'bg-amber-500 text-white border-amber-600 shadow-md shadow-amber-500/20'
+                    : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
                 }`}
               >
-                <Wrench className="h-3.5 w-3.5" />
                 <span>{t.maintenance}</span>
               </button>
             </div>
@@ -196,14 +183,14 @@ export const RoomModal: React.FC<RoomModalProps> = ({ room, onClose }) => {
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 rounded-xl border border-slate-200 dark:border-slate-700 py-3 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+              className="flex-1 rounded-xl border border-slate-200 dark:border-slate-700 py-3 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
             >
               {t.cancelBtn}
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="flex-1 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 py-3 text-xs font-bold text-white shadow-lg shadow-blue-600/30 hover:from-blue-700 hover:to-indigo-700 transition-all disabled:opacity-50"
+              className="flex-1 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 py-3 text-xs font-bold text-white shadow-lg shadow-blue-600/30 hover:from-blue-700 hover:to-indigo-700 transition-all disabled:opacity-50 cursor-pointer"
             >
               {t.save}
             </button>

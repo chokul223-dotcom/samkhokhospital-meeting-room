@@ -1,7 +1,7 @@
-import React, { useState } from "react"
-import { X, UserPlus, UserCheck, Shield, Key, AlertCircle } from "lucide-react"
-import { User, Role } from "../../types"
-import { useApp } from "../../context/AppContext"
+import React, { useState } from 'react'
+import { X, UserPlus, AlertCircle } from 'lucide-react'
+import { User, Role } from '../../types'
+import { useApp } from '../../context/AppContext'
 
 interface UserModalProps {
   user?: User
@@ -11,17 +11,17 @@ interface UserModalProps {
 export const UserModal: React.FC<UserModalProps> = ({ user, onClose }) => {
   const { t, handleSaveUser } = useApp()
 
-  const [name, setName] = useState(user?.name || "")
-  const [department, setDepartment] = useState(user?.department || "")
-  const [role, setRole] = useState<Role>(user?.role || "user")
-  const [username, setUsername] = useState(user?.username || "")
-  const [password, setPassword] = useState("")
-  const [error, setError] = useState("")
+  const [name, setName] = useState(user?.name || '')
+  const [department, setDepartment] = useState(user?.department || '')
+  const [role, setRole] = useState<Role>(user?.role || 'user')
+  const [username, setUsername] = useState(user?.username || '')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError("")
+    setError('')
 
     if (!name.trim()) {
       setError(t.errFullName)
@@ -41,14 +41,14 @@ export const UserModal: React.FC<UserModalProps> = ({ user, onClose }) => {
       await handleSaveUser({
         id: user?.id,
         name: name.trim(),
-        department: department.trim() || "-",
+        department: department.trim() || '-',
         role,
         username: username.trim(),
         ...(password.trim() ? { password: password.trim() } : {}),
       })
       onClose()
     } catch (err: any) {
-      setError(err.message || "เกิดข้อผิดพลาดในการบันทึกข้อมูลผู้ใช้")
+      setError(err.message || 'เกิดข้อผิดพลาดในการบันทึกข้อมูลผู้ใช้')
     } finally {
       setIsSubmitting(false)
     }
@@ -74,17 +74,14 @@ export const UserModal: React.FC<UserModalProps> = ({ user, onClose }) => {
           </div>
           <button
             onClick={onClose}
-            className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+            className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
         {/* Modal Body */}
-        <form
-          onSubmit={handleSubmit}
-          className="flex-1 overflow-y-auto p-6 space-y-4"
-        >
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4">
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">
               {t.fullName} <span className="text-rose-500">*</span>
@@ -92,7 +89,7 @@ export const UserModal: React.FC<UserModalProps> = ({ user, onClose }) => {
             <input
               type="text"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={e => setName(e.target.value)}
               placeholder="เช่น นพ. สมชาย ใจดี"
               className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
             />
@@ -106,7 +103,7 @@ export const UserModal: React.FC<UserModalProps> = ({ user, onClose }) => {
               <input
                 type="text"
                 value={department}
-                onChange={(e) => setDepartment(e.target.value)}
+                onChange={e => setDepartment(e.target.value)}
                 placeholder="เช่น กลุ่มงานพยาบาล"
                 className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
               />
@@ -118,8 +115,8 @@ export const UserModal: React.FC<UserModalProps> = ({ user, onClose }) => {
               </label>
               <select
                 value={role}
-                onChange={(e) => setRole(e.target.value as Role)}
-                className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-3 py-2.5 text-sm font-medium text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+                onChange={e => setRole(e.target.value as Role)}
+                className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-3 py-2.5 text-sm font-medium text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer"
               >
                 <option value="user">{t.user}</option>
                 <option value="admin">{t.admin}</option>
@@ -134,7 +131,7 @@ export const UserModal: React.FC<UserModalProps> = ({ user, onClose }) => {
             <input
               type="text"
               value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              onChange={e => setUsername(e.target.value)}
               placeholder="Username สำหรับเข้าสู่ระบบ"
               className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
             />
@@ -142,25 +139,20 @@ export const UserModal: React.FC<UserModalProps> = ({ user, onClose }) => {
 
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">
-              {t.password}{" "}
+              {t.password}{' '}
               {user ? (
-                <span className="text-slate-400 font-normal lowercase">
-                  {t.leaveBlankToKeep}
-                </span>
+                <span className="text-slate-400 font-normal lowercase">{t.leaveBlankToKeep}</span>
               ) : (
                 <span className="text-rose-500">*</span>
               )}
             </label>
-            <div className="relative">
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder={user ? "••••••••" : "ระบุรหัสผ่าน"}
-                className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
-              />
-              <Key className="pointer-events-none absolute right-3.5 top-3 h-4 w-4 text-slate-400" />
-            </div>
+            <input
+              type="password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              placeholder={user ? '••••••••' : 'ระบุรหัสผ่าน'}
+              className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+            />
           </div>
 
           {error && (
@@ -175,14 +167,14 @@ export const UserModal: React.FC<UserModalProps> = ({ user, onClose }) => {
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 rounded-xl border border-slate-200 dark:border-slate-700 py-3 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+              className="flex-1 rounded-xl border border-slate-200 dark:border-slate-700 py-3 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
             >
               {t.cancelBtn}
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="flex-1 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 py-3 text-xs font-bold text-white shadow-lg shadow-blue-600/30 hover:from-blue-700 hover:to-indigo-700 transition-all disabled:opacity-50"
+              className="flex-1 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 py-3 text-xs font-bold text-white shadow-lg shadow-blue-600/30 hover:from-blue-700 hover:to-indigo-700 transition-all disabled:opacity-50 cursor-pointer"
             >
               {t.save}
             </button>
