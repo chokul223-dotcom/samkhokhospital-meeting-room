@@ -77,10 +77,6 @@ export const LoginView: React.FC = () => {
     }
   }
 
-  const fillDemoAccount = (u: string, p: string) => {
-    setUsername(u)
-    setPassword(p)
-  }
 
   return (
     <div className="relative min-h-screen w-full flex items-center justify-center px-4 py-8 overflow-x-hidden select-none">
@@ -205,28 +201,6 @@ export const LoginView: React.FC = () => {
           </button>
         </form>
 
-        {/* Quick Demo Credentials for Convenience */}
-        <div className="mt-6 pt-5 border-t border-slate-100 dark:border-slate-800 text-center">
-          <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 mb-2">
-            บัญชีทดสอบระบบ (Quick Test Accounts)
-          </p>
-          <div className="flex items-center justify-center gap-2">
-            <button
-              type="button"
-              onClick={() => fillDemoAccount("Admin", "Admin123456")}
-              className="rounded-xl bg-blue-50 dark:bg-slate-800 hover:bg-blue-100 dark:hover:bg-slate-700 px-3 py-1.5 text-xs font-bold text-blue-700 dark:text-blue-300 border border-blue-200/60 dark:border-slate-700 transition-colors"
-            >
-              👑 ผู้ดูแลระบบ (Admin)
-            </button>
-            <button
-              type="button"
-              onClick={() => fillDemoAccount("Test", "Test123456")}
-              className="rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-3 py-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition-colors"
-            >
-              👨‍⚕️ บุคลากรทั่วไป (Staff)
-            </button>
-          </div>
-        </div>
       </div>
     </div>
   )
