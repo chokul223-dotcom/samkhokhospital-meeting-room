@@ -83,20 +83,22 @@ export const LoginView: React.FC = () => {
   }
 
   return (
-    <div className="relative min-h-screen w-full flex items-center justify-center px-4 py-8 overflow-hidden select-none">
-      {/* Background Slideshow */}
-      {backgrounds.map((bg, idx) => (
-        <div
-          key={bg}
-          className={`absolute inset-0 bg-cover bg-center transition-opacity duration-1000 transform scale-105 ${
-            idx === bgIndex ? "opacity-100" : "opacity-0"
-          }`}
-          style={{ backgroundImage: `url('${bg}')` }}
-        />
-      ))}
+    <div className="relative min-h-screen w-full flex items-center justify-center px-4 py-8 overflow-x-hidden select-none">
+      {/* Background Slideshow Container (Fixed full screen, sharp & perfectly fitted) */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
+        {backgrounds.map((bg, idx) => (
+          <div
+            key={bg}
+            className={`absolute inset-0 bg-cover bg-center bg-no-repeat transition-opacity duration-1000 ease-in-out ${
+              idx === bgIndex ? "opacity-100" : "opacity-0"
+            }`}
+            style={{ backgroundImage: `url('${bg}')` }}
+          />
+        ))}
 
-      {/* Dark Overlay & Gradient */}
-      <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/60 to-slate-900/40 backdrop-blur-xs" />
+        {/* Subtle, clear overlay - preserves photo clarity and sharpness while keeping UI readable */}
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/60 via-slate-950/30 to-slate-900/15" />
+      </div>
 
       {/* Top Floating Controls */}
       <div className="absolute top-6 right-6 z-30 flex items-center gap-3">
