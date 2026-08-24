@@ -92,16 +92,16 @@ export const LoginView: React.FC = () => {
             <div className="h-12 w-12 md:h-14 md:w-14 flex-none rounded-full bg-white p-1 shadow-md border border-sky-200/80 dark:border-slate-700">
               <img
                 src="/logo.png"
-                alt="โรงพยาบาลสามโคก"
+                alt={t.appName}
                 className="h-full w-full object-contain rounded-full"
               />
             </div>
             <div>
               <h1 className="text-xl md:text-2xl lg:text-3xl font-black tracking-tight text-[#1e3a8a] dark:text-sky-300">
-                โรงพยาบาลสามโคก
+                {t.appName}
               </h1>
               <p className="text-xs md:text-sm font-semibold text-sky-700 dark:text-sky-400">
-                ระบบจองห้องประชุมออนไลน์
+                {t.appDesc}
               </p>
             </div>
           </div>
@@ -111,7 +111,7 @@ export const LoginView: React.FC = () => {
             {/* Phone contact */}
             <div className="hidden sm:flex items-center gap-2 text-sky-900 dark:text-sky-200 bg-white/85 dark:bg-slate-800/90 px-3.5 py-2 rounded-full border border-sky-200/80 dark:border-slate-700 text-xs md:text-sm font-bold shadow-xs">
               <Phone className="h-4 w-4 text-sky-600 dark:text-sky-400" />
-              <span>โทรศัพท์ : 02-199-3791-2</span>
+              <span>{t.phoneLabel} : 02-199-3791-2</span>
             </div>
 
             {/* Language & Theme Switchers */}

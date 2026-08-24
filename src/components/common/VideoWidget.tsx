@@ -1,7 +1,9 @@
 import React, { useState, useRef, useEffect } from "react"
 import { X, ChevronRight, ChevronLeft } from "lucide-react"
+import { useApp } from "../../context/AppContext"
 
 export const VideoWidget: React.FC = () => {
+  const { t } = useApp()
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false)
   const [isVideoOpen, setIsVideoOpen] = useState(true)
   const [videoSide, setVideoSide] = useState<"left" | "right">("left")
@@ -150,7 +152,7 @@ export const VideoWidget: React.FC = () => {
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
             </div>
             <div className="p-2.5 bg-slate-900/95 text-white text-[11px] font-medium flex items-center justify-between">
-              <span className="truncate">โรงพยาบาลสามโคก แนะนำสถานที่</span>
+              <span className="truncate">{t.videoTour}</span>
               <span className="text-[10px] text-blue-400 font-bold uppercase tracking-wider bg-blue-500/20 px-1.5 py-0.5 rounded">
                 HD
               </span>
