@@ -80,30 +80,20 @@ export const LoginView: React.FC = () => {
 
   return (
     <div className="relative min-h-screen w-full flex items-center justify-center px-4 py-8 overflow-x-hidden select-none">
-      {/* Background Slideshow Container (Fixed full screen, 100% contained without cropping) */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none z-0 bg-slate-950">
+      {/* Background Slideshow Container (Full cover, 100% sharp & no blur) */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
         {backgrounds.map((bg, idx) => (
           <div
             key={bg}
-            className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
+            className={`absolute inset-0 bg-cover bg-center bg-no-repeat transition-opacity duration-1000 ease-in-out ${
               idx === bgIndex ? "opacity-100" : "opacity-0"
             }`}
-          >
-            {/* Ambient background to seamlessly fill widescreen margins */}
-            <div
-              className="absolute inset-0 bg-cover bg-center blur-2xl scale-110 opacity-50"
-              style={{ backgroundImage: `url('${bg}')` }}
-            />
-            {/* Main sharp image - contained fully inside viewport without any cropping or overflow */}
-            <div
-              className="absolute inset-0 bg-contain bg-center bg-no-repeat"
-              style={{ backgroundImage: `url('${bg}')` }}
-            />
-          </div>
+            style={{ backgroundImage: `url('${bg}')` }}
+          />
         ))}
 
-        {/* Subtle ambient lighting overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/40 via-transparent to-slate-950/20" />
+        {/* Subtle, clear overlay - preserves photo clarity and sharpness while keeping UI readable */}
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/60 via-slate-950/25 to-slate-900/10" />
       </div>
 
       {/* Top Floating Controls */}
