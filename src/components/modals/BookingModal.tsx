@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react'
-import { X, Calendar, Clock, Users, Building, AlertCircle, ChevronDown } from 'lucide-react'
+import { X, Calendar, AlertCircle, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Room, Booking } from '../../types'
 import { useApp } from '../../context/AppContext'
 
@@ -9,6 +9,197 @@ interface BookingModalProps {
   onClose: () => void
 }
 
+// ─── Thai Month Names ──────────────────────────────────────────────────────────
+const THAI_MONTHS = [
+  'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+  'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม',
+]
+const THAI_DAYS_SHORT = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส']
+
+// Generate hour options (06:00 – 22:00)
+const HOURS = Array.from({ length: 17 }, (_, i) => {
+  const h = i + 6
+  return String(h).padStart(2, '0')
+})
+const MINUTES = ['00', '15', '30', '45']
+
+// ─── Mini Date Picker (Thai) ───────────────────────────────────────────────────
+interface ThaiDatePickerProps {
+  value: string // YYYY-MM-DD
+  min: string
+  onChange: (v: string) => void
+}
+const ThaiDatePicker: React.FC<ThaiDatePickerProps> = ({ value, min, onChange }) => {
+  const [open, setOpen] = useState(false)
+
+  const selected = value ? new Date(value + 'T00:00:00') : new Date()
+  const [viewYear, setViewYear] = useState(selected.getFullYear())
+  const [viewMonth, setViewMonth] = useState(selected.getMonth())
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const minDate = new Date(min + 'T00:00:00')
+
+  const displayText = value
+    ? `${selected.getDate()} ${THAI_MONTHS[selected.getMonth()]} ${selected.getFullYear() + 543}`
+    : 'เลือกวันที่'
+
+  const prevMonth = () => {
+    if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1) }
+    else setViewMonth(m => m - 1)
+  }
+  const nextMonth = () => {
+    if (viewMonth === 11) { setViewMonth(0); setViewYear(y => y + 1) }
+    else setViewMonth(m => m + 1)
+  }
+
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate()
+  const firstDay = new Date(viewYear, viewMonth, 1).getDay()
+  const cells: (number | null)[] = [...Array(firstDay).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)]
+
+  const selectDay = (d: number) => {
+    const mm = String(viewMonth + 1).padStart(2, '0')
+    const dd = String(d).padStart(2, '0')
+    onChange(`${viewYear}-${mm}-${dd}`)
+    setOpen(false)
+  }
+
+  const isDisabled = (d: number) => {
+    const dt = new Date(viewYear, viewMonth, d)
+    return dt < minDate
+  }
+  const isSelected = (d: number) => {
+    if (!value) return false
+    const dt = new Date(viewYear, viewMonth, d)
+    return dt.toDateString() === selected.toDateString()
+  }
+  const isToday = (d: number) => {
+    const dt = new Date(viewYear, viewMonth, d)
+    return dt.toDateString() === today.toDateString()
+  }
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer"
+      >
+        <span>{displayText}</span>
+        <Calendar className="h-4 w-4 text-slate-400" />
+      </button>
+
+      {open && (
+        <div className="absolute top-full mt-1.5 left-0 z-50 w-72 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-2xl p-4 animate-in fade-in zoom-in-95 duration-150">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-3">
+            <button type="button" onClick={prevMonth} className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer">
+              <ChevronLeft className="h-4 w-4 text-slate-500" />
+            </button>
+            <span className="text-sm font-bold text-slate-900 dark:text-white">
+              {THAI_MONTHS[viewMonth]} {viewYear + 543}
+            </span>
+            <button type="button" onClick={nextMonth} className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer">
+              <ChevronRight className="h-4 w-4 text-slate-500" />
+            </button>
+          </div>
+
+          {/* Day headers */}
+          <div className="grid grid-cols-7 mb-1">
+            {THAI_DAYS_SHORT.map(d => (
+              <div key={d} className="text-center text-[11px] font-bold text-slate-400 py-1">{d}</div>
+            ))}
+          </div>
+
+          {/* Days */}
+          <div className="grid grid-cols-7 gap-y-0.5">
+            {cells.map((d, i) => (
+              <div key={i} className="flex items-center justify-center">
+                {d ? (
+                  <button
+                    type="button"
+                    disabled={isDisabled(d)}
+                    onClick={() => selectDay(d)}
+                    className={`h-8 w-8 rounded-full text-xs font-semibold transition-all cursor-pointer ${
+                      isSelected(d)
+                        ? 'bg-blue-600 text-white shadow-sm'
+                        : isToday(d)
+                        ? 'border border-blue-400 text-blue-600 dark:text-blue-400'
+                        : isDisabled(d)
+                        ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed'
+                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    {d}
+                  </button>
+                ) : <div />}
+              </div>
+            ))}
+          </div>
+
+          {/* Today button */}
+          <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 text-center">
+            <button
+              type="button"
+              onClick={() => {
+                const t = new Date()
+                onChange(`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`)
+                setViewYear(t.getFullYear())
+                setViewMonth(t.getMonth())
+                setOpen(false)
+              }}
+              className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+            >
+              วันนี้
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Thai Time Picker (24h) ────────────────────────────────────────────────────
+interface ThaiTimePickerProps {
+  value: string // HH:mm
+  onChange: (v: string) => void
+  label?: string
+}
+const ThaiTimePicker: React.FC<ThaiTimePickerProps> = ({ value, onChange }) => {
+  const [hh, mm] = value.split(':')
+
+  return (
+    <div className="flex gap-1.5 items-center">
+      <div className="relative flex-1">
+        <select
+          value={hh}
+          onChange={e => onChange(`${e.target.value}:${mm}`)}
+          className="w-full appearance-none rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 pl-3 pr-8 py-2.5 text-sm font-bold text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer text-center"
+        >
+          {HOURS.map(h => (
+            <option key={h} value={h}>{h} น.</option>
+          ))}
+        </select>
+        <ChevronDown className="pointer-events-none absolute right-2.5 top-3 h-3.5 w-3.5 text-slate-400" />
+      </div>
+      <span className="text-slate-500 dark:text-slate-400 font-bold text-sm">:</span>
+      <div className="relative flex-1">
+        <select
+          value={mm}
+          onChange={e => onChange(`${hh}:${e.target.value}`)}
+          className="w-full appearance-none rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 pl-3 pr-8 py-2.5 text-sm font-bold text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer text-center"
+        >
+          {MINUTES.map(m => (
+            <option key={m} value={m}>{m} นาที</option>
+          ))}
+        </select>
+        <ChevronDown className="pointer-events-none absolute right-2.5 top-3 h-3.5 w-3.5 text-slate-400" />
+      </div>
+    </div>
+  )
+}
+
+// ─── Main BookingModal ─────────────────────────────────────────────────────────
 export const BookingModal: React.FC<BookingModalProps> = ({
   initialRoomId,
   initialDate,
@@ -171,44 +362,28 @@ export const BookingModal: React.FC<BookingModalProps> = ({
             </div>
           )}
 
-          {/* Date Selector */}
+          {/* Date Selector — Custom Thai Calendar */}
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">
               {t.date} <span className="text-rose-500">*</span>
             </label>
-            <input
-              type="date"
-              value={date}
-              min={todayStr}
-              onChange={e => setDate(e.target.value)}
-              className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer"
-            />
+            <ThaiDatePicker value={date} min={todayStr} onChange={setDate} />
           </div>
 
-          {/* Time Slot */}
+          {/* Time Slot — Custom Thai 24h Selectors */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">
                 {t.startTime} <span className="text-rose-500">*</span>
               </label>
-              <input
-                type="time"
-                value={startTime}
-                onChange={e => setStartTime(e.target.value)}
-                className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer"
-              />
+              <ThaiTimePicker value={startTime} onChange={setStartTime} />
             </div>
 
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">
                 {t.endTime} <span className="text-rose-500">*</span>
               </label>
-              <input
-                type="time"
-                value={endTime}
-                onChange={e => setEndTime(e.target.value)}
-                className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer"
-              />
+              <ThaiTimePicker value={endTime} onChange={setEndTime} />
             </div>
           </div>
 
