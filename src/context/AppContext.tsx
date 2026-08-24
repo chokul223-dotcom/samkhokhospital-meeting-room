@@ -271,6 +271,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, [theme])
 
+  // Sync HTML lang attribute → controls native browser date/time picker language
+  useEffect(() => {
+    document.documentElement.lang = language === "th" ? "th" : "en"
+  }, [language])
+
   // Data Fetcher
   const refreshData = useCallback(async () => {
     if (!currentUser) return
