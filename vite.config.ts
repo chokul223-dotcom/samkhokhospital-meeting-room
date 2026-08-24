@@ -1,19 +1,19 @@
-import { defineConfig, type HtmlTagDescriptor, type Plugin } from 'vite'
-import react from '@vitejs/plugin-react'
-import tailwindcss from '@tailwindcss/vite'
-import path from 'node:path'
+import { defineConfig, type HtmlTagDescriptor, type Plugin } from "vite"
+import react from "@vitejs/plugin-react"
+import tailwindcss from "@tailwindcss/vite"
+import path from "node:path"
 
-import siteConfiguration from './site.json' with { type: 'json' }
+import siteConfiguration from "./site.json" with { type: "json" }
 
 // Vite config — https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   // deploy-preview passes `--mode development` for cached-preview builds.
-  const emitSourcemaps = mode === 'development'
+  const emitSourcemaps = mode === "development"
 
   return {
-    base: process.env.APP_PUBLIC_URL ? `${process.env.APP_PUBLIC_URL}/` : '/',
+    base: process.env.APP_PUBLIC_URL ? `${process.env.APP_PUBLIC_URL}/` : "/",
     build: {
-      sourcemap: emitSourcemaps ? 'inline' : false,
+      sourcemap: emitSourcemaps ? "inline" : false,
       minify: !emitSourcemaps,
     },
     plugins: [
@@ -25,18 +25,18 @@ export default defineConfig(({ mode }) => {
     ],
     resolve: {
       alias: {
-        '@': path.resolve(import.meta.dirname, './src'),
+        "@": path.resolve(import.meta.dirname, "./src"),
       },
     },
     server: {
-      host: '0.0.0.0',
-      port: parseInt(process.env.PORT || '8443'),
+      host: "0.0.0.0",
+      port: parseInt(process.env.PORT || "8443"),
       strictPort: true,
-      watch: { ignored: ['**/node_modules/**'] },
+      watch: { ignored: ["**/node_modules/**"] },
     },
     preview: {
-      host: '0.0.0.0',
-      port: parseInt(process.env.PORT || '8443'),
+      host: "0.0.0.0",
+      port: parseInt(process.env.PORT || "8443"),
     },
   }
 })
@@ -71,34 +71,45 @@ type SiteConfiguration = {
 /** Applies site configuration to the generated document shell. */
 function siteConfigurationPlugin(config: SiteConfiguration): Plugin {
   function sanitizeHtmlValue(value: string | undefined): string {
-    return value?.replace(/[^a-zA-Z0-9_-]/g, '') || ''
+    return value?.replace(/[^a-zA-Z0-9_-]/g, "") || ""
   }
   function escapeHtmlText(value: string): string {
-    return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    return value
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
   }
-  function replaceHtmlCommentSlot(html: string, slotName: string, content: string): string {
+  function replaceHtmlCommentSlot(
+    html: string,
+    slotName: string,
+    content: string,
+  ): string {
     return html.replace(`<!-- ${slotName} -->`, content)
   }
 
-  const title = config.title ?? 'จองห้องประชุม โรงพยาบาลสามโคก'
-  const description = config.description ?? ''
-  const favicon = config.icons?.icon ?? ''
-  const socialImage = config.openGraph?.image ?? ''
-  const language = sanitizeHtmlValue(config.language) || 'en'
-  const googleAnalyticsId = sanitizeHtmlValue(config.analytics?.googleAnalyticsId)
-  const headStart = config.customScripts?.headStart ?? ''
-  const headEnd = config.customScripts?.headEnd ?? ''
-  const bodyStart = config.customScripts?.bodyStart ?? ''
-  const bodyEnd = config.customScripts?.bodyEnd ?? ''
-  const robotsTxt = config.robots?.index === false ? 'User-agent: *\nDisallow: /\n' : ''
+  const title = config.title ?? "จองห้องประชุม โรงพยาบาลสามโคก"
+  const description = config.description ?? ""
+  const favicon = config.icons?.icon ?? ""
+  const socialImage = config.openGraph?.image ?? ""
+  const language = sanitizeHtmlValue(config.language) || "en"
+  const googleAnalyticsId = sanitizeHtmlValue(
+    config.analytics?.googleAnalyticsId,
+  )
+  const headStart = config.customScripts?.headStart ?? ""
+  const headEnd = config.customScripts?.headEnd ?? ""
+  const bodyStart = config.customScripts?.bodyStart ?? ""
+  const bodyEnd = config.customScripts?.bodyEnd ?? ""
+  const robotsTxt =
+    config.robots?.index === false ? "User-agent: *\nDisallow: /\n" : ""
 
   return {
-    name: 'app-site-configuration',
+    name: "app-site-configuration",
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
-        if (!robotsTxt || req.url?.split('?')[0] !== '/robots.txt') return next()
+        if (!robotsTxt || req.url?.split("?")[0] !== "/robots.txt")
+          return next()
 
-        res.setHeader('Content-Type', 'text/plain; charset=utf-8')
+        res.setHeader("Content-Type", "text/plain; charset=utf-8")
         res.end(robotsTxt)
       })
     },
@@ -106,65 +117,101 @@ function siteConfigurationPlugin(config: SiteConfiguration): Plugin {
       if (!robotsTxt) return
 
       this.emitFile({
-        type: 'asset',
-        fileName: 'robots.txt',
+        type: "asset",
+        fileName: "robots.txt",
         source: robotsTxt,
       })
     },
     transformIndexHtml: {
-      order: 'pre',
+      order: "pre",
       handler(html) {
         let result = html
-        result = replaceHtmlCommentSlot(result, 'app:lang', language)
-        result = replaceHtmlCommentSlot(result, 'app:title', escapeHtmlText(title))
-        result = replaceHtmlCommentSlot(result, 'app:head-start', headStart)
-        result = replaceHtmlCommentSlot(result, 'app:head-end', headEnd)
-        result = replaceHtmlCommentSlot(result, 'app:body-start', bodyStart)
-        result = replaceHtmlCommentSlot(result, 'app:body-end', bodyEnd)
+        result = replaceHtmlCommentSlot(result, "app:lang", language)
+        result = replaceHtmlCommentSlot(
+          result,
+          "app:title",
+          escapeHtmlText(title),
+        )
+        result = replaceHtmlCommentSlot(result, "app:head-start", headStart)
+        result = replaceHtmlCommentSlot(result, "app:head-end", headEnd)
+        result = replaceHtmlCommentSlot(result, "app:body-start", bodyStart)
+        result = replaceHtmlCommentSlot(result, "app:body-end", bodyEnd)
 
         const tags: HtmlTagDescriptor[] = []
         if (description) {
-          tags.push({ tag: 'meta', attrs: { name: 'description', content: description }, injectTo: 'head' })
+          tags.push({
+            tag: "meta",
+            attrs: { name: "description", content: description },
+            injectTo: "head",
+          })
         }
         if (config.robots?.index === false) {
-          tags.push({ tag: 'meta', attrs: { name: 'robots', content: 'noindex, nofollow' }, injectTo: 'head' })
+          tags.push({
+            tag: "meta",
+            attrs: { name: "robots", content: "noindex, nofollow" },
+            injectTo: "head",
+          })
         }
         if (favicon) {
-          tags.push({ tag: 'link', attrs: { rel: 'icon', href: favicon }, injectTo: 'head' })
+          tags.push({
+            tag: "link",
+            attrs: { rel: "icon", href: favicon },
+            injectTo: "head",
+          })
         }
         if (title) {
-          tags.push({ tag: 'meta', attrs: { property: 'og:title', content: title }, injectTo: 'head' })
+          tags.push({
+            tag: "meta",
+            attrs: { property: "og:title", content: title },
+            injectTo: "head",
+          })
         }
         if (description) {
-          tags.push({ tag: 'meta', attrs: { property: 'og:description', content: description }, injectTo: 'head' })
+          tags.push({
+            tag: "meta",
+            attrs: { property: "og:description", content: description },
+            injectTo: "head",
+          })
         }
         if (socialImage) {
           tags.push(
-            { tag: 'meta', attrs: { property: 'og:image', content: socialImage }, injectTo: 'head' },
-            { tag: 'meta', attrs: { name: 'twitter:card', content: 'summary_large_image' }, injectTo: 'head' },
-            { tag: 'meta', attrs: { name: 'twitter:image', content: socialImage }, injectTo: 'head' },
+            {
+              tag: "meta",
+              attrs: { property: "og:image", content: socialImage },
+              injectTo: "head",
+            },
+            {
+              tag: "meta",
+              attrs: { name: "twitter:card", content: "summary_large_image" },
+              injectTo: "head",
+            },
+            {
+              tag: "meta",
+              attrs: { name: "twitter:image", content: socialImage },
+              injectTo: "head",
+            },
           )
         }
 
         if (googleAnalyticsId) {
           tags.push(
             {
-              tag: 'script',
+              tag: "script",
               attrs: {
                 async: true,
                 src: `https://www.googletagmanager.com/gtag/js?id=${googleAnalyticsId}`,
               },
-              injectTo: 'head',
+              injectTo: "head",
             },
             {
-              tag: 'script',
+              tag: "script",
               children: `
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
   gtag('js', new Date());
   gtag('config', ${JSON.stringify(googleAnalyticsId)});
 `,
-              injectTo: 'head',
+              injectTo: "head",
             },
           )
         }
@@ -172,7 +219,7 @@ function siteConfigurationPlugin(config: SiteConfiguration): Plugin {
         if (config.accessibility?.addBypassLinks) {
           tags.push(
             {
-              tag: 'style',
+              tag: "style",
               children: `
   .app-bypass-link {
     position: fixed;
@@ -191,13 +238,13 @@ function siteConfigurationPlugin(config: SiteConfiguration): Plugin {
     transform: translateY(0);
   }
 `,
-              injectTo: 'head',
+              injectTo: "head",
             },
             {
-              tag: 'a',
-              attrs: { class: 'app-bypass-link', href: '#root' },
-              children: 'Skip to content',
-              injectTo: 'body-prepend',
+              tag: "a",
+              attrs: { class: "app-bypass-link", href: "#root" },
+              children: "Skip to content",
+              injectTo: "body-prepend",
             },
           )
         }
@@ -226,26 +273,28 @@ function siteConfigurationPlugin(config: SiteConfiguration): Plugin {
  */
 function errorOverlayReplay(): Plugin {
   return {
-    name: 'app-error-overlay-replay',
-    apply: 'serve',
+    name: "app-error-overlay-replay",
+    apply: "serve",
     configureServer(server) {
       let lastError: object | null = null
 
-      const origSend = server.ws.send.bind(server.ws) as (...args: any[]) => void
-      server.ws.send = ((...args: any[]) => {
+      const origSend = server.ws.send.bind(server.ws) as (
+        ...args: any[]
+      ) => void
+      server.ws.send = (((...args: any[]) => {
         const payload = args[0]
-        if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
+        if (payload && typeof payload === "object" && !Array.isArray(payload)) {
           const type = (payload as { type?: string }).type
-          if (type === 'error') {
-            lastError = payload as object
-          } else if (type === 'update' || type === 'full-reload') {
+          if (type === "error") {
+            lastError = (payload as object)
+          } else if (type === "update" || type === "full-reload") {
             lastError = null
           }
         }
         return origSend(...args)
-      }) as typeof server.ws.send
+      }) as typeof server.ws.send)
 
-      server.ws.on('connection', (socket) => {
+      server.ws.on("connection", (socket) => {
         if (lastError !== null) {
           socket.send(JSON.stringify(lastError))
         }
@@ -271,17 +320,18 @@ function reactRefreshBoundaryFallback(): Plugin {
   let sendFullReload: (() => void) | null = null
 
   return {
-    name: 'app-react-refresh-boundary-fallback',
-    apply: 'serve',
-    enforce: 'post',
+    name: "app-react-refresh-boundary-fallback",
+    apply: "serve",
+    enforce: "post",
     configureServer(server) {
-      sendFullReload = () => server.ws.send({ type: 'full-reload', path: '*' })
+      sendFullReload = () => server.ws.send({ type: "full-reload", path: "*" })
     },
     transform(code, id) {
-      if (!/\.[jt]sx?(?:\?|$)/.test(id) || id.includes('/node_modules/')) return null
+      if (!/\.[jt]sx?(?:\?|$)/.test(id) || id.includes("/node_modules/"))
+        return null
 
-      const moduleId = id.split('?')[0] ?? id
-      const hasRefreshBoundary = code.includes('registerExportsForReactRefresh')
+      const moduleId = id.split("?")[0] ?? id
+      const hasRefreshBoundary = code.includes("registerExportsForReactRefresh")
       const previousHadRefreshBoundary = hadRefreshBoundary.get(moduleId)
       hadRefreshBoundary.set(moduleId, hasRefreshBoundary)
 
@@ -293,4 +343,3 @@ function reactRefreshBoundaryFallback(): Plugin {
     },
   }
 }
-

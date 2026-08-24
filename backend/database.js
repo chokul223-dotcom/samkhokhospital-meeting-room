@@ -1,7 +1,7 @@
-const { Pool } = require('pg')
+const { Pool } = require("pg")
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL
+  connectionString: process.env.DATABASE_URL,
 })
 
 async function initDB() {
@@ -56,26 +56,31 @@ async function initDB() {
     `)
 
     // Seed admin user if not exists
-    const bcrypt = require('bcryptjs')
-    const adminExists = await client.query("SELECT id FROM users WHERE username = 'Admin'")
+    const bcrypt = require("bcryptjs")
+    const adminExists = await client.query(
+      "SELECT id FROM users WHERE username = 'Admin'",
+    )
     if (adminExists.rows.length === 0) {
-      const adminHash = await bcrypt.hash('Admin123456', 10)
-      const userHash = await bcrypt.hash('Test123456', 10)
-      await client.query(`
+      const adminHash = await bcrypt.hash("Admin123456", 10)
+      const userHash = await bcrypt.hash("Test123456", 10)
+      await client.query(
+        `
         INSERT INTO users (id, name, department, role, username, password) VALUES
         ('u1', 'ผู้ดูแลระบบ', 'IT', 'admin', 'Admin', $1),
         ('u2', 'ทั่วไป', 'ทั่วไป', 'user', 'Test', $2)
-      `, [adminHash, userHash])
+      `,
+        [adminHash, userHash],
+      )
 
       await client.query(`
         INSERT INTO rooms (id, name, capacity, location, equipment, status) VALUES
         ('r1', 'ห้องประชุมใหญ่', 50, 'อาคาร A ชั้น 2', ARRAY['โปรเจคเตอร์','ไมโครโฟน','จอภาพ','ระบบเสียง'], 'available'),
         ('r2', 'ห้องประชุมเล็ก 1', 15, 'อาคาร A ชั้น 1', ARRAY['โปรเจคเตอร์','กระดานไวท์บอร์ด'], 'available')
       `)
-      console.log('✅ Database seeded with initial data')
+      console.log("✅ Database seeded with initial data")
     }
 
-    console.log('✅ Database initialized')
+    console.log("✅ Database initialized")
   } finally {
     client.release()
   }
