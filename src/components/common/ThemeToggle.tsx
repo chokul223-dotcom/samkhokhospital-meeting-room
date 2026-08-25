@@ -99,13 +99,13 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
   }
 
   // Inline variant (e.g. top header navbar)
-  // On mobile: compact icon-only circle. On md+: full pill with label.
+  // On mobile: smaller pill with text. On md+: full size.
   return (
     <button
       type="button"
       onClick={toggleTheme}
       title={isDark ? "เปลี่ยนเป็นโหมดสว่าง (Light Mode)" : "เปลี่ยนเป็นโหมดมืด (Dark Mode)"}
-      className={`relative flex items-center justify-center md:justify-between h-[34px] w-[34px] md:w-[138px] md:h-[38px] px-0.5 md:px-1.5 rounded-full border shadow-sm transition-all duration-300 hover:shadow-md active:scale-95 cursor-pointer select-none ${
+      className={`relative flex items-center justify-between w-[110px] h-[30px] md:w-[138px] md:h-[38px] px-1 md:px-1.5 rounded-full border shadow-sm transition-all duration-300 hover:shadow-md active:scale-95 cursor-pointer select-none ${
         isDark
           ? "bg-slate-900/95 border-slate-700 text-white hover:border-slate-600"
           : "bg-white/95 border-slate-300 text-slate-900 hover:border-slate-400"
@@ -113,19 +113,19 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
     >
       {isDark ? (
         <>
-          <span className="hidden md:inline text-[11px] font-black tracking-wider uppercase pl-3 text-slate-100">
+          <span className="text-[9px] md:text-[11px] font-black tracking-wider uppercase pl-2 md:pl-3 text-slate-100">
             DARK MODE
           </span>
-          <div className="h-[26px] w-[26px] md:h-[28px] md:w-[28px] flex-none rounded-full overflow-hidden shadow-xs">
+          <div className="h-[22px] w-[22px] md:h-[28px] md:w-[28px] flex-none rounded-full overflow-hidden shadow-xs">
             <NightIcon />
           </div>
         </>
       ) : (
         <>
-          <div className="h-[26px] w-[26px] md:h-[28px] md:w-[28px] flex-none rounded-full overflow-hidden shadow-xs">
+          <div className="h-[22px] w-[22px] md:h-[28px] md:w-[28px] flex-none rounded-full overflow-hidden shadow-xs">
             <DayIcon />
           </div>
-          <span className="hidden md:inline text-[11px] font-black tracking-wider uppercase pr-3 text-slate-800">
+          <span className="text-[9px] md:text-[11px] font-black tracking-wider uppercase pr-2 md:pr-3 text-slate-800">
             LIGHT MODE
           </span>
         </>

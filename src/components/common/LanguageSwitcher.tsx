@@ -60,7 +60,7 @@ export const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({
         }`}
       >
         <FlagImg code={current.flagCode} size={20} />
-        <span className="hidden md:inline font-semibold">{current.countryCode}</span>
+        <span className="font-semibold text-[11px] md:text-sm">{current.countryCode}</span>
         <ChevronDown
           className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${
             open ? "rotate-180" : ""
