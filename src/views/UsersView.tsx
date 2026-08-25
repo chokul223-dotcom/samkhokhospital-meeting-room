@@ -90,14 +90,19 @@ export const UsersView: React.FC<UsersViewProps> = ({
               >
                 {/* User Details */}
                 <div className="flex items-center gap-4 min-w-0 flex-1">
-                  <div
-                    className={`flex h-12 w-12 flex-none items-center justify-center rounded-2xl font-bold text-white shadow-sm ${
-                      isAdmin
-                        ? "bg-gradient-to-tr from-blue-600 to-indigo-600"
-                        : "bg-gradient-to-tr from-cyan-600 to-teal-500"
-                    }`}
-                  >
-                    {user.name.charAt(0)}
+                  <div className="h-12 w-12 flex-none rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 shadow-sm">
+                    <img
+                      src="/user.jpg"
+                      alt={formatUserName(user, language)}
+                      className="h-full w-full object-cover"
+                      onError={(e) => {
+                        const target = e.currentTarget
+                        if (!target.dataset.triedImage) {
+                          target.dataset.triedImage = "true"
+                          target.src = "/Image/user.jpg"
+                        }
+                      }}
+                    />
                   </div>
 
                   <div className="min-w-0 space-y-1">
