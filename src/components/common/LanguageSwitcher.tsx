@@ -53,14 +53,14 @@ export const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className={`flex items-center gap-2 rounded-xl transition-all duration-200 ${
+        className={`flex items-center gap-1.5 md:gap-2 rounded-xl transition-all duration-200 ${
           variant === "floating"
-            ? "bg-white/90 dark:bg-slate-900/90 backdrop-blur-md px-3.5 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-slate-800 shadow-md hover:bg-white dark:hover:bg-slate-800"
-            : "px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 bg-slate-100/80 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700"
+            ? "bg-white/90 dark:bg-slate-900/90 backdrop-blur-md px-2.5 md:px-3.5 py-1.5 md:py-2 text-sm font-medium text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-slate-800 shadow-md hover:bg-white dark:hover:bg-slate-800"
+            : "px-2.5 md:px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 bg-slate-100/80 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700"
         }`}
       >
         <FlagImg code={current.flagCode} size={20} />
-        <span className="font-semibold">{current.countryCode}</span>
+        <span className="hidden md:inline font-semibold">{current.countryCode}</span>
         <ChevronDown
           className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${
             open ? "rotate-180" : ""
