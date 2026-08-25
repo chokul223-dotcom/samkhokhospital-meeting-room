@@ -8,14 +8,13 @@ import { useApp } from "../../context/AppContext"
 
 interface HeaderProps {
   activeTab: string
-  onOpenBookingModal: () => void
+  onOpenBookingModal?: () => void
   onOpenRoomModal: () => void
   onOpenUserModal: () => void
 }
 
 export const Header: React.FC<HeaderProps> = ({
   activeTab,
-  onOpenBookingModal,
   onOpenRoomModal,
   onOpenUserModal,
 }) => {
@@ -91,14 +90,6 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <UserPlus className="h-4 w-4" />
             <span>{t.addUser}</span>
-          </button>
-        ) : activeTab !== "settings" ? (
-          <button
-            onClick={onOpenBookingModal}
-            className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-4.5 py-2.5 text-xs font-bold text-white shadow-md shadow-blue-600/25 hover:from-blue-700 hover:to-indigo-700 transition-all active:scale-95 cursor-pointer"
-          >
-            <Plus className="h-4 w-4" />
-            <span>{t.bookRoom}</span>
           </button>
         ) : null}
       </div>
