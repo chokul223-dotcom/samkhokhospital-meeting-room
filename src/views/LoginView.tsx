@@ -27,14 +27,73 @@ export const LoginView: React.FC = () => {
   const [bgIndex, setBgIndex] = useState(0)
 
   const backgrounds = [
-    "/backgrounds/Picture 1.jpg",
-    "/backgrounds/Picture 2.jpg",
-    "/backgrounds/Picture 3.png",
-    "/backgrounds/Picture 4.jpg",
-    "/backgrounds/Picture 5.jpg",
-    "/backgrounds/Picture 6.jpg",
-    "/backgrounds/Picture 7.jpg",
-    "/backgrounds/Picture 8.jpg",
+    {
+      src: "/backgrounds/Picture 1.jpg",
+      style: {
+        backgroundImage: "url('/backgrounds/Picture 1.jpg')",
+        backgroundPosition: "center center",
+        backgroundSize: "cover",
+        backgroundColor: "#d6aa49",
+      },
+    },
+    {
+      src: "/backgrounds/Picture 2.jpg",
+      style: {
+        backgroundImage: "url('/backgrounds/Picture 2.jpg')",
+        backgroundPosition: "center top",
+        backgroundSize: "cover",
+        backgroundColor: "#a98a75",
+      },
+    },
+    {
+      src: "/backgrounds/Picture 3.png",
+      style: {
+        backgroundImage: "url('/backgrounds/Picture 3.png')",
+        backgroundPosition: "center center",
+        backgroundSize: "contain",
+        backgroundColor: "#124b48",
+      },
+    },
+    {
+      src: "/backgrounds/Picture 4.jpg",
+      style: {
+        backgroundImage: "url('/backgrounds/Picture 4.jpg')",
+        backgroundPosition: "center center",
+        backgroundSize: "cover",
+      },
+    },
+    {
+      src: "/backgrounds/Picture 5.jpg",
+      style: {
+        backgroundImage: "url('/backgrounds/Picture 5.jpg')",
+        backgroundPosition: "center center",
+        backgroundSize: "cover",
+      },
+    },
+    {
+      src: "/backgrounds/Picture 6.jpg",
+      style: {
+        backgroundImage: "url('/backgrounds/Picture 6.jpg')",
+        backgroundPosition: "center center",
+        backgroundSize: "cover",
+      },
+    },
+    {
+      src: "/backgrounds/Picture 7.jpg",
+      style: {
+        backgroundImage: "url('/backgrounds/Picture 7.jpg')",
+        backgroundPosition: "center center",
+        backgroundSize: "cover",
+      },
+    },
+    {
+      src: "/backgrounds/Picture 8.jpg",
+      style: {
+        backgroundImage: "url('/backgrounds/Picture 8.jpg')",
+        backgroundPosition: "center center",
+        backgroundSize: "cover",
+      },
+    },
   ]
 
   useEffect(() => {
@@ -129,11 +188,11 @@ export const LoginView: React.FC = () => {
         <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
           {backgrounds.map((bg, idx) => (
             <div
-              key={bg}
-              className={`absolute inset-0 bg-cover bg-center bg-no-repeat transition-opacity duration-1000 ease-in-out ${
+              key={bg.src}
+              className={`absolute inset-0 bg-no-repeat transition-opacity duration-1000 ease-in-out ${
                 idx === bgIndex ? "opacity-100" : "opacity-0"
               }`}
-              style={{ backgroundImage: `url('${bg}')` }}
+              style={bg.style}
             />
           ))}
           {/* Subtle contrast overlay */}
