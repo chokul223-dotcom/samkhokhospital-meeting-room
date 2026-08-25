@@ -53,32 +53,29 @@ export const RoomsView: React.FC<RoomsViewProps> = ({
         <div className="flex items-center gap-2">
           <button
             onClick={() => setFilter("all")}
-            className={`rounded-xl px-3.5 py-2 text-xs font-bold transition-all ${
-              filter === "all"
+            className={`rounded-xl px-3.5 py-2 text-xs font-bold transition-all ${filter === "all"
                 ? "bg-blue-600 text-white shadow-xs"
                 : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200"
-            }`}
+              }`}
           >
             {t.all} ({rooms.length})
           </button>
           <button
             onClick={() => setFilter("available")}
-            className={`rounded-xl px-3.5 py-2 text-xs font-bold transition-all ${
-              filter === "available"
+            className={`rounded-xl px-3.5 py-2 text-xs font-bold transition-all ${filter === "available"
                 ? "bg-emerald-600 text-white shadow-xs"
                 : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200"
-            }`}
+              }`}
           >
             {t.available} (
             {rooms.filter((r) => r.status === "available").length})
           </button>
           <button
             onClick={() => setFilter("maintenance")}
-            className={`rounded-xl px-3.5 py-2 text-xs font-bold transition-all ${
-              filter === "maintenance"
+            className={`rounded-xl px-3.5 py-2 text-xs font-bold transition-all ${filter === "maintenance"
                 ? "bg-amber-600 text-white shadow-xs"
                 : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200"
-            }`}
+              }`}
           >
             {t.maintenance} (
             {rooms.filter((r) => r.status === "maintenance").length})
@@ -115,11 +112,10 @@ export const RoomsView: React.FC<RoomsViewProps> = ({
             >
               {/* Top Accent Gradient Bar */}
               <div
-                className={`h-2.5 w-full bg-gradient-to-r ${
-                  isAvailable
+                className={`h-2.5 w-full bg-gradient-to-r ${isAvailable
                     ? "from-blue-600 via-cyan-500 to-emerald-500"
                     : "from-amber-500 to-rose-500"
-                }`}
+                  }`}
               />
 
               <div className="p-6 flex-1 flex flex-col justify-between space-y-5">
