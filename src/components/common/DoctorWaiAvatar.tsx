@@ -99,93 +99,129 @@ export const DoctorWaiAvatar: React.FC = () => {
     }
   }, [])
 
-  // Web Speech API Text-to-Speech Engine (Strictly Female Voice & Relaxed Slower Pace)
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null)
+
+  // Natural HD Female Voice Player (Google Cloud TTS with fallback)
   const speakText = useCallback(
     (text: string, langCode: "th" | "en") => {
       if (!soundEnabled) return
-      if (typeof window === "undefined" || !("speechSynthesis" in window)) return
 
       try {
-        window.speechSynthesis.cancel()
-
-        const utterance = new SpeechSynthesisUtterance(text)
-        utterance.lang = langCode === "th" ? "th-TH" : "en-US"
-        // Speak slower for a gentle, polite and clear cadence
-        utterance.rate = langCode === "th" ? 0.83 : 0.85
-        utterance.pitch = 1.15 // Pleasant, warm female pitch
-
-        // Strictly pick female voice
-        const voices = window.speechSynthesis.getVoices()
-        if (voices.length > 0) {
-          let selectedVoice: SpeechSynthesisVoice | undefined
-
-          if (langCode === "th") {
-            selectedVoice =
-              voices.find(
-                (v) =>
-                  v.lang.toLowerCase().startsWith("th") &&
-                  (v.name.toLowerCase().includes("premwadee") ||
-                    v.name.toLowerCase().includes("kanya") ||
-                    v.name.toLowerCase().includes("narisa") ||
-                    v.name.toLowerCase().includes("achara") ||
-                    v.name.toLowerCase().includes("siri") ||
-                    v.name.toLowerCase().includes("female") ||
-                    v.name.toLowerCase().includes("google ภาษาไทย")),
-              ) ||
-              voices.find(
-                (v) =>
-                  v.lang.toLowerCase().startsWith("th") &&
-                  !v.name.toLowerCase().includes("niwat") &&
-                  !v.name.toLowerCase().includes("male"),
-              ) ||
-              voices.find((v) => v.lang.toLowerCase().startsWith("th"))
-          } else {
-            selectedVoice =
-              voices.find(
-                (v) =>
-                  v.lang.toLowerCase().startsWith("en") &&
-                  (v.name.toLowerCase().includes("zira") ||
-                    v.name.toLowerCase().includes("jenny") ||
-                    v.name.toLowerCase().includes("aria") ||
-                    v.name.toLowerCase().includes("samantha") ||
-                    v.name.toLowerCase().includes("victoria") ||
-                    v.name.toLowerCase().includes("karen") ||
-                    v.name.toLowerCase().includes("siri") ||
-                    v.name.toLowerCase().includes("ava") ||
-                    v.name.toLowerCase().includes("emma") ||
-                    v.name.toLowerCase().includes("sonia") ||
-                    v.name.toLowerCase().includes("female") ||
-                    v.name.toLowerCase().includes("google us english")) &&
-                  !v.name.toLowerCase().includes("david") &&
-                  !v.name.toLowerCase().includes("guy") &&
-                  !v.name.toLowerCase().includes("george") &&
-                  !v.name.toLowerCase().includes("mark") &&
-                  !v.name.toLowerCase().includes("male"),
-              ) ||
-              voices.find(
-                (v) =>
-                  v.lang.toLowerCase().startsWith("en") &&
-                  !v.name.toLowerCase().includes("male") &&
-                  !v.name.toLowerCase().includes("david"),
-              )
-          }
-
-          if (selectedVoice) {
-            utterance.voice = selectedVoice
-          }
+        // Stop any ongoing audio or speech
+        if (currentAudioRef.current) {
+          currentAudioRef.current.pause()
+          currentAudioRef.current = null
+        }
+        if (typeof window !== "undefined" && "speechSynthesis" in window) {
+          window.speechSynthesis.cancel()
         }
 
-        utterance.onstart = () => setIsSpeaking(true)
-        utterance.onend = () => setIsSpeaking(false)
-        utterance.onerror = () => setIsSpeaking(false)
+        // Primary Engine: Google HD Female Voice Audio
+        const ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=${
+          langCode === "th" ? "th" : "en"
+        }&client=tw-ob&q=${encodeURIComponent(text)}`
 
-        window.speechSynthesis.speak(utterance)
-      } catch (e) {
-        setIsSpeaking(false)
+        const audio = new Audio(ttsUrl)
+        currentAudioRef.current = audio
+        audio.playbackRate = langCode === "th" ? 0.88 : 0.9 // Slower, polite & gentle
+        audio.volume = 1.0
+
+        audio.onplay = () => setIsSpeaking(true)
+        audio.onended = () => {
+          setIsSpeaking(false)
+          currentAudioRef.current = null
+        }
+        audio.onerror = () => {
+          // Fallback Engine: Web Speech API (with strict Female Voice selection)
+          fallbackWebSpeech(text, langCode)
+        }
+
+        const playPromise = audio.play()
+        if (playPromise !== undefined) {
+          playPromise.catch(() => {
+            // If browser autoplay restriction prevents Audio, fallback to Web Speech API
+            fallbackWebSpeech(text, langCode)
+          })
+        }
+      } catch {
+        fallbackWebSpeech(text, langCode)
       }
     },
     [soundEnabled],
   )
+
+  // Web Speech Fallback with strict Female Voice resolution
+  const fallbackWebSpeech = (text: string, langCode: "th" | "en") => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+      setIsSpeaking(false)
+      return
+    }
+
+    try {
+      const utterance = new SpeechSynthesisUtterance(text)
+      utterance.lang = langCode === "th" ? "th-TH" : "en-US"
+      utterance.rate = langCode === "th" ? 0.82 : 0.85
+      utterance.pitch = 1.25 // Ensure bright female tone
+
+      const voices = window.speechSynthesis.getVoices()
+      if (voices.length > 0) {
+        let femaleVoice: SpeechSynthesisVoice | undefined
+        if (langCode === "th") {
+          femaleVoice =
+            voices.find(
+              (v) =>
+                v.lang.toLowerCase().startsWith("th") &&
+                (v.name.includes("Premwadee") ||
+                  v.name.includes("Kanya") ||
+                  v.name.includes("Narisa") ||
+                  v.name.includes("Achara") ||
+                  v.name.includes("Siri") ||
+                  v.name.includes("Female") ||
+                  v.name.includes("Google ภาษาไทย")),
+            ) ||
+            voices.find(
+              (v) =>
+                v.lang.toLowerCase().startsWith("th") &&
+                !v.name.toLowerCase().includes("niwat") &&
+                !v.name.toLowerCase().includes("male"),
+            )
+        } else {
+          femaleVoice =
+            voices.find(
+              (v) =>
+                v.lang.toLowerCase().startsWith("en") &&
+                (v.name.includes("Zira") ||
+                  v.name.includes("Jenny") ||
+                  v.name.includes("Aria") ||
+                  v.name.includes("Samantha") ||
+                  v.name.includes("Victoria") ||
+                  v.name.includes("Karen") ||
+                  v.name.includes("Female") ||
+                  v.name.includes("Google US English")),
+            ) ||
+            voices.find(
+              (v) =>
+                v.lang.toLowerCase().startsWith("en") &&
+                !v.name.toLowerCase().includes("david") &&
+                !v.name.toLowerCase().includes("guy") &&
+                !v.name.toLowerCase().includes("male"),
+            )
+        }
+
+        if (femaleVoice) {
+          utterance.voice = femaleVoice
+        }
+      }
+
+      utterance.onstart = () => setIsSpeaking(true)
+      utterance.onend = () => setIsSpeaking(false)
+      utterance.onerror = () => setIsSpeaking(false)
+
+      window.speechSynthesis.speak(utterance)
+    } catch {
+      setIsSpeaking(false)
+    }
+  }
 
   // Welcome voice greeting on initial load (with user gesture fallback for browser policy)
   useEffect(() => {
@@ -295,10 +331,14 @@ export const DoctorWaiAvatar: React.FC = () => {
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation()
-                  if (soundEnabled && isSpeaking) {
-                    window.speechSynthesis?.cancel()
-                    setIsSpeaking(false)
+                  if (currentAudioRef.current) {
+                    currentAudioRef.current.pause()
+                    currentAudioRef.current = null
                   }
+                  if (typeof window !== "undefined" && "speechSynthesis" in window) {
+                    window.speechSynthesis.cancel()
+                  }
+                  setIsSpeaking(false)
                   setSoundEnabled((v) => !v)
                 }}
                 className={`h-6.5 w-6.5 rounded-lg flex items-center justify-center transition-all cursor-pointer ${
