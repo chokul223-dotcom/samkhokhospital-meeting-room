@@ -141,3 +141,96 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
 .animate-float-subtle {
   animation: float-subtle 4s ease-in-out infinite;
 }
+
+/* ─── Doctor Wai Animation Keyframes ─── */
+@keyframes doctor-wai {
+  0% {
+    transform: translateY(0) rotate(0deg) scale(1);
+  }
+  15% {
+    /* Upright standing inhale / attention */
+    transform: translateY(-2px) rotate(0deg) scale(1.005);
+  }
+  38% {
+    /* Bow head & hands lift in respectful wai */
+    transform: translateY(6px) rotate(-1.5deg) scale(0.985);
+  }
+  50% {
+    /* Peak respect hold */
+    transform: translateY(7px) rotate(-2deg) scale(0.98);
+  }
+  75% {
+    /* Graceful return upward */
+    transform: translateY(2px) rotate(-0.5deg) scale(0.995);
+  }
+  100% {
+    /* Return to upright standing posture */
+    transform: translateY(0) rotate(0deg) scale(1);
+  }
+}
+
+.animate-doctor-wai {
+  animation: doctor-wai 3.6s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+  transform-origin: bottom center;
+}
+
+@keyframes doctor-shadow {
+  0%, 100% {
+    transform: scaleX(1) scaleY(1);
+    opacity: 0.45;
+  }
+  15% {
+    transform: scaleX(0.95) scaleY(0.9);
+    opacity: 0.35;
+  }
+  45%, 55% {
+    transform: scaleX(1.12) scaleY(1.15);
+    opacity: 0.6;
+  }
+  75% {
+    transform: scaleX(1.02) scaleY(1.02);
+    opacity: 0.48;
+  }
+}
+
+.animate-doctor-shadow {
+  animation: doctor-shadow 3.6s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+}
+
+@keyframes sparkle-twinkle {
+  0%, 100% {
+    opacity: 0;
+    transform: scale(0.3) rotate(0deg);
+  }
+  40% {
+    opacity: 0.1;
+    transform: scale(0.6) rotate(45deg);
+  }
+  48%, 56% {
+    opacity: 1;
+    transform: scale(1.2) rotate(90deg);
+  }
+  65% {
+    opacity: 0;
+    transform: scale(0.4) rotate(135deg);
+  }
+}
+
+.animate-sparkle {
+  animation: sparkle-twinkle 3.6s ease-in-out infinite;
+}
+
+@keyframes speech-bubble-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.92);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-speech-pop {
+  animation: speech-bubble-pop 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}

@@ -14,6 +14,7 @@ import { useApp } from "../context/AppContext"
 import { LanguageSwitcher } from "../components/common/LanguageSwitcher"
 import { ThemeToggle } from "../components/common/ThemeToggle"
 import { VideoWidget } from "../components/common/VideoWidget"
+import { DoctorWaiAvatar } from "../components/common/DoctorWaiAvatar"
 import * as api from "../services/api"
 
 export const LoginView: React.FC = () => {
@@ -242,6 +243,9 @@ export const LoginView: React.FC = () => {
 
         {/* Floating Video Widget */}
         <VideoWidget />
+
+        {/* Floating Doctor Wai Avatar on Right Side */}
+        <DoctorWaiAvatar />
 
         {/* Main Login Card */}
         <div className="relative z-20 w-full max-w-md rounded-3xl bg-white/95 dark:bg-slate-900/90 p-8 shadow-2xl backdrop-blur-xl border border-white/20 dark:border-slate-800/80 animate-in fade-in zoom-in-95 duration-300 my-auto">
