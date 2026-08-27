@@ -324,21 +324,6 @@ export const DoctorWaiAvatar: React.FC = () => {
             {currentGreeting.subtitle}
           </p>
 
-          {/* Quick Tap to Listen Button */}
-          <div className="mt-2.5 flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800/80">
-            <button
-              type="button"
-              onClick={handleDoctorClick}
-              className="text-[11px] font-bold text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/70 hover:bg-sky-100 dark:hover:bg-sky-900/60 px-2.5 py-1 rounded-lg border border-sky-200 dark:border-sky-850 flex items-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95"
-            >
-              <Volume2 className="h-3.5 w-3.5 text-sky-500 animate-pulse" />
-              <span>{language === "th" ? "แตะเพื่อฟังเสียงพูด 🔊" : "Tap to listen 🔊"}</span>
-            </button>
-            <span className="text-[10px] text-slate-400 dark:text-slate-500">
-              {language === "th" ? "คลิกเปลี่ยนบท" : "Click to switch"}
-            </span>
-          </div>
-
           {/* Speech bubble pointer / arrow */}
           <div className="absolute -bottom-2 right-1/2 translate-x-1/2 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[8px] border-t-white/95 dark:border-t-slate-900/95 filter drop-shadow-xs" />
         </div>
