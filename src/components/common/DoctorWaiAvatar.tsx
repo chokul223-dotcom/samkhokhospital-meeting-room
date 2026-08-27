@@ -12,6 +12,8 @@ export const DoctorWaiAvatar: React.FC = () => {
   const hasSpokenWelcomeRef = useRef(false)
   const currentAudioRef = useRef<HTMLAudioElement | null>(null)
   const autoPlayingRef = useRef(false)
+  const isMountedRef = useRef(true)
+  const chainTimerRef = useRef<NodeJS.Timeout | null>(null)
 
   // Multilingual Greetings with Pure Female HD Audio Tracks
   const greetingsData = {
@@ -72,8 +74,38 @@ export const DoctorWaiAvatar: React.FC = () => {
   const currentGreetings = greetingsData[language] || greetingsData.th
   const currentGreeting = currentGreetings[greetingIndex % currentGreetings.length]
 
+  // Global Unmount Cleanup: Stop ALL audio immediately when leaving the login page
+  useEffect(() => {
+    isMountedRef.current = true
+    return () => {
+      isMountedRef.current = false
+      autoPlayingRef.current = false
+      if (chainTimerRef.current) {
+        clearTimeout(chainTimerRef.current)
+        chainTimerRef.current = null
+      }
+      if (currentAudioRef.current) {
+        try {
+          currentAudioRef.current.pause()
+          currentAudioRef.current.currentTime = 0
+        } catch {
+          // ignore
+        }
+        currentAudioRef.current = null
+      }
+      try {
+        if (typeof window !== "undefined" && window.speechSynthesis) {
+          window.speechSynthesis.cancel()
+        }
+      } catch {
+        // ignore
+      }
+    }
+  }, [])
+
   // Play gentle bell chime (Web Audio API)
   const playGentleChime = useCallback(() => {
+    if (!isMountedRef.current) return
     try {
       const AudioContext =
         window.AudioContext || (window as any).webkitAudioContext
@@ -103,7 +135,7 @@ export const DoctorWaiAvatar: React.FC = () => {
   // Guaranteed 100% Female Voice Audio Player (with optional onEnded callback for chaining)
   const playVoice = useCallback(
     (audioPath: string, onEnded?: () => void) => {
-      if (!soundEnabled) return
+      if (!soundEnabled || !isMountedRef.current) return
 
       try {
         if (currentAudioRef.current) {
@@ -117,29 +149,42 @@ export const DoctorWaiAvatar: React.FC = () => {
         audio.playbackRate = 0.92 // Slower, polite & clear
         audio.volume = 1.0
 
-        audio.onplay = () => setIsSpeaking(true)
+        audio.onplay = () => {
+          if (isMountedRef.current) setIsSpeaking(true)
+        }
         audio.onended = () => {
-          setIsSpeaking(false)
-          currentAudioRef.current = null
-          if (onEnded) onEnded()
+          if (isMountedRef.current) {
+            setIsSpeaking(false)
+            currentAudioRef.current = null
+            if (onEnded) onEnded()
+          }
         }
         audio.onerror = () => {
-          setIsSpeaking(false)
-          currentAudioRef.current = null
+          if (isMountedRef.current) {
+            setIsSpeaking(false)
+            currentAudioRef.current = null
+          }
         }
 
         const playPromise = audio.play()
         if (playPromise !== undefined) {
           playPromise
             .then(() => {
+              if (!isMountedRef.current) {
+                // If unmounted right as playback began, stop immediately
+                audio.pause()
+                audio.currentTime = 0
+                currentAudioRef.current = null
+                return
+              }
               hasSpokenWelcomeRef.current = true
             })
             .catch(() => {
-              setIsSpeaking(false)
+              if (isMountedRef.current) setIsSpeaking(false)
             })
         }
       } catch {
-        setIsSpeaking(false)
+        if (isMountedRef.current) setIsSpeaking(false)
       }
     },
     [soundEnabled],
@@ -148,18 +193,21 @@ export const DoctorWaiAvatar: React.FC = () => {
   // Auto-play all greetings sequentially: when one finishes, wait then play the next
   const playSequentialGreetings = useCallback(
     (greetings: typeof currentGreetings, startIndex: number) => {
+      if (!isMountedRef.current) return
       autoPlayingRef.current = true
       setGreetingIndex(startIndex)
 
       const playAtIndex = (idx: number) => {
-        if (!autoPlayingRef.current) return
+        if (!isMountedRef.current || !autoPlayingRef.current) return
         setGreetingIndex(idx)
         playVoice(greetings[idx].audioSrc, () => {
           const nextIdx = idx + 1
-          if (nextIdx < greetings.length && autoPlayingRef.current) {
-            // Wait 1.5s before playing next greeting
-            setTimeout(() => {
-              playAtIndex(nextIdx)
+          if (nextIdx < greetings.length && autoPlayingRef.current && isMountedRef.current) {
+            if (chainTimerRef.current) clearTimeout(chainTimerRef.current)
+            chainTimerRef.current = setTimeout(() => {
+              if (isMountedRef.current && autoPlayingRef.current) {
+                playAtIndex(nextIdx)
+              }
             }, 1500)
           } else {
             autoPlayingRef.current = false
@@ -174,24 +222,32 @@ export const DoctorWaiAvatar: React.FC = () => {
 
   // Welcome voice greeting on initial load (Direct autoplay attempt + reliable user gesture activation)
   useEffect(() => {
-    if (!soundEnabled) return
+    if (!soundEnabled || !isMountedRef.current) return
 
     const greetings = greetingsData[language] || greetingsData.th
 
     // 1. Attempt direct autoplay: start sequential playback from greeting 0
     const firstAudio = new Audio(greetings[0].audioSrc)
+    currentAudioRef.current = firstAudio
     firstAudio.playbackRate = 0.92
     firstAudio.volume = 1.0
 
-    firstAudio.onplay = () => setIsSpeaking(true)
+    firstAudio.onplay = () => {
+      if (isMountedRef.current) setIsSpeaking(true)
+    }
     firstAudio.onended = () => {
-      setIsSpeaking(false)
-      currentAudioRef.current = null
-      // After first greeting ends, continue with greeting 1, 2, 3...
-      if (greetings.length > 1) {
-        setTimeout(() => {
-          playSequentialGreetings(greetings, 1)
-        }, 1500)
+      if (isMountedRef.current) {
+        setIsSpeaking(false)
+        currentAudioRef.current = null
+        // After first greeting ends, continue with greeting 1, 2, 3...
+        if (greetings.length > 1 && autoPlayingRef.current) {
+          if (chainTimerRef.current) clearTimeout(chainTimerRef.current)
+          chainTimerRef.current = setTimeout(() => {
+            if (isMountedRef.current && autoPlayingRef.current) {
+              playSequentialGreetings(greetings, 1)
+            }
+          }, 1500)
+        }
       }
     }
 
@@ -199,8 +255,13 @@ export const DoctorWaiAvatar: React.FC = () => {
     if (autoplayPromise !== undefined) {
       autoplayPromise
         .then(() => {
+          if (!isMountedRef.current) {
+            firstAudio.pause()
+            firstAudio.currentTime = 0
+            currentAudioRef.current = null
+            return
+          }
           hasSpokenWelcomeRef.current = true
-          currentAudioRef.current = firstAudio
           autoPlayingRef.current = true
           playGentleChime()
         })
@@ -213,7 +274,7 @@ export const DoctorWaiAvatar: React.FC = () => {
     const gestureEvents = ["click", "pointerdown", "touchstart", "keydown"]
 
     const onUserInteraction = () => {
-      if (hasSpokenWelcomeRef.current) {
+      if (hasSpokenWelcomeRef.current || !isMountedRef.current) {
         removeGestureListeners()
         return
       }
@@ -239,6 +300,14 @@ export const DoctorWaiAvatar: React.FC = () => {
 
     return () => {
       removeGestureListeners()
+      if (chainTimerRef.current) {
+        clearTimeout(chainTimerRef.current)
+        chainTimerRef.current = null
+      }
+      if (firstAudio) {
+        firstAudio.pause()
+        firstAudio.currentTime = 0
+      }
     }
   }, [language, soundEnabled, playVoice, playGentleChime, playSequentialGreetings])
 
@@ -247,12 +316,14 @@ export const DoctorWaiAvatar: React.FC = () => {
   useEffect(() => {
     if (prevLangRef.current !== language) {
       prevLangRef.current = language
-      if (soundEnabled && hasSpokenWelcomeRef.current) {
+      if (soundEnabled && hasSpokenWelcomeRef.current && isMountedRef.current) {
         playGentleChime()
         const switchAudio =
           language === "th" ? "/audio/th-switch.mp3" : "/audio/en-switch.mp3"
         setTimeout(() => {
-          playVoice(switchAudio)
+          if (isMountedRef.current) {
+            playVoice(switchAudio)
+          }
         }, 300)
       }
     }
@@ -260,10 +331,16 @@ export const DoctorWaiAvatar: React.FC = () => {
 
   // Handle avatar click: restart sequential playback from next greeting
   const handleDoctorClick = () => {
+    if (!isMountedRef.current) return
     // Stop any current auto-play sequence
     autoPlayingRef.current = false
+    if (chainTimerRef.current) {
+      clearTimeout(chainTimerRef.current)
+      chainTimerRef.current = null
+    }
     if (currentAudioRef.current) {
       currentAudioRef.current.pause()
+      currentAudioRef.current.currentTime = 0
       currentAudioRef.current = null
     }
 
@@ -273,10 +350,14 @@ export const DoctorWaiAvatar: React.FC = () => {
 
     // Start sequential playback from the next greeting
     setTimeout(() => {
-      playSequentialGreetings(currentGreetings, nextIdx)
+      if (isMountedRef.current) {
+        playSequentialGreetings(currentGreetings, nextIdx)
+      }
     }, 250)
 
-    setTimeout(() => setShowHeart(false), 1200)
+    setTimeout(() => {
+      if (isMountedRef.current) setShowHeart(false)
+    }, 1200)
   }
 
   return (
