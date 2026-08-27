@@ -129,9 +129,13 @@ export const DoctorWaiAvatar: React.FC = () => {
 
         const playPromise = audio.play()
         if (playPromise !== undefined) {
-          playPromise.catch(() => {
-            setIsSpeaking(false)
-          })
+          playPromise
+            .then(() => {
+              hasSpokenWelcomeRef.current = true
+            })
+            .catch(() => {
+              setIsSpeaking(false)
+            })
         }
       } catch {
         setIsSpeaking(false)
@@ -140,39 +144,74 @@ export const DoctorWaiAvatar: React.FC = () => {
     [soundEnabled],
   )
 
-  // Welcome voice greeting on initial load (with user gesture fallback for browser policy)
+  // Welcome voice greeting on initial load (Instant direct autoplay + immediate gesture trigger)
   useEffect(() => {
     if (!soundEnabled) return
 
-    const triggerWelcomeVoice = () => {
-      if (hasSpokenWelcomeRef.current) return
+    const welcomeAudio =
+      language === "th" ? "/audio/th-welcome.mp3" : "/audio/en-welcome.mp3"
+
+    // 1. Attempt direct autoplay immediately
+    const audio = new Audio(welcomeAudio)
+    audio.playbackRate = 0.92
+    audio.volume = 1.0
+
+    audio.onplay = () => setIsSpeaking(true)
+    audio.onended = () => {
+      setIsSpeaking(false)
+      currentAudioRef.current = null
+    }
+
+    const autoplayPromise = audio.play()
+    if (autoplayPromise !== undefined) {
+      autoplayPromise
+        .then(() => {
+          hasSpokenWelcomeRef.current = true
+          currentAudioRef.current = audio
+          playGentleChime()
+        })
+        .catch(() => {
+          // Autoplay blocked by browser policy: wait for any user move/touch/click
+        })
+    }
+
+    // 2. Gesture trigger for any mouse movement, touch, click, scroll or keypress
+    const gestureEvents = [
+      "pointerdown",
+      "pointermove",
+      "mousemove",
+      "touchstart",
+      "scroll",
+      "keydown",
+      "click",
+    ]
+
+    const onUserInteraction = () => {
+      if (hasSpokenWelcomeRef.current) {
+        removeGestureListeners()
+        return
+      }
       hasSpokenWelcomeRef.current = true
       playGentleChime()
-      const welcomeAudio =
-        language === "th" ? "/audio/th-welcome.mp3" : "/audio/en-welcome.mp3"
-      setTimeout(() => {
-        playVoice(welcomeAudio)
-      }, 400)
+      playVoice(welcomeAudio)
+      removeGestureListeners()
     }
 
-    // Try direct autoplay
-    triggerWelcomeVoice()
-
-    // Fallback: trigger on first user click or tap anywhere if browser blocked initial speech
-    const handleFirstInteraction = () => {
-      if (!hasSpokenWelcomeRef.current) {
-        triggerWelcomeVoice()
-      }
-      window.removeEventListener("pointerdown", handleFirstInteraction)
-      window.removeEventListener("keydown", handleFirstInteraction)
+    const removeGestureListeners = () => {
+      gestureEvents.forEach((evt) => {
+        window.removeEventListener(evt, onUserInteraction)
+      })
     }
 
-    window.addEventListener("pointerdown", handleFirstInteraction)
-    window.addEventListener("keydown", handleFirstInteraction)
+    gestureEvents.forEach((evt) => {
+      window.addEventListener(evt, onUserInteraction, {
+        passive: true,
+        once: true,
+      })
+    })
 
     return () => {
-      window.removeEventListener("pointerdown", handleFirstInteraction)
-      window.removeEventListener("keydown", handleFirstInteraction)
+      removeGestureListeners()
     }
   }, [language, soundEnabled, playVoice, playGentleChime])
 
