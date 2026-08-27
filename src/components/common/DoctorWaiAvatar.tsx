@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from "react"
-import { X, Volume2, VolumeX, Heart } from "lucide-react"
+import { Volume2, Heart } from "lucide-react"
 import { useApp } from "../../context/AppContext"
 
 export const DoctorWaiAvatar: React.FC = () => {
   const { language } = useApp()
-  const [showBubble, setShowBubble] = useState(true)
   const [greetingIndex, setGreetingIndex] = useState(0)
-  const [soundEnabled, setSoundEnabled] = useState(true)
+  const [soundEnabled] = useState(true)
   const [isMinimized, setIsMinimized] = useState(false)
   const [showHeart, setShowHeart] = useState(false)
   const [isSpeaking, setIsSpeaking] = useState(false)
@@ -151,7 +150,6 @@ export const DoctorWaiAvatar: React.FC = () => {
     (greetings: typeof currentGreetings, startIndex: number) => {
       autoPlayingRef.current = true
       setGreetingIndex(startIndex)
-      setShowBubble(true)
 
       const playAtIndex = (idx: number) => {
         if (!autoPlayingRef.current) return
@@ -270,7 +268,6 @@ export const DoctorWaiAvatar: React.FC = () => {
     }
 
     const nextIdx = (greetingIndex + 1) % currentGreetings.length
-    setShowBubble(true)
     setShowHeart(true)
     playGentleChime()
 
@@ -287,82 +284,6 @@ export const DoctorWaiAvatar: React.FC = () => {
       className="fixed bottom-2 right-2 sm:bottom-4 sm:right-6 md:right-8 z-30 flex flex-col items-center select-none pointer-events-auto"
       style={{ maxWidth: "340px" }}
     >
-      {/* ─── Floating Speech Bubble ─── */}
-      {showBubble && !isMinimized && (
-        <div className="relative mb-2.5 w-68 sm:w-76 md:w-84 rounded-2xl bg-white/95 dark:bg-slate-900/95 px-4 py-3.5 shadow-2xl backdrop-blur-md border border-sky-100/90 dark:border-slate-700/80 animate-speech-pop text-left">
-          {/* Header Bar inside Bubble */}
-          <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-100 dark:border-slate-800">
-            <div className="flex items-center gap-1.5 min-w-0 pr-2">
-              <span
-                className={`inline-block h-2 w-2 rounded-full flex-none ${
-                  isSpeaking ? "bg-cyan-500 animate-ping" : "bg-emerald-500 animate-pulse"
-                }`}
-              />
-              <span className="text-xs font-bold text-sky-800 dark:text-sky-300 truncate">
-                {currentGreeting.title}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-1 flex-none">
-              {/* Sound Toggle */}
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  if (currentAudioRef.current) {
-                    currentAudioRef.current.pause()
-                    currentAudioRef.current = null
-                  }
-                  setIsSpeaking(false)
-                  setSoundEnabled((v) => !v)
-                }}
-                className={`h-6.5 w-6.5 rounded-lg flex items-center justify-center transition-all cursor-pointer ${
-                  soundEnabled
-                    ? "text-sky-600 bg-sky-50 dark:bg-slate-800 dark:text-sky-400 hover:bg-sky-100"
-                    : "text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800"
-                }`}
-                title={
-                  soundEnabled
-                    ? language === "th"
-                      ? "ปิดเสียงพูด"
-                      : "Mute voice"
-                    : language === "th"
-                      ? "เปิดเสียงพูด"
-                      : "Unmute voice"
-                }
-              >
-                {soundEnabled ? (
-                  <Volume2 className={`h-3.5 w-3.5 ${isSpeaking ? "animate-bounce" : ""}`} />
-                ) : (
-                  <VolumeX className="h-3.5 w-3.5" />
-                )}
-              </button>
-
-              {/* Close Button */}
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setShowBubble(false)
-                }}
-                className="h-6.5 w-6.5 rounded-lg flex items-center justify-center text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-slate-800 transition-all cursor-pointer"
-                title={language === "th" ? "ปิดกล่องข้อความ" : "Close"}
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          </div>
-
-          {/* Subtitle / Body text */}
-          <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-300">
-            {currentGreeting.subtitle}
-          </p>
-
-          {/* Speech bubble pointer / arrow */}
-          <div className="absolute -bottom-2 right-1/2 translate-x-1/2 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[8px] border-t-white/95 dark:border-t-slate-900/95 filter drop-shadow-xs" />
-        </div>
-      )}
-
       {/* ─── Doctor Character & Animation Container ─── */}
       {isMinimized ? (
         /* Minimized Floating Badge */
@@ -370,7 +291,6 @@ export const DoctorWaiAvatar: React.FC = () => {
           type="button"
           onClick={() => {
             setIsMinimized(false)
-            setShowBubble(true)
             handleDoctorClick()
           }}
           className="group flex items-center gap-2 rounded-full bg-white/95 dark:bg-slate-900/90 py-1.5 px-3.5 shadow-xl border border-sky-200 dark:border-slate-700 hover:scale-105 transition-all cursor-pointer"
