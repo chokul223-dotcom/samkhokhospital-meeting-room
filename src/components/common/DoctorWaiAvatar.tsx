@@ -27,7 +27,7 @@ export const DoctorWaiAvatar: React.FC = () => {
             ติดต่อฝ่ายสารสนเทศ โทร <span className="font-bold text-sky-600 dark:text-sky-400 whitespace-nowrap">02-199-3791-2</span>
           </span>
         ),
-        speechText: "หากต้องการความช่วยเหลือ สามารถติดต่อฝ่ายสารสนเทศ โทร 02-199-3791 ถึง 2 ได้นะคะ",
+        speechText: "หากต้องการความช่วยเหลือ สามารถติดต่อฝ่ายสารสนเทศ โทร 02-199-3791 ได้นะคะ",
       },
       {
         title: "ขอให้การประชุมราบรื่นนะคะ ✨",
@@ -99,7 +99,7 @@ export const DoctorWaiAvatar: React.FC = () => {
     }
   }, [])
 
-  // Web Speech API Text-to-Speech Engine
+  // Web Speech API Text-to-Speech Engine (Strictly Female Voice & Relaxed Slower Pace)
   const speakText = useCallback(
     (text: string, langCode: "th" | "en") => {
       if (!soundEnabled) return
@@ -110,26 +110,68 @@ export const DoctorWaiAvatar: React.FC = () => {
 
         const utterance = new SpeechSynthesisUtterance(text)
         utterance.lang = langCode === "th" ? "th-TH" : "en-US"
-        utterance.rate = langCode === "th" ? 0.95 : 0.92
-        utterance.pitch = 1.05
+        // Speak slower for a gentle, polite and clear cadence
+        utterance.rate = langCode === "th" ? 0.83 : 0.85
+        utterance.pitch = 1.15 // Pleasant, warm female pitch
 
-        // Pick preferred natural voice if available
+        // Strictly pick female voice
         const voices = window.speechSynthesis.getVoices()
         if (voices.length > 0) {
-          const targetLang = langCode === "th" ? "th" : "en"
-          const preferredVoice = voices.find(
-            (v) =>
-              v.lang.toLowerCase().startsWith(targetLang) &&
-              (v.name.includes("Female") ||
-                v.name.includes("Premwadee") ||
-                v.name.includes("Google") ||
-                v.name.includes("Natural") ||
-                v.name.includes("Samantha") ||
-                v.name.includes("Jenny")),
-          ) || voices.find((v) => v.lang.toLowerCase().startsWith(targetLang))
+          let selectedVoice: SpeechSynthesisVoice | undefined
 
-          if (preferredVoice) {
-            utterance.voice = preferredVoice
+          if (langCode === "th") {
+            selectedVoice =
+              voices.find(
+                (v) =>
+                  v.lang.toLowerCase().startsWith("th") &&
+                  (v.name.toLowerCase().includes("premwadee") ||
+                    v.name.toLowerCase().includes("kanya") ||
+                    v.name.toLowerCase().includes("narisa") ||
+                    v.name.toLowerCase().includes("achara") ||
+                    v.name.toLowerCase().includes("siri") ||
+                    v.name.toLowerCase().includes("female") ||
+                    v.name.toLowerCase().includes("google ภาษาไทย")),
+              ) ||
+              voices.find(
+                (v) =>
+                  v.lang.toLowerCase().startsWith("th") &&
+                  !v.name.toLowerCase().includes("niwat") &&
+                  !v.name.toLowerCase().includes("male"),
+              ) ||
+              voices.find((v) => v.lang.toLowerCase().startsWith("th"))
+          } else {
+            selectedVoice =
+              voices.find(
+                (v) =>
+                  v.lang.toLowerCase().startsWith("en") &&
+                  (v.name.toLowerCase().includes("zira") ||
+                    v.name.toLowerCase().includes("jenny") ||
+                    v.name.toLowerCase().includes("aria") ||
+                    v.name.toLowerCase().includes("samantha") ||
+                    v.name.toLowerCase().includes("victoria") ||
+                    v.name.toLowerCase().includes("karen") ||
+                    v.name.toLowerCase().includes("siri") ||
+                    v.name.toLowerCase().includes("ava") ||
+                    v.name.toLowerCase().includes("emma") ||
+                    v.name.toLowerCase().includes("sonia") ||
+                    v.name.toLowerCase().includes("female") ||
+                    v.name.toLowerCase().includes("google us english")) &&
+                  !v.name.toLowerCase().includes("david") &&
+                  !v.name.toLowerCase().includes("guy") &&
+                  !v.name.toLowerCase().includes("george") &&
+                  !v.name.toLowerCase().includes("mark") &&
+                  !v.name.toLowerCase().includes("male"),
+              ) ||
+              voices.find(
+                (v) =>
+                  v.lang.toLowerCase().startsWith("en") &&
+                  !v.name.toLowerCase().includes("male") &&
+                  !v.name.toLowerCase().includes("david"),
+              )
+          }
+
+          if (selectedVoice) {
+            utterance.voice = selectedVoice
           }
         }
 
