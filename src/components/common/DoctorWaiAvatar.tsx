@@ -12,6 +12,7 @@ export const DoctorWaiAvatar: React.FC = () => {
   const [isSpeaking, setIsSpeaking] = useState(false)
   const hasSpokenWelcomeRef = useRef(false)
   const currentAudioRef = useRef<HTMLAudioElement | null>(null)
+  const autoPlayingRef = useRef(false)
 
   // Multilingual Greetings with Pure Female HD Audio Tracks
   const greetingsData = {
@@ -100,9 +101,9 @@ export const DoctorWaiAvatar: React.FC = () => {
     }
   }, [])
 
-  // Guaranteed 100% Female Voice Audio Player
+  // Guaranteed 100% Female Voice Audio Player (with optional onEnded callback for chaining)
   const playVoice = useCallback(
-    (audioPath: string) => {
+    (audioPath: string, onEnded?: () => void) => {
       if (!soundEnabled) return
 
       try {
@@ -121,6 +122,7 @@ export const DoctorWaiAvatar: React.FC = () => {
         audio.onended = () => {
           setIsSpeaking(false)
           currentAudioRef.current = null
+          if (onEnded) onEnded()
         }
         audio.onerror = () => {
           setIsSpeaking(false)
@@ -144,30 +146,64 @@ export const DoctorWaiAvatar: React.FC = () => {
     [soundEnabled],
   )
 
+  // Auto-play all greetings sequentially: when one finishes, wait then play the next
+  const playSequentialGreetings = useCallback(
+    (greetings: typeof currentGreetings, startIndex: number) => {
+      autoPlayingRef.current = true
+      setGreetingIndex(startIndex)
+      setShowBubble(true)
+
+      const playAtIndex = (idx: number) => {
+        if (!autoPlayingRef.current) return
+        setGreetingIndex(idx)
+        playVoice(greetings[idx].audioSrc, () => {
+          const nextIdx = idx + 1
+          if (nextIdx < greetings.length && autoPlayingRef.current) {
+            // Wait 1.5s before playing next greeting
+            setTimeout(() => {
+              playAtIndex(nextIdx)
+            }, 1500)
+          } else {
+            autoPlayingRef.current = false
+          }
+        })
+      }
+
+      playAtIndex(startIndex)
+    },
+    [playVoice],
+  )
+
   // Welcome voice greeting on initial load (Direct autoplay attempt + reliable user gesture activation)
   useEffect(() => {
     if (!soundEnabled) return
 
-    const welcomeAudio =
-      language === "th" ? "/audio/th-welcome.mp3" : "/audio/en-welcome.mp3"
+    const greetings = greetingsData[language] || greetingsData.th
 
-    // 1. Attempt direct autoplay immediately on load
-    const audio = new Audio(welcomeAudio)
-    audio.playbackRate = 0.92
-    audio.volume = 1.0
+    // 1. Attempt direct autoplay: start sequential playback from greeting 0
+    const firstAudio = new Audio(greetings[0].audioSrc)
+    firstAudio.playbackRate = 0.92
+    firstAudio.volume = 1.0
 
-    audio.onplay = () => setIsSpeaking(true)
-    audio.onended = () => {
+    firstAudio.onplay = () => setIsSpeaking(true)
+    firstAudio.onended = () => {
       setIsSpeaking(false)
       currentAudioRef.current = null
+      // After first greeting ends, continue with greeting 1, 2, 3...
+      if (greetings.length > 1) {
+        setTimeout(() => {
+          playSequentialGreetings(greetings, 1)
+        }, 1500)
+      }
     }
 
-    const autoplayPromise = audio.play()
+    const autoplayPromise = firstAudio.play()
     if (autoplayPromise !== undefined) {
       autoplayPromise
         .then(() => {
           hasSpokenWelcomeRef.current = true
-          currentAudioRef.current = audio
+          currentAudioRef.current = firstAudio
+          autoPlayingRef.current = true
           playGentleChime()
         })
         .catch(() => {
@@ -185,8 +221,9 @@ export const DoctorWaiAvatar: React.FC = () => {
       }
 
       playGentleChime()
-      playVoice(welcomeAudio)
       hasSpokenWelcomeRef.current = true
+      // Start sequential playback from greeting 0 on first user interaction
+      playSequentialGreetings(greetings, 0)
       removeGestureListeners()
     }
 
@@ -205,7 +242,7 @@ export const DoctorWaiAvatar: React.FC = () => {
     return () => {
       removeGestureListeners()
     }
-  }, [language, soundEnabled, playVoice, playGentleChime])
+  }, [language, soundEnabled, playVoice, playGentleChime, playSequentialGreetings])
 
   // Handle language switch: speak in newly selected language if user changed it
   const prevLangRef = useRef(language)
@@ -223,30 +260,27 @@ export const DoctorWaiAvatar: React.FC = () => {
     }
   }, [language, soundEnabled, playVoice, playGentleChime])
 
-  // Handle avatar click
+  // Handle avatar click: restart sequential playback from next greeting
   const handleDoctorClick = () => {
+    // Stop any current auto-play sequence
+    autoPlayingRef.current = false
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause()
+      currentAudioRef.current = null
+    }
+
     const nextIdx = (greetingIndex + 1) % currentGreetings.length
-    setGreetingIndex(nextIdx)
     setShowBubble(true)
     setShowHeart(true)
     playGentleChime()
 
-    const nextGreeting = currentGreetings[nextIdx]
+    // Start sequential playback from the next greeting
     setTimeout(() => {
-      playVoice(nextGreeting.audioSrc)
+      playSequentialGreetings(currentGreetings, nextIdx)
     }, 250)
 
     setTimeout(() => setShowHeart(false), 1200)
   }
-
-  // Auto rotate greeting after some time if open
-  useEffect(() => {
-    if (!showBubble) return
-    const interval = setInterval(() => {
-      setGreetingIndex((prev) => (prev + 1) % currentGreetings.length)
-    }, 12000)
-    return () => clearInterval(interval)
-  }, [showBubble, currentGreetings.length])
 
   return (
     <div
@@ -373,8 +407,8 @@ export const DoctorWaiAvatar: React.FC = () => {
 
           {/* Speaking Audio Wave Pulse Indicator */}
           {isSpeaking && (
-            <div className="absolute -top-3 z-30 flex items-center gap-1 bg-sky-500/90 text-white px-2.5 py-0.5 rounded-full text-[10px] font-bold shadow-md animate-pulse">
-              <Volume2 className="h-3 w-3" />
+            <div className="absolute -top-3 z-30 flex items-center gap-1 bg-sky-500/90 text-white px-2.5 py-0.5 rounded-full text-[10px] font-bold shadow-md animate-pulse whitespace-nowrap">
+              <Volume2 className="h-3 w-3 flex-none" />
               <span>{language === "th" ? "กำลังพูด..." : "Speaking..."}</span>
             </div>
           )}
