@@ -19,72 +19,26 @@ const TOMORROW = new Date(Date.now() + 86400000).toISOString().split("T")[0]
 const DEFAULT_ROOMS: Room[] = [
   {
     id: "r1",
-    name: "ห้องประชุมใหญ่ (Grand Hall)",
-    capacity: 60,
-    location: "อาคาร A ชั้น 2",
-    equipment: [
-      "โปรเจคเตอร์ 4K",
-      "ไมโครโฟนไร้สาย 4 ตัว",
-      "จอภาพ LED ขนาดใหญ่",
-      "ระบบเสียงห้องประชุม",
-      "ระบบบันทึกเสียง",
-    ],
+    name: "ห้องประชุมเล็ก 1",
+    capacity: 15,
+    location: "อาคาร A ชั้น 1",
+    equipment: ["โปรเจคเตอร์", "กระดานไวท์บอร์ด"],
     status: "available",
   },
   {
     id: "r2",
-    name: "ห้องประชุมวิชาการแพทย์ 1",
-    capacity: 25,
-    location: "อาคาร A ชั้น 1",
-    equipment: [
-      "โปรเจคเตอร์ HD",
-      "กระดานไวท์บอร์ดอัจฉริยะ",
-      "ระบบวิดีโอคอนเฟอเรนซ์",
-      "ไมโครโฟนตั้งโต๊ะ",
-    ],
+    name: "ห้องประชุมใหญ่",
+    capacity: 50,
+    location: "อาคาร A ชั้น 2",
+    equipment: ["โปรเจคเตอร์", "ไมโครโฟน", "จอภาพ", "ระบบเสียง"],
     status: "available",
-  },
-  {
-    id: "r3",
-    name: "ห้องประชุมกลุ่มงานการพยาบาล",
-    capacity: 20,
-    location: "อาคาร B ชั้น 3",
-    equipment: ["สมาร์ททีวี 75 นิ้ว", "กระดานไวท์บอร์ด", "ระบบ Zoom Meeting"],
-    status: "available",
-  },
-  {
-    id: "r4",
-    name: "ห้องอบรมสัมมนาบุคลากร (Auditorium)",
-    capacity: 100,
-    location: "อาคาร C ชั้น 1",
-    equipment: [
-      "โปรเจคเตอร์ x2",
-      "ระบบเสียงรอบทิศทาง",
-      "เวทีบรรยาย",
-      "ไมโครโฟน 6 ตัว",
-      "ระบบถ่ายทอดสด",
-    ],
-    status: "available",
-  },
-  {
-    id: "r5",
-    name: "ห้องประชุมผู้บริหาร VIP",
-    capacity: 12,
-    location: "อาคาร A ชั้น 3",
-    equipment: [
-      "จอภาพ 4K",
-      "กล้องหมุนตามเสียง",
-      "ระบบเสียง Conference",
-      "มุมชา/กาแฟรับรอง",
-    ],
-    status: "maintenance",
   },
 ]
 
 const DEFAULT_BOOKINGS: Booking[] = [
   {
     id: "b1",
-    roomId: "r1",
+    roomId: "r2",
     userId: "u2",
     date: TODAY,
     startTime: "09:00",
@@ -96,50 +50,38 @@ const DEFAULT_BOOKINGS: Booking[] = [
   },
   {
     id: "b2",
-    roomId: "r2",
+    roomId: "r1",
     userId: "u3",
     date: TODAY,
     startTime: "13:00",
     endTime: "15:00",
     purpose: "ประชุมพัฒนาคุณภาพมาตรฐาน HA ทีมพยาบาล",
-    attendees: 18,
+    attendees: 12,
     status: "pending",
     createdAt: TODAY,
   },
   {
     id: "b3",
-    roomId: "r3",
+    roomId: "r1",
     userId: "u4",
     date: TOMORROW,
     startTime: "10:00",
     endTime: "12:00",
     purpose: "อบรมระบบจ่ายยาและความปลอดภัยทางเภสัชกรรม",
-    attendees: 16,
+    attendees: 10,
     status: "approved",
     createdAt: TODAY,
   },
   {
     id: "b4",
-    roomId: "r4",
+    roomId: "r2",
     userId: "u2",
     date: TOMORROW,
     startTime: "13:30",
     endTime: "16:30",
     purpose: "สัมมนาการดูแลผู้ป่วยฉุกเฉินประจำปี 2569",
-    attendees: 75,
+    attendees: 45,
     status: "pending",
-    createdAt: TODAY,
-  },
-  {
-    id: "b5",
-    roomId: "r2",
-    userId: "u3",
-    date: TODAY,
-    startTime: "08:00",
-    endTime: "09:00",
-    purpose: "Morning Briefing ประจำวันทีมเวชปฏิบัติ",
-    attendees: 10,
-    status: "approved",
     createdAt: TODAY,
   },
 ]
@@ -209,6 +151,8 @@ interface AppContextType {
     u: Partial<User> & { username: string; name: string },
   ) => Promise<void>
   handleDeleteUser: (id: string) => Promise<void>
+  handleRegisterUser: (u: { username: string; name: string; password?: string }) => Promise<void>
+  handleUpdateProfile: (u: Partial<User> & { id: string }) => Promise<void>
   handleClearAllBookings: () => Promise<void>
 }
 
@@ -231,7 +175,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   )
   const [rooms, setRooms] = useState<Room[]>(DEFAULT_ROOMS)
   const [bookings, setBookings] = useState<Booking[]>(DEFAULT_BOOKINGS)
-  const [users, setUsers] = useState<User[]>(DEFAULT_USERS)
+  const [users, setUsers] = useState<User[]>(() => {
+    let initialUsers = [...DEFAULT_USERS]
+    try {
+      const stored = localStorage.getItem("registered_users")
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        if (Array.isArray(parsed)) {
+          const newUsers = parsed.map((u: any) => ({
+            id: u.id,
+            name: u.name,
+            department: u.department || "รอการตรวจสอบ",
+            role: u.role || "user",
+            username: u.username,
+            avatarUrl: u.avatarUrl,
+          }))
+          newUsers.forEach((nu: any) => {
+            if (!initialUsers.find((u) => u.id === nu.id || u.username === nu.username)) {
+              initialUsers.push(nu)
+            }
+          })
+        }
+      }
+    } catch {}
+    // Dedup by id (keep last)
+    const seen = new Map<string, User>()
+    for (const u of initialUsers) seen.set(u.id, u)
+    return Array.from(seen.values())
+  })
   const [loading, setLoading] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
 
@@ -468,6 +439,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
             u.id === userData.id ? { ...u, ...userData } as User : u,
           ),
         )
+        try {
+          const stored = localStorage.getItem("registered_users")
+          if (stored) {
+            let parsed = JSON.parse(stored)
+            parsed = parsed.map((u: any) => u.id === userData.id ? { ...u, ...userData } : u)
+            localStorage.setItem("registered_users", JSON.stringify(parsed))
+          }
+        } catch {}
       } else {
         const newU: User = {
           id: "u" + Date.now(),
@@ -477,6 +456,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
           username: userData.username,
         }
         setUsers((prev) => [...prev, newU])
+        try {
+          const stored = localStorage.getItem("registered_users")
+          const parsed = stored ? JSON.parse(stored) : []
+          parsed.push({ ...newU, password: "Password123" })
+          localStorage.setItem("registered_users", JSON.stringify(parsed))
+        } catch {}
       }
     }
     showToast(isEdit ? t.toastUserEdited : t.toastUserAdded)
@@ -487,9 +472,89 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       await api.deleteUser(id)
     } catch {
       // Offline fallback
+      try {
+        const stored = localStorage.getItem("registered_users")
+        if (stored) {
+          let parsed = JSON.parse(stored)
+          parsed = parsed.filter((u: any) => u.id !== id)
+          localStorage.setItem("registered_users", JSON.stringify(parsed))
+        }
+      } catch {}
     }
     setUsers((prev) => prev.filter((u) => u.id !== id))
     showToast(t.toastUserDeleted)
+  }
+
+  const handleRegisterUser = async (u: { username: string; name: string; password?: string }) => {
+    try {
+      const created = await api.register?.({ username: u.username, password: u.password || "", name: u.name })
+      if (created) {
+        setUsers((prev) => {
+          if (prev.find((x) => x.username === u.username)) return prev
+          return [...prev, { ...created.user, department: "" } as any]
+        })
+      }
+    } catch {
+      // Offline fallback — do NOT push here; LoginView already wrote to registered_users
+      // and AppContext init will pick it up on next load. Just keep state in sync.
+      setUsers((prev) => {
+        if (prev.find((x) => x.username === u.username)) return prev
+        const newU: User = {
+          id: "u" + Date.now(),
+          name: u.name,
+          department: "",
+          role: "user",
+          username: u.username,
+        }
+        // Also update the localStorage entry to use the same id
+        try {
+          const stored = localStorage.getItem("registered_users")
+          if (stored) {
+            const parsed: any[] = JSON.parse(stored)
+            const idx = parsed.findIndex((x) => x.username === u.username)
+            if (idx >= 0) {
+              parsed[idx].id = newU.id
+              localStorage.setItem("registered_users", JSON.stringify(parsed))
+            }
+          }
+        } catch {}
+        return [...prev, newU]
+      })
+    }
+  }
+
+  const handleUpdateProfile = async (
+    userData: Partial<User> & { id: string },
+  ) => {
+    setCurrentUserState((prev) => {
+      if (!prev) return null
+      const updated = { ...prev, ...userData }
+      localStorage.setItem("user", JSON.stringify(updated))
+      return updated
+    })
+
+    setUsers((prev) =>
+      prev.map((u) => (u.id === userData.id ? ({ ...u, ...userData } as User) : u)),
+    )
+
+    try {
+      await api.updateUser(userData.id, userData as any)
+    } catch {
+      // Offline fallback
+    }
+
+    try {
+      const stored = localStorage.getItem("registered_users")
+      if (stored) {
+        let parsed = JSON.parse(stored)
+        parsed = parsed.map((u: any) =>
+          u.id === userData.id ? { ...u, ...userData } : u,
+        )
+        localStorage.setItem("registered_users", JSON.stringify(parsed))
+      }
+    } catch {}
+
+    showToast(language === "th" ? "บันทึกข้อมูลส่วนตัวเรียบร้อยแล้ว" : "Profile updated successfully")
   }
 
   const handleClearAllBookings = async () => {
@@ -525,6 +590,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     handleDeleteRoom,
     handleSaveUser,
     handleDeleteUser,
+    handleRegisterUser,
+    handleUpdateProfile,
     handleClearAllBookings,
   }
 

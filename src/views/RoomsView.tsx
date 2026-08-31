@@ -1,17 +1,18 @@
 import React, { useState } from "react"
 import {
-  DoorOpen,
-  MapPin,
-  Users,
   Calendar,
-  Wrench,
+  Building2,
+  Search,
+  ShoppingBag,
+  Info,
   Edit2,
   Trash2,
   Plus,
 } from "lucide-react"
 import { Room } from "../types"
 import { useApp } from "../context/AppContext"
-import { Badge } from "../components/common/Badge"
+import { RoomDetailModal } from "../components/modals/RoomDetailModal"
+import { getRoomColor, getRoomImage } from "../constants/roomColors"
 import {
   formatRoomName,
   formatRoomLocation,
@@ -33,168 +34,230 @@ export const RoomsView: React.FC<RoomsViewProps> = ({
   onOpenBookingModal,
   onOpenConfirmModal,
 }) => {
-  const { t, language, rooms, bookings, currentUser, handleDeleteRoom } = useApp()
+  const { t, language, rooms, currentUser, handleDeleteRoom } = useApp()
   const isAdmin = currentUser?.role === "admin"
-  const todayStr = new Date().toISOString().split("T")[0]
 
-  const [filter, setFilter] = useState<"all" | "available" | "maintenance">(
-    "all",
-  )
+  const [entriesPerPage, setEntriesPerPage] = useState(10)
+  const [detailRoom, setDetailRoom] = useState<Room | null>(null)
+  const [searchQuery, setSearchQuery] = useState("")
 
   const filteredRooms = rooms.filter((r) => {
-    if (filter === "all") return true
-    return r.status === filter
+    if (!searchQuery.trim()) return true
+    const q = searchQuery.toLowerCase()
+    const name = formatRoomName(r, language).toLowerCase()
+    const loc = formatRoomLocation(r.location, language).toLowerCase()
+    return name.includes(q) || loc.includes(q)
   })
 
+  const displayedRooms = filteredRooms.slice(0, entriesPerPage)
+
+  const handleBookClick = (roomId: string) => {
+    if (!currentUser) {
+      alert(
+        language === "th"
+          ? "กรุณาเข้าระบบ ก่อนดำเนินการต่อ"
+          : "Please sign in before proceeding",
+      )
+      return
+    }
+    onOpenBookingModal(roomId)
+  }
+
+  // Room custom description helper
+  const getRoomDescription = (room: Room) => {
+    if (language === "th") {
+      if (room.id === "r1") {
+        return "ห้องประชุมขนาดเล็ก พร้อมอุปกรณ์นำเสนอและไวท์บอร์ด"
+      }
+      if (room.id === "r2") {
+        return "ห้องประชุมขนาดใหญ่ รองรับการประชุม สัมมนา และระบบเสียงครบครัน"
+      }
+      return room.status === "available"
+        ? "ห้องประชุมพร้อมสิ่งอำนวยความสะดวกครบครัน"
+        : "ห้องอยู่ระหว่างปิดปรับปรุง/ซ่อมบำรุง"
+    } else {
+      return room.status === "available"
+        ? "Fully equipped meeting room"
+        : "Currently under maintenance"
+    }
+  }
+
   return (
-    <div className="space-y-6 animate-in fade-in duration-200">
-      {/* Top Header & Filter Chips */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-5 shadow-xs">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setFilter("all")}
-            className={`rounded-xl px-3.5 py-2 text-xs font-bold transition-all ${filter === "all"
-                ? "bg-blue-600 text-white shadow-xs"
-                : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200"
-              }`}
+    <div className="space-y-4 animate-in fade-in duration-200">
+      {/* ─── 1. Breadcrumb ─── */}
+      <div className="flex items-center gap-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-4 py-2.5 text-xs font-semibold text-slate-600 dark:text-slate-300 shadow-xs">
+        <Calendar className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
+        <span className="text-slate-800 dark:text-slate-200">
+          {t.roomBreadcrumb || "ห้องประชุม / รายการ"}
+        </span>
+      </div>
+
+      {/* ─── 2. Heading Title ─── */}
+      <div className="flex items-center gap-2.5 pt-1">
+        <Building2 className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+        <h2 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+          {t.roomCatalogTitle || "รายการ ห้องประชุม"}
+        </h2>
+      </div>
+
+      {/* ─── 3. Entries Selector & Search Toolbar ─── */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-1">
+        <div className="flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-300">
+          <span>{t.showEntries || "แสดง"}</span>
+          <select
+            value={entriesPerPage}
+            onChange={(e) => setEntriesPerPage(Number(e.target.value))}
+            className="rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 px-2.5 py-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500/40 cursor-pointer shadow-xs"
           >
-            {t.all} ({rooms.length})
-          </button>
-          <button
-            onClick={() => setFilter("available")}
-            className={`rounded-xl px-3.5 py-2 text-xs font-bold transition-all ${filter === "available"
-                ? "bg-emerald-600 text-white shadow-xs"
-                : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200"
-              }`}
-          >
-            {t.available} (
-            {rooms.filter((r) => r.status === "available").length})
-          </button>
-          <button
-            onClick={() => setFilter("maintenance")}
-            className={`rounded-xl px-3.5 py-2 text-xs font-bold transition-all ${filter === "maintenance"
-                ? "bg-amber-600 text-white shadow-xs"
-                : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200"
-              }`}
-          >
-            {t.maintenance} (
-            {rooms.filter((r) => r.status === "maintenance").length})
+            <option value={10} className="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200">
+              10 รายการ
+            </option>
+            <option value={20} className="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200">
+              20 รายการ
+            </option>
+            <option value={30} className="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200">
+              30 รายการ
+            </option>
+            <option value={50} className="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200">
+              50 รายการ
+            </option>
+          </select>
+
+          <button className="px-3.5 py-1.5 rounded-full bg-rose-600 hover:bg-rose-700 active:scale-95 text-white text-xs font-bold shadow-xs cursor-pointer transition-all">
+            Go
           </button>
         </div>
 
-        {isAdmin && (
-          <button
-            onClick={() => onOpenRoomModal()}
-            className="flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-md shadow-blue-600/20 hover:bg-blue-700 active:scale-95 transition-all"
-          >
-            <Plus className="h-4 w-4" />
-            <span>{t.addRoom}</span>
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {/* Search Input */}
+          <div className="relative">
+            <input
+              type="text"
+              placeholder={
+                language === "th"
+                  ? "ค้นหาห้องประชุม..."
+                  : "Search rooms..."
+              }
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full sm:w-56 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 pl-8 pr-3 py-1.5 text-xs font-medium text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            />
+            <Search className="pointer-events-none absolute left-2.5 top-2 h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
+          </div>
+
+          {/* Admin Add Room */}
+          {isAdmin && (
+            <button
+              onClick={() => onOpenRoomModal()}
+              className="flex items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-blue-700 active:scale-95 transition-all cursor-pointer"
+            >
+              <Plus className="h-4 w-4" />
+              <span>{t.addRoom}</span>
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Rooms Showcase Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-        {filteredRooms.map((room) => {
-          const todayCount = bookings.filter(
-            (b) =>
-              b.roomId === room.id &&
-              b.date === todayStr &&
-              b.status === "approved",
-          ).length
+      {/* ─── 4. Summary Info Bar ─── */}
+      <div className="rounded-lg bg-slate-100 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700 px-4 py-2 text-xs text-slate-600 dark:text-slate-300 font-medium">
+        {language === "th"
+          ? `ทั้งหมด ${filteredRooms.length} รายการ, แสดง 1 ถึง ${Math.min(entriesPerPage, filteredRooms.length)}, หน้าที่ 1 จากทั้งหมด 1 หน้า`
+          : `Total ${filteredRooms.length} items, showing 1 to ${Math.min(entriesPerPage, filteredRooms.length)}, page 1 of 1`}
+      </div>
 
-          const isAvailable = room.status === "available"
+      {/* ─── 5. Room List Table ─── */}
+      <div className="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
+        {/* Table Column Header */}
+        <div className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/90 px-5 py-2.5 text-center text-xs font-bold text-slate-600 dark:text-slate-300">
+          {language === "th" ? "รายละเอียด" : "Details"}
+        </div>
 
-          return (
-            <div
-              key={room.id}
-              className="group flex flex-col rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs hover:shadow-lg transition-all duration-300 overflow-hidden"
-            >
-              {/* Top Accent Gradient Bar */}
+        {/* Rows */}
+        <div className="divide-y divide-slate-100 dark:divide-slate-800">
+          {displayedRooms.map((room, idx) => {
+            const isAvailable = room.status === "available"
+
+            return (
               <div
-                className={`h-2.5 w-full bg-gradient-to-r ${isAvailable
-                    ? "from-blue-600 via-cyan-500 to-emerald-500"
-                    : "from-amber-500 to-rose-500"
-                  }`}
-              />
-
-              <div className="p-6 flex-1 flex flex-col justify-between space-y-5">
-                {/* Header & Status */}
-                <div className="space-y-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <h3 className="text-base font-bold text-slate-900 dark:text-white truncate">
-                        {formatRoomName(room, language)}
-                      </h3>
-                      <p className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 mt-1">
-                        <MapPin className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400 flex-none" />
-                        <span className="truncate">{formatRoomLocation(room.location, language)}</span>
-                      </p>
-                    </div>
-                    <Badge status={room.status} />
+                key={room.id}
+                className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-4 hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors"
+              >
+                {/* Left: Thumbnail & Info */}
+                <div className="flex items-start gap-4 min-w-0 flex-1">
+                  {/* Photo */}
+                  <div className="w-28 h-20 sm:w-32 sm:h-20 flex-none rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xs">
+                    <img
+                      src={room.imageUrl || getRoomImage(room.id, idx)}
+                      alt={formatRoomName(room, language)}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.src = "/logo.png"
+                        e.currentTarget.className =
+                          "w-full h-full object-contain p-2 bg-slate-100 dark:bg-slate-800"
+                      }}
+                    />
                   </div>
 
-                  {/* Room Metrics */}
-                  <div className="grid grid-cols-2 gap-2 pt-1">
-                    <div className="flex items-center gap-2 rounded-2xl bg-slate-50 dark:bg-slate-800/60 p-2.5 text-xs text-slate-700 dark:text-slate-300 font-semibold border border-slate-100 dark:border-slate-800">
-                      <Users className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                      <span>
-                        {room.capacity} {t.people}
+                  {/* Badges & Description */}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span
+                        className={`inline-block px-3 py-1 rounded-md text-xs font-bold ${
+                          idx === 0
+                            ? "bg-pink-500 dark:bg-pink-600 text-white"
+                            : "bg-purple-600 dark:bg-purple-600 text-white"
+                        } shadow-xs`}
+                      >
+                        {formatRoomName(room, language)} [{room.id.toUpperCase()}]
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-2 rounded-2xl bg-slate-50 dark:bg-slate-800/60 p-2.5 text-xs text-slate-700 dark:text-slate-300 font-semibold border border-slate-100 dark:border-slate-800">
-                      <Calendar className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
-                      <span>
-                        {t.todayItems.replace("{count}", String(todayCount))}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Equipment Badges */}
-                  <div>
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">
-                      {t.availableEquipment}
+                    <p className="text-xs text-slate-600 dark:text-slate-300 mt-1.5">
+                      {getRoomDescription(room)}
                     </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {room.equipment.map((eq, idx) => (
-                        <span
-                          key={idx}
-                          className="inline-flex items-center rounded-xl bg-slate-100 dark:bg-slate-800 px-2.5 py-1 text-[11px] font-medium text-slate-700 dark:text-slate-300"
-                        >
-                          {formatEquipment(eq, language)}
-                        </span>
-                      ))}
-                    </div>
+
+                    <p className="text-[11px] text-slate-400 dark:text-slate-400 mt-1">
+                      {formatRoomLocation(room.location, language)} •{" "}
+                      {room.capacity} {t.people || "ที่นั่ง"}
+                    </p>
                   </div>
                 </div>
 
-                {/* Card Footer Actions */}
-                <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
-                  {isAvailable ? (
-                    <button
-                      onClick={() => onOpenBookingModal(room.id)}
-                      className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-blue-700 active:scale-95 transition-all cursor-pointer"
-                    >
-                      <Plus className="h-3.5 w-3.5" />
-                      <span>{t.quickBook}</span>
-                    </button>
-                  ) : (
-                    <span className="flex-1 text-center text-xs font-semibold text-amber-600 dark:text-amber-400 py-2">
-                      ⚠️ {t.maintenanceNotice}
-                    </span>
-                  )}
+                {/* Right: Blue 'จองห้องประชุม' & Orange 'รายละเอียด' Buttons */}
+                <div className="flex items-center gap-2 flex-none self-end md:self-center">
+                  {/* Blue Book Button */}
+                  <button
+                    onClick={() => handleBookClick(room.id)}
+                    className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-bold shadow-xs transition-all cursor-pointer ${
+                      isAvailable
+                        ? "bg-[#0070e0] hover:bg-[#005fb8] text-white"
+                        : "bg-slate-300 dark:bg-slate-700 text-slate-500 dark:text-slate-400 cursor-not-allowed"
+                    }`}
+                    disabled={!isAvailable}
+                  >
+                    <ShoppingBag className="h-3.5 w-3.5" />
+                    <span>{t.bookRoomsNav || "จองห้องประชุม"}</span>
+                  </button>
 
+                  {/* Orange Detail Button */}
+                  <button
+                    onClick={() => setDetailRoom(room)}
+                    className="flex items-center gap-1.5 rounded-lg bg-[#f26522] hover:bg-[#d9531e] text-white px-4 py-2 text-xs font-bold shadow-xs transition-all cursor-pointer"
+                  >
+                    <Info className="h-3.5 w-3.5" />
+                    <span>{t.roomDetails || "รายละเอียด"}</span>
+                  </button>
+
+                  {/* Admin Edit/Delete */}
                   {isAdmin && (
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1 ml-1">
                       <button
                         onClick={() => onOpenRoomModal(room)}
                         title={t.edit}
-                        className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-950/60 hover:text-blue-600 transition-colors"
+                        className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-950/60 hover:text-blue-600 transition-colors cursor-pointer"
                       >
                         <Edit2 className="h-3.5 w-3.5" />
                       </button>
-
                       <button
                         onClick={() =>
                           onOpenConfirmModal({
@@ -204,7 +267,7 @@ export const RoomsView: React.FC<RoomsViewProps> = ({
                           })
                         }
                         title={t.delete}
-                        className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-rose-50 dark:hover:bg-rose-950/60 hover:text-rose-600 transition-colors"
+                        className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-rose-50 dark:hover:bg-rose-950/60 hover:text-rose-600 transition-colors cursor-pointer"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
@@ -212,10 +275,19 @@ export const RoomsView: React.FC<RoomsViewProps> = ({
                   )}
                 </div>
               </div>
-            </div>
-          )
-        })}
+            )
+          })}
+        </div>
       </div>
+
+      {/* ─── 6. Room Detail Modal (Photo + Table) ─── */}
+      {detailRoom && (
+        <RoomDetailModal
+          room={detailRoom}
+          onClose={() => setDetailRoom(null)}
+          onOpenBookingModal={(roomId) => handleBookClick(roomId)}
+        />
+      )}
     </div>
   )
 }

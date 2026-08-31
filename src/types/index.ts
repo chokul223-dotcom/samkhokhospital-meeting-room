@@ -13,6 +13,14 @@ export interface User {
   username: string
   password?: string
   createdAt?: string
+  gender?: string
+  citizenId?: string
+  phone?: string
+  address?: string
+  country?: string
+  province?: string
+  zipcode?: string
+  avatarUrl?: string
 }
 
 export interface Room {
@@ -22,6 +30,7 @@ export interface Room {
   location: string
   equipment: string[]
   status: RoomStatus
+  imageUrl?: string
 }
 
 export interface Booking {
@@ -48,4 +57,12 @@ export interface LoginResponse {
     role: Role
     username: string
   }
+}
+
+export interface CookieConsentPreferences {
+  necessary: boolean
+  functional: boolean
+  analytics: boolean
+  hasAnswered: boolean
+  updatedAt?: string
 }

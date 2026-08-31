@@ -53,6 +53,12 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
   filter: invert(0.9) brightness(1.2);
 }
 
+/* Remove default browser password reveal eye icon */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+  display: none;
+}
+
 /* Glassmorphism Utilities */
 .glass-panel {
   background: rgba(255, 255, 255, 0.85);

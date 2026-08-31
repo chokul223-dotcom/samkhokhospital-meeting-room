@@ -173,13 +173,61 @@ const LocalizedDatePicker: React.FC<DatePickerProps> = ({ value, min, onChange, 
   )
 }
 
+// ─── 24-Hour Time Selector ────────────────────────────────────────────────────
+interface TimeSelect24Props {
+  value: string // "HH:MM"
+  onChange: (val: string) => void
+}
+const TimeSelect24: React.FC<TimeSelect24Props> = ({ value, onChange }) => {
+  const [h, m] = value.split(':').map(Number)
+  const hours = Array.from({ length: 24 }, (_, i) => i)
+  const minutes = [0, 15, 30, 45]
+  const selectClass =
+    'rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-3 py-2.5 text-sm font-medium text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer'
+  return (
+    <div className="flex items-center gap-2">
+      <select
+        value={isNaN(h) ? 9 : h}
+        onChange={e => {
+          const newH = Number(e.target.value)
+          const newM = isNaN(m) ? 0 : m
+          onChange(`${String(newH).padStart(2, '0')}:${String(newM).padStart(2, '0')}`)
+        }}
+        className={selectClass}
+      >
+        {hours.map(hh => (
+          <option key={hh} value={hh}>
+            {String(hh).padStart(2, '0')}
+          </option>
+        ))}
+      </select>
+      <span className="text-slate-500 dark:text-slate-400 font-bold text-sm">:</span>
+      <select
+        value={isNaN(m) ? 0 : m}
+        onChange={e => {
+          const newM = Number(e.target.value)
+          const newH = isNaN(h) ? 9 : h
+          onChange(`${String(newH).padStart(2, '0')}:${String(newM).padStart(2, '0')}`)
+        }}
+        className={selectClass}
+      >
+        {minutes.map(mm => (
+          <option key={mm} value={mm}>
+            {String(mm).padStart(2, '0')}
+          </option>
+        ))}
+      </select>
+    </div>
+  )
+}
+
 // ─── Main BookingModal ─────────────────────────────────────────────────────────
 export const BookingModal: React.FC<BookingModalProps> = ({
   initialRoomId,
   initialDate,
   onClose,
 }) => {
-  const { t, language, rooms, bookings, handleBookingSubmit } = useApp()
+  const { t, language, rooms, bookings, handleBookingSubmit, currentUser } = useApp()
 
   const availableRooms = useMemo(() => rooms.filter(r => r.status === 'available'), [rooms])
   const todayStr = new Date().toISOString().split('T')[0]
@@ -294,7 +342,18 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         </div>
 
         {/* Modal Body */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4">
+        {(!currentUser?.department || currentUser?.department === "") ? (
+          <div className="flex-1 p-6 flex flex-col items-center justify-center min-h-[300px] bg-slate-200/50 dark:bg-slate-800/20">
+            <div className="flex flex-col items-center mb-6">
+              <img src="/logo.png" alt="Hospital Logo" className="h-16 w-16 object-contain mb-3 drop-shadow-sm" onError={(e) => { e.currentTarget.style.display = 'none' }} />
+              <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-200">ระบบจองห้องประชุมโรงพยาบาลสามโคก</h2>
+            </div>
+            <div className="w-full bg-rose-400/90 text-white text-center py-3.5 px-4 font-medium text-sm shadow-sm border-y-[3px] border-blue-500">
+              คุณยังไม่ได้สังกัดแผนก กรุณาติดต่อผู้ดูแล
+            </div>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4">
           {/* Room Selection */}
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">
@@ -344,34 +403,20 @@ export const BookingModal: React.FC<BookingModalProps> = ({
             <LocalizedDatePicker value={date} min={todayStr} onChange={setDate} lang={language} />
           </div>
 
-          {/* Time Slot — Native Input */}
+          {/* Time Slot — 24-Hour Selectors */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">
                 {t.startTime} <span className="text-rose-500">*</span>
               </label>
-              <div className="relative">
-                <input
-                  type="time"
-                  value={startTime}
-                  onChange={e => setStartTime(e.target.value)}
-                  className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer"
-                />
-              </div>
+              <TimeSelect24 value={startTime} onChange={setStartTime} />
             </div>
 
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">
                 {t.endTime} <span className="text-rose-500">*</span>
               </label>
-              <div className="relative">
-                <input
-                  type="time"
-                  value={endTime}
-                  onChange={e => setEndTime(e.target.value)}
-                  className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer"
-                />
-              </div>
+              <TimeSelect24 value={endTime} onChange={setEndTime} />
             </div>
           </div>
 
@@ -443,7 +488,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
               {isSubmitting ? t.submitting : t.submitBooking}
             </button>
           </div>
-        </form>
+          </form>
+        )}
       </div>
     </div>
   )

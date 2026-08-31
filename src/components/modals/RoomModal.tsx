@@ -16,8 +16,24 @@ export const RoomModal: React.FC<RoomModalProps> = ({ room, onClose }) => {
   const [location, setLocation] = useState(room?.location || '')
   const [equipment, setEquipment] = useState(room?.equipment.join(', ') || '')
   const [status, setStatus] = useState<Room['status']>(room?.status || 'available')
+  const [imageUrl, setImageUrl] = useState(room?.imageUrl || '')
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        setError(language === 'th' ? 'ไฟล์ภาพต้องมีขนาดไม่เกิน 2MB' : 'Image size must be less than 2MB')
+        return
+      }
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setImageUrl(reader.result as string)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -48,6 +64,7 @@ export const RoomModal: React.FC<RoomModalProps> = ({ room, onClose }) => {
           .map(e => e.trim())
           .filter(Boolean),
         status,
+        imageUrl,
       })
       onClose()
     } catch (err: any) {
@@ -85,6 +102,34 @@ export const RoomModal: React.FC<RoomModalProps> = ({ room, onClose }) => {
 
         {/* Modal Body */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4">
+          
+          {/* Image Upload */}
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">
+              {language === 'th' ? 'รูปภาพห้องประชุม' : 'Room Image'}
+            </label>
+            <div className="flex items-center gap-4">
+              <div className="h-20 w-32 flex-none rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                {imageUrl ? (
+                  <img src={imageUrl} alt="Preview" className="h-full w-full object-cover" />
+                ) : (
+                  <div className="h-full w-full flex items-center justify-center text-slate-400">
+                    <DoorOpen className="h-6 w-6" />
+                  </div>
+                )}
+              </div>
+              <div className="flex-1">
+                <label className="cursor-pointer inline-flex items-center justify-center rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all">
+                  <span>{language === 'th' ? 'อัปโหลดรูปภาพ' : 'Upload Image'}</span>
+                  <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
+                </label>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1.5">
+                  {language === 'th' ? 'รองรับ JPG, PNG ขนาดไม่เกิน 2MB' : 'Supports JPG, PNG up to 2MB'}
+                </p>
+              </div>
+            </div>
+          </div>
+
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">
               {t.roomName} <span className="text-rose-500">*</span>
