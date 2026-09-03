@@ -284,6 +284,14 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       setError(t.errTime)
       return
     }
+
+    const now = new Date()
+    const selectedDateTime = new Date(`${date}T${startTime}:00`)
+    if (selectedDateTime < now) {
+      setError(language === 'th' ? 'ไม่สามารถจองเวลาย้อนหลังได้' : 'Cannot book a time in the past')
+      return
+    }
+
     if (conflicts.length > 0) {
       setError(t.conflictWarning)
       return
