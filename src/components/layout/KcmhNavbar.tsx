@@ -107,7 +107,7 @@ export const KcmhNavbar: React.FC<KcmhNavbarProps> = ({
               className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer text-purple-200 hover:bg-white/10 hover:text-white`}
             >
               <CalendarDays className="h-4 w-4" />
-              <span>{t.scheduleNav || "กำหนดการ"}</span>
+              <span>{t.schedule || "กำหนดการ"}</span>
             </button>
 
             {/* Authenticated Links */}
@@ -268,7 +268,7 @@ export const KcmhNavbar: React.FC<KcmhNavbarProps> = ({
             className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold text-purple-200 hover:bg-white/10`}
           >
             <CalendarDays className="h-4 w-4" />
-            <span>{t.scheduleNav || "กำหนดการ"}</span>
+            <span>{t.schedule || "กำหนดการ"}</span>
           </button>
 
           {currentUser && (
