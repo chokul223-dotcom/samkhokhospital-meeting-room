@@ -2,6 +2,33 @@ const router = require("express").Router()
 const { pool } = require("../database")
 const { authMiddleware } = require("../middleware/auth")
 
+// GET /api/bookings/public — approved bookings only, no auth required
+router.get("/public", async (req, res) => {
+  try {
+    const result = await pool.query(
+      "SELECT * FROM bookings WHERE status = 'approved' ORDER BY date DESC, start_time",
+    )
+    res.json(
+      result.rows.map((b) => ({
+        id: b.id,
+        roomId: b.room_id,
+        userId: b.user_id,
+        date: b.date,
+        startTime: b.start_time,
+        endTime: b.end_time,
+        purpose: b.purpose,
+        attendees: b.attendees,
+        status: b.status,
+        rejectReason: b.reject_reason || null,
+        createdAt: b.created_at,
+      })),
+    )
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: "Server error" })
+  }
+})
+
 // GET /api/bookings — returns own bookings (user) or all (admin)
 router.get("/", authMiddleware, async (req, res) => {
   try {

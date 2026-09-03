@@ -2,7 +2,27 @@ const router = require("express").Router()
 const { pool } = require("../database")
 const { authMiddleware } = require("../middleware/auth")
 
-// GET /api/rooms — all rooms
+// GET /api/rooms/public — public, no auth required
+router.get("/public", async (req, res) => {
+  try {
+    const result = await pool.query("SELECT * FROM rooms ORDER BY name")
+    res.json(
+      result.rows.map((r) => ({
+        id: r.id,
+        name: r.name,
+        capacity: r.capacity,
+        location: r.location,
+        equipment: r.equipment,
+        status: r.status,
+      })),
+    )
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: "Server error" })
+  }
+})
+
+// GET /api/rooms — all rooms (authenticated)
 router.get("/", authMiddleware, async (req, res) => {
   try {
     const result = await pool.query("SELECT * FROM rooms ORDER BY name")

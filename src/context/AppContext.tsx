@@ -229,7 +229,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     document.documentElement.lang = language === "th" ? "th" : "en"
   }, [language])
 
-  // Data Fetcher
+  // Public data fetcher — runs even when not logged in
+  const refreshPublicData = useCallback(async () => {
+    try {
+      const [r, b] = await Promise.allSettled([
+        api.fetchPublicRooms(),
+        api.fetchPublicBookings(),
+      ])
+      if (r.status === "fulfilled" && Array.isArray(r.value)) {
+        setRooms(r.value)
+      }
+      if (b.status === "fulfilled" && Array.isArray(b.value)) {
+        // Merge: keep private bookings from auth fetch, add public approved ones
+        setBookings((prev) => {
+          const publicIds = new Set(b.value.map((x) => x.id))
+          const privateOnly = prev.filter((x) => !publicIds.has(x.id))
+          return [...b.value, ...privateOnly]
+        })
+      }
+    } catch (err) {
+      console.warn("Public data fetch warning:", err)
+    }
+  }, [])
+
+  // Authenticated data fetcher — full data for logged-in users
   const refreshData = useCallback(async () => {
     if (!currentUser) return
     setLoading(true)
@@ -256,7 +279,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, [currentUser])
 
-  // Real-time EventSource & Polling
+  // Always poll public data (even when not logged in)
+  useEffect(() => {
+    refreshPublicData()
+    const poll = setInterval(refreshPublicData, 15000)
+    return () => clearInterval(poll)
+  }, [refreshPublicData])
+
+  // Real-time EventSource & Polling for authenticated users
   useEffect(() => {
     if (!currentUser) return
     refreshData()

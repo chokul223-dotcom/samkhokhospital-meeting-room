@@ -78,6 +78,12 @@ export async function fetchRooms(): Promise<Room[]> {
   return request<Room[]>("/api/rooms")
 }
 
+export async function fetchPublicRooms(): Promise<Room[]> {
+  const res = await fetch(`${BASE_URL}/api/rooms/public`)
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json()
+}
+
 export async function addRoom(
   data: Omit<Room, "id"> & { id?: string },
 ): Promise<{ success: boolean; id: string }> {
@@ -117,6 +123,12 @@ export async function updateRoomStatus(
 
 export async function fetchBookings(): Promise<Booking[]> {
   return request<Booking[]>("/api/bookings")
+}
+
+export async function fetchPublicBookings(): Promise<Booking[]> {
+  const res = await fetch(`${BASE_URL}/api/bookings/public`)
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json()
 }
 
 export async function createBooking(data: {
