@@ -48,12 +48,8 @@ export const KcmhNavbar: React.FC<KcmhNavbarProps> = ({
 
   const handleScheduleClick = () => {
     const scrollToSchedule = () => {
-      const el = document.getElementById("schedule-section")
-      if (el) {
-        el.scrollIntoView({ behavior: "smooth", block: "start" })
-      } else {
-        window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" })
-      }
+      // Always scroll to the absolute bottom to ensure the schedule is fully visible
+      window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" })
     }
 
     if (activeTab !== "dashboard" && activeTab !== "home") {
