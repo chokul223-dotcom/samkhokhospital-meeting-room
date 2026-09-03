@@ -9,7 +9,7 @@ import React, {
 import { Language, ThemeOption, User, Room, Booking } from "../types"
 import { getTranslation, translations } from "../constants/translations"
 import * as api from "../services/api"
-import { API_URL } from "../services/api"
+import { API_URL, setUnauthorizedHandler } from "../services/api"
 
 // ─── Default Fallback Seed Data ────────────────────────────────────────────────
 
@@ -199,6 +199,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       api.logout()
     }
   }
+
+  // ลงทะเบียน handler สำหรับ 401 unauthorized — logout ผ่าน React state
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      setCurrentUserState(null)
+    })
+  }, [])
 
   const showToast = useCallback((msg: string) => {
     setToast(msg)

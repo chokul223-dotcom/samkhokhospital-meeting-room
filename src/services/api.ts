@@ -9,6 +9,12 @@ function getToken(): string | null {
   return localStorage.getItem("token")
 }
 
+// Callback ที่ AppContext จะ inject เพื่อจัดการ logout ผ่าน React state
+let _onUnauthorized: (() => void) | null = null
+export function setUnauthorizedHandler(fn: () => void) {
+  _onUnauthorized = fn
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = getToken()
   const res = await fetch(`${BASE_URL}${path}`, {
@@ -21,11 +27,11 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: "Unknown error" }))
-    // Auto-logout เมื่อ token ไม่ถูกต้องหรือหมดอายุ
-    if (res.status === 401) {
+    // แจ้ง AppContext ให้ logout เมื่อ token ไม่ถูกต้องหรือหมดอายุ
+    if (res.status === 401 && token) {
       localStorage.removeItem("token")
       localStorage.removeItem("user")
-      window.location.reload()
+      _onUnauthorized?.()
     }
     throw new Error(err.error || `HTTP ${res.status}`)
   }
