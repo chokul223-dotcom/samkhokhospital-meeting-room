@@ -183,3 +183,29 @@ export async function deleteUser(id: string): Promise<{ success: boolean }> {
     method: "DELETE",
   })
 }
+
+export async function sendPasswordReset(userId: string): Promise<{ success: boolean; message: string; dev_token?: string; reset_link?: string }> {
+  return request(`/api/users/${userId}/send-reset`, { method: "POST" })
+}
+
+export async function resetPassword(token: string, password: string): Promise<{ success: boolean; message: string }> {
+  return request("/api/auth/reset-password", {
+    method: "POST",
+    body: JSON.stringify({ token, password }),
+  })
+}
+
+export async function verifyResetToken(token: string): Promise<{ valid: boolean; name?: string; username?: string; expiresAt?: string }> {
+  return request(`/api/auth/verify-reset-token?token=${encodeURIComponent(token)}`)
+}
+
+export async function sendVerifyEmail(userId: string): Promise<{ success: boolean; message: string; dev_token?: string; verify_link?: string }> {
+  return request(`/api/users/${userId}/send-verify-email`, { method: "POST" })
+}
+
+export async function verifyEmail(token: string): Promise<{ success: boolean; message: string }> {
+  return request("/api/auth/verify-email", {
+    method: "POST",
+    body: JSON.stringify({ token }),
+  })
+}

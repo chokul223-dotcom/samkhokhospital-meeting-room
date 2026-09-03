@@ -24,6 +24,7 @@ import {
 } from "lucide-react"
 import { useApp } from "../context/AppContext"
 import { User } from "../types"
+import * as api from "../services/api"
 
 interface ProfileViewProps {
   onBack?: () => void
@@ -64,7 +65,7 @@ const PROVINCES = [
 ]
 
 export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
-  const { currentUser, language, handleUpdateProfile } = useApp()
+  const { currentUser, language, handleUpdateProfile, showToast } = useApp()
 
   // Form state
   const [username, setUsername] = useState("")
@@ -87,6 +88,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
   const [avatarUrl, setAvatarUrl] = useState<string>("")
   const [deleteAvatar, setDeleteAvatar] = useState(false)
   const [role, setRole] = useState<"admin" | "user">("user")
+  const [emailVerified, setEmailVerified] = useState(false)
+  const [sendingVerify, setSendingVerify] = useState(false)
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState("")
@@ -107,6 +110,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
       setZipcode(currentUser.zipcode || "")
       setAvatarUrl(currentUser.avatarUrl || "")
       setDeleteAvatar(false)
+      setEmailVerified(!!currentUser.emailVerified)
 
       const dept = currentUser.department || "ทั่วไป"
       if (DEPARTMENTS.includes(dept)) {
@@ -137,6 +141,24 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
         setDeleteAvatar(false)
       }
       reader.readAsDataURL(file)
+    }
+  }
+
+  const handleSendVerifyEmail = async () => {
+    if (!currentUser) return
+    setSendingVerify(true)
+    try {
+      const res = await api.sendVerifyEmail(currentUser.id)
+      showToast(language === "th" ? "ส่งลิงก์ยืนยันไปยังอีเมลของคุณแล้ว กรุณาตรวจสอบกล่องข้อความ" : "Verification link sent to your email")
+      if (res.dev_token) {
+        console.log("DEV VERIFY LINK:", res.verify_link)
+        // Show alert in dev mode so user can click it if they don't have Resend API configured
+        alert(`[Dev Mode]\nไม่ได้ตั้งค่า RESEND_API_KEY\nคุณสามารถคลิกลิงก์นี้เพื่อยืนยันอีเมล:\n\n${res.verify_link}`)
+      }
+    } catch (err: any) {
+      showToast(err.message || (language === "th" ? "ไม่สามารถส่งอีเมลยืนยันได้" : "Failed to send verification email"))
+    } finally {
+      setSendingVerify(false)
     }
   }
 
@@ -178,6 +200,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
       const updateData: Partial<User> & { id: string } = {
         id: currentUser.id,
         name: name.trim(),
+        username: username.trim(),
         department: finalDepartment,
         gender,
         citizenId: citizenId.trim(),
@@ -267,21 +290,47 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
             {/* Email / Username */}
             <div>
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                {language === "th" ? "อีเมล / ชื่อผู้ใช้" : "Email / Username"}
+                <div className="flex items-center justify-between">
+                  <span>{language === "th" ? "อีเมล / ชื่อผู้ใช้" : "Email / Username"}</span>
+                  {emailVerified ? (
+                    <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-0.5 rounded-full">
+                      <CheckCircle2 className="h-3 w-3" />
+                      {language === "th" ? "ยืนยันแล้ว" : "Verified"}
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1 text-[10px] font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/30 px-2 py-0.5 rounded-full">
+                      <AlertCircle className="h-3 w-3" />
+                      {language === "th" ? "ยังไม่ยืนยันอีเมล" : "Unverified"}
+                    </span>
+                  )}
+                </div>
               </label>
-              <div className="relative">
-                <Mail className="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
-                <input
-                  type="text"
-                  value={username}
-                  disabled
-                  className="w-full rounded-xl bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 pl-10 pr-4 py-2.5 text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300 cursor-not-allowed"
-                />
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Mail className="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
+                  <input
+                    type="email"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    required
+                    className="w-full rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 pl-10 pr-4 py-2.5 text-xs sm:text-sm font-semibold text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+                  />
+                </div>
+                {!emailVerified && username === currentUser?.username && (
+                  <button
+                    type="button"
+                    onClick={handleSendVerifyEmail}
+                    disabled={sendingVerify}
+                    className="flex-none flex items-center justify-center rounded-xl bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/40 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300 px-4 py-2.5 text-xs font-bold transition-colors cursor-pointer disabled:opacity-50"
+                  >
+                    {sendingVerify ? "..." : (language === "th" ? "ยืนยันอีเมล" : "Verify")}
+                  </button>
+                )}
               </div>
-              <p className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 mt-1">
+              <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mt-1">
                 {language === "th"
-                  ? "ชื่อผู้ใช้ ใช้สำหรับการเข้าระบบหรือการขอรหัสผ่านใหม่"
-                  : "Username used for system login or password recovery"}
+                  ? "เมื่อเปลี่ยนอีเมล คุณจะต้องทำการยืนยันอีเมลใหม่อีกครั้ง"
+                  : "If you change your email, you will need to verify it again"}
               </p>
             </div>
 
@@ -650,11 +699,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
                   value={role}
                   disabled={currentUser?.role !== "admin"}
                   onChange={(e) => setRole(e.target.value as any)}
-                  className={`w-full rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 pl-10 pr-8 py-2.5 text-xs sm:text-sm font-medium text-slate-900 dark:text-white ${
-                    currentUser?.role !== "admin"
+                  className={`w-full rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 pl-10 pr-8 py-2.5 text-xs sm:text-sm font-medium text-slate-900 dark:text-white ${currentUser?.role !== "admin"
                       ? "cursor-not-allowed opacity-80"
                       : "cursor-pointer focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                  }`}
+                    }`}
                 >
                   <option value="user">
                     {language === "th" ? "สมาชิก (บุคลากรทั่วไป)" : "Member (Staff)"}

@@ -173,36 +173,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   const [currentUser, setCurrentUserState] = useState<User | null>(() =>
     api.getSavedUser(),
   )
-  const [rooms, setRooms] = useState<Room[]>(DEFAULT_ROOMS)
-  const [bookings, setBookings] = useState<Booking[]>(DEFAULT_BOOKINGS)
-  const [users, setUsers] = useState<User[]>(() => {
-    let initialUsers = [...DEFAULT_USERS]
-    try {
-      const stored = localStorage.getItem("registered_users")
-      if (stored) {
-        const parsed = JSON.parse(stored)
-        if (Array.isArray(parsed)) {
-          const newUsers = parsed.map((u: any) => ({
-            id: u.id,
-            name: u.name,
-            department: u.department || "รอการตรวจสอบ",
-            role: u.role || "user",
-            username: u.username,
-            avatarUrl: u.avatarUrl,
-          }))
-          newUsers.forEach((nu: any) => {
-            if (!initialUsers.find((u) => u.id === nu.id || u.username === nu.username)) {
-              initialUsers.push(nu)
-            }
-          })
-        }
-      }
-    } catch {}
-    // Dedup by id (keep last)
-    const seen = new Map<string, User>()
-    for (const u of initialUsers) seen.set(u.id, u)
-    return Array.from(seen.values())
-  })
+  const [rooms, setRooms] = useState<Room[]>([])
+  const [bookings, setBookings] = useState<Booking[]>([])
+  const [users, setUsers] = useState<User[]>([])
+  // Set users in useEffect after fetch, not from local storage mock mix
+
   const [loading, setLoading] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
 
@@ -264,11 +239,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       if (r.status === "fulfilled" && Array.isArray(r.value)) {
         setRooms(r.value)
       }
-      if (
-        u.status === "fulfilled" &&
-        Array.isArray(u.value) &&
-        u.value.length > 0
-      ) {
+      if (u.status === "fulfilled" && Array.isArray(u.value)) {
         setUsers(u.value)
       }
     } catch (err) {

@@ -1,4 +1,4 @@
-import React from "react"
+import React, { useState } from "react"
 import {
   X,
   User as UserIcon,
@@ -13,10 +13,13 @@ import {
   CheckCircle,
   Edit2,
   Clock,
+  KeyRound,
+  Loader2,
 } from "lucide-react"
 import { User } from "../../types"
 import { useApp } from "../../context/AppContext"
 import { formatUserName, formatDepartment } from "../../constants/translations"
+import * as api from "../../services/api"
 
 interface UserDetailModalProps {
   user: User | null
@@ -31,9 +34,26 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
   onEditUser,
   onApproveUser,
 }) => {
-  const { language, currentUser } = useApp()
+  const { language, showToast } = useApp()
+  const [resetting, setResetting] = useState(false)
 
   if (!user) return null
+
+  const handleResetPassword = async () => {
+    if (!confirm(language === "th" ? `ยืนยันการส่งอีเมลรีเซ็ตรหัสผ่านให้ ${user.name}?` : `Send password reset email to ${user.name}?`)) return
+    setResetting(true)
+    try {
+      const res = await api.sendPasswordReset(user.id)
+      showToast(language === "th" ? "ส่งอีเมลรีเซ็ตรหัสผ่านสำเร็จ" : "Password reset email sent")
+      if (res.dev_token) {
+        console.log("DEV RESET LINK:", res.reset_link)
+      }
+    } catch (err: any) {
+      showToast(language === "th" ? "เกิดข้อผิดพลาดในการส่งอีเมล" : "Failed to send email")
+    } finally {
+      setResetting(false)
+    }
+  }
 
   const isPending =
     !user.department ||
@@ -169,7 +189,18 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
                     </span>
                   </td>
                   <td className="px-4 py-2.5 text-slate-800 dark:text-slate-200 font-mono font-bold">
-                    {user.username}
+                    <div className="flex items-center gap-2">
+                      {user.username}
+                      {user.emailVerified ? (
+                        <span title={language === "th" ? "ยืนยันแล้ว" : "Verified"}>
+                          <CheckCircle className="h-3.5 w-3.5 text-emerald-500" />
+                        </span>
+                      ) : (
+                        <span className="flex h-3.5 items-center rounded-full bg-rose-100 dark:bg-rose-900/50 px-1.5 text-[9px] font-bold text-rose-600 dark:text-rose-400">
+                          {language === "th" ? "ยังไม่ยืนยัน" : "Unverified"}
+                        </span>
+                      )}
+                    </div>
                   </td>
                 </tr>
 
@@ -264,6 +295,16 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
           </button>
 
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={resetting}
+              onClick={handleResetPassword}
+              className="flex items-center gap-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 px-4 py-2.5 text-xs font-bold transition-colors cursor-pointer disabled:opacity-50"
+            >
+              {resetting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <KeyRound className="h-3.5 w-3.5" />}
+              <span>{language === "th" ? "รีเซ็ตรหัสผ่าน" : "Reset Pass"}</span>
+            </button>
+
             {onEditUser && (
               <button
                 type="button"

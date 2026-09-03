@@ -46,6 +46,18 @@ export const KcmhNavbar: React.FC<KcmhNavbarProps> = ({
     setMobileMenuOpen(false)
   }
 
+  const handleScheduleClick = () => {
+    if (activeTab !== "dashboard" && activeTab !== "home") {
+      setActiveTab("dashboard")
+      setTimeout(() => {
+        document.getElementById("schedule-section")?.scrollIntoView({ behavior: "smooth" })
+      }, 100)
+    } else {
+      document.getElementById("schedule-section")?.scrollIntoView({ behavior: "smooth" })
+    }
+    setMobileMenuOpen(false)
+  }
+
   return (
     <header className="sticky top-0 z-40 w-full select-none bg-gradient-to-r from-[#1b0738] via-[#2f0e54] to-[#1a0836] border-b border-purple-900/60 shadow-lg text-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between gap-4">
@@ -88,6 +100,14 @@ export const KcmhNavbar: React.FC<KcmhNavbarProps> = ({
             >
               <DoorOpen className="h-4 w-4" />
               <span>{t.bookRoomsNav || "จองห้องประชุม"}</span>
+            </button>
+
+            <button
+              onClick={handleScheduleClick}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer text-purple-200 hover:bg-white/10 hover:text-white`}
+            >
+              <CalendarDays className="h-4 w-4" />
+              <span>{t.scheduleNav || "กำหนดการ"}</span>
             </button>
 
             {/* Authenticated Links */}
@@ -241,6 +261,14 @@ export const KcmhNavbar: React.FC<KcmhNavbarProps> = ({
           >
             <DoorOpen className="h-4 w-4" />
             <span>{t.bookRoomsNav || "จองห้องประชุม"}</span>
+          </button>
+
+          <button
+            onClick={handleScheduleClick}
+            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold text-purple-200 hover:bg-white/10`}
+          >
+            <CalendarDays className="h-4 w-4" />
+            <span>{t.scheduleNav || "กำหนดการ"}</span>
           </button>
 
           {currentUser && (

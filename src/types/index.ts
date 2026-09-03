@@ -9,8 +9,9 @@ export interface User {
   id: string
   name: string
   department: string
-  role: Role
+  role: "admin" | "user"
   username: string
+  emailVerified?: boolean
   password?: string
   createdAt?: string
   gender?: string

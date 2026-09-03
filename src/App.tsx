@@ -19,6 +19,8 @@ import { UserModal } from "./components/modals/UserModal"
 import { RejectModal } from "./components/modals/RejectModal"
 import { ConfirmModal } from "./components/modals/ConfirmModal"
 import { CookieConsentBanner } from "./components/common/CookieConsentBanner"
+import { ResetPasswordView } from "./views/ResetPasswordView"
+import { VerifyEmailView } from "./views/VerifyEmailView"
 import { Room, User } from "./types"
 
 function MainContent() {
@@ -53,8 +55,22 @@ function MainContent() {
     onConfirm: () => void
   }>({ open: false, title: "", message: "", onConfirm: () => {} })
 
-  // Status Filter passed to BookingsView
   const [initialBookingFilter, setInitialBookingFilter] = useState("all")
+
+  // Check for reset_token or verify_email_token in URL
+  const [resetToken, setResetToken] = useState<string | null>(null)
+  const [verifyEmailToken, setVerifyEmailToken] = useState<string | null>(null)
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const token = params.get("reset_token")
+    if (token) {
+      setResetToken(token)
+    }
+    const verifyToken = params.get("verify_email_token")
+    if (verifyToken) {
+      setVerifyEmailToken(verifyToken)
+    }
+  }, [])
 
   // Auto-redirect to dashboard if logged in and on login tab
   React.useEffect(() => {
@@ -62,6 +78,40 @@ function MainContent() {
       setActiveTab("dashboard")
     }
   }, [activeTab, currentUser])
+
+  // If there's a reset token, render ResetPasswordView
+  if (resetToken) {
+    return (
+      <ResetPasswordView
+        token={resetToken}
+        onDone={() => {
+          setResetToken(null)
+          // Clean up URL
+          window.history.replaceState({}, document.title, window.location.pathname)
+          setActiveTab("login")
+        }}
+      />
+    )
+  }
+
+  // If there's a verify email token, render VerifyEmailView
+  if (verifyEmailToken) {
+    return (
+      <VerifyEmailView
+        token={verifyEmailToken}
+        onDone={() => {
+          setVerifyEmailToken(null)
+          window.history.replaceState({}, document.title, window.location.pathname)
+          if (currentUser) {
+            // Force refresh profile status by triggering app refresh
+            window.location.reload()
+          } else {
+            setActiveTab("login")
+          }
+        }}
+      />
+    )
+  }
 
   // If user navigated to login tab, show their original LoginView
   if (activeTab === "login" && !currentUser) {

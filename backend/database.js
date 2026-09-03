@@ -55,6 +55,36 @@ async function initDB() {
       ALTER TABLE bookings ADD COLUMN IF NOT EXISTS reject_reason TEXT DEFAULT NULL
     `)
 
+    // Add email_verified column if it doesn't exist
+    await client.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT FALSE
+    `)
+
+    // Password reset tokens table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS password_reset_tokens (
+        id SERIAL PRIMARY KEY,
+        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        token TEXT UNIQUE NOT NULL,
+        expires_at TIMESTAMP NOT NULL,
+        used BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `)
+
+    // Email verification tokens table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS email_verify_tokens (
+        id SERIAL PRIMARY KEY,
+        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        token TEXT UNIQUE NOT NULL,
+        expires_at TIMESTAMP NOT NULL,
+        used BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `)
+
+
     // Seed admin user if not exists
     const bcrypt = require("bcryptjs")
     const adminExists = await client.query(

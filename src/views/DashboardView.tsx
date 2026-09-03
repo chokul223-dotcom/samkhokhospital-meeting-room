@@ -22,6 +22,8 @@ import {
   formatRoomLocation,
   formatUserName,
 } from "../constants/translations"
+import { CalendarDayPopover } from "../components/calendar/CalendarDayPopover"
+import { ScheduleView } from "./ScheduleView"
 
 interface DashboardViewProps {
   onNavigateTab?: (tab: string, filter?: string) => void
@@ -81,6 +83,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [inspectingBooking, setInspectingBooking] = useState<Booking | null>(
     null,
   )
+
+  const [popoverDate, setPopoverDate] = useState<string | null>(null)
+  const [scheduleDate, setScheduleDate] = useState<string>(todayDateStr)
 
   // Quick stats calculations
   const availableRoomsCount = useMemo(
@@ -197,28 +202,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const dayNames = language === "th" ? DAY_NAMES_TH : DAY_NAMES_EN
   const displayYear = language === "th" ? currentYear + 543 : currentYear
 
+  const formatHeaderDate = (dStr: string) => {
+    const dt = new Date(dStr + "T00:00:00")
+    return dt.toLocaleDateString(language === "th" ? "th-TH" : "en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    })
+  }
+
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
-      {/* ─── 1. Breadcrumb Bar ─── */}
-      <div className="flex items-center gap-2 rounded-2xl bg-white/80 dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800 px-4 py-2.5 text-xs font-semibold text-slate-600 dark:text-slate-300 shadow-xs">
-        <Home className="h-4 w-4 text-slate-500 dark:text-slate-400" />
-        <span className="text-slate-800 dark:text-slate-200">
-          {t.homeBreadcrumb || "หน้าหลัก"}
-        </span>
-      </div>
-
-      {/* ─── 2. Main Page Title ─── */}
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300">
-            <LayoutDashboard className="h-5 w-5" />
-          </div>
-          <h2 className="text-xl sm:text-2xl font-black tracking-tight text-slate-800 dark:text-white">
-            {t.dashboard || "Dashboard"}
-          </h2>
-        </div>
-      </div>
-
       {/* ─── 3. Main Monthly Booking Calendar Container ─── */}
       <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm overflow-hidden">
         {/* Calendar Title & Month Toolbar */}
@@ -312,7 +307,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 return (
                   <div
                     key={idx}
-                    className={`min-h-[110px] p-1.5 flex flex-col justify-between transition-colors group relative ${
+                    onClick={() => {
+                      setScheduleDate(cell.dateStr)
+                      setTimeout(() => {
+                        document.getElementById("schedule-section")?.scrollIntoView({ behavior: "smooth" })
+                      }, 50)
+                    }}
+                    className={`min-h-[110px] p-1.5 flex flex-col justify-between transition-colors group relative cursor-pointer ${
                       cell.isCurrentMonth
                         ? "bg-white dark:bg-slate-900 hover:bg-slate-50/80 dark:hover:bg-slate-800/40"
                         : "bg-slate-50/50 dark:bg-slate-950/40 text-slate-400 opacity-60"
@@ -334,7 +335,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
                       {/* Quick add booking button on cell hover */}
                       <button
-                        onClick={() => onOpenBookingModal(undefined, cell.dateStr)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onOpenBookingModal(undefined, cell.dateStr)
+                        }}
                         className="opacity-0 group-hover:opacity-100 p-0.5 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/60 text-blue-600 dark:text-blue-400 transition-opacity cursor-pointer"
                         title={`จองห้องสำหรับวันที่ ${cell.dateStr}`}
                       >
@@ -343,9 +347,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     </div>
 
                     {/* Booking Pills List */}
-                    <div className="flex-1 space-y-1 mt-1 overflow-hidden">
-                      {cellBookings.map((b) => {
+                    <div className="flex-1 space-y-1 mt-1 overflow-hidden relative">
+                      {cellBookings.slice(0, 1).map((b) => {
                         const roomCol = getRoomColor(b.roomId)
+                        const startHour = parseInt(b.startTime.split(":")[0], 10)
+                        const endHour = parseInt(b.endTime.split(":")[0], 10)
+                        
+                        let timeLabel = "ช่วงเวลา"
+                        if (startHour < 12 && endHour <= 12) timeLabel = "เช้า"
+                        else if (startHour >= 12) timeLabel = "บ่าย"
+                        else if (startHour < 12 && endHour > 12) timeLabel = "ทั้งวัน"
+
                         return (
                           <button
                             key={b.id}
@@ -358,15 +370,37 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                             title={`เวลา ${b.startTime} - ${b.endTime} น.: ${b.purpose}`}
                           >
                             <span className="flex items-center gap-1 truncate">
-                              <Clock className="h-2.5 w-2.5 flex-none" />
                               <span className="truncate">
-                                เวลา {b.startTime} น. ถึง {b.endTime} น.{" "}
-                                {b.purpose}
+                                {timeLabel} ({b.purpose})
                               </span>
                             </span>
                           </button>
                         )
                       })}
+                      {cellBookings.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setPopoverDate(cell.dateStr)
+                          }}
+                          className="text-[11px] font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors w-full text-left px-1 py-0.5 rounded-sm hover:bg-blue-50 dark:hover:bg-blue-900/40 cursor-pointer"
+                        >
+                          +{cellBookings.length - 1} {t.more || "เพิ่มเติม"}
+                        </button>
+                      )}
+                      
+                      {/* Day Popover */}
+                      {popoverDate === cell.dateStr && (
+                        <CalendarDayPopover
+                          date={cell.dateStr}
+                          bookings={cellBookings}
+                          getRoomColor={getRoomColor}
+                          onClose={() => setPopoverDate(null)}
+                          onBookingClick={(b) => setInspectingBooking(b)}
+                          formatHeaderDate={formatHeaderDate}
+                        />
+                      )}
                     </div>
                   </div>
                 )
@@ -421,6 +455,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
+      {/* ─── 5. Schedule Section (Scroll Target) ─── */}
+      <div id="schedule-section" className="pt-4 scroll-mt-24">
+        <ScheduleView dateStr={scheduleDate} />
+      </div>
 
       {/* ─── 6. Booking Detail Inspection Modal ─── */}
       {inspectingBooking && (
