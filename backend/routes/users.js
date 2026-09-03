@@ -9,7 +9,7 @@ router.get("/", authMiddleware, async (req, res) => {
     return res.status(403).json({ error: "Admin only" })
   try {
     const result = await pool.query(
-      "SELECT id, name, department, role, username, email_verified, created_at FROM users ORDER BY name",
+      "SELECT id, name, department, role, username, email, email_verified, created_at FROM users ORDER BY name",
     )
     res.json(result.rows)
   } catch (err) {
@@ -21,22 +21,24 @@ router.get("/", authMiddleware, async (req, res) => {
 router.post("/", authMiddleware, async (req, res) => {
   if (req.user.role !== "admin")
     return res.status(403).json({ error: "Admin only" })
-  const { name, department, role, username, password } = req.body
-  if (!name || !username || !password)
+  const { name, department, role, username, email, password } = req.body
+  if (!name || !email || !password)
     return res.status(400).json({ error: "Missing fields" })
 
   try {
     const hash = await bcrypt.hash(password, 10)
     const id = "u" + Date.now()
+    // Use email as username if username not provided
+    const uname = username || email.split("@")[0]
     await pool.query(
-      "INSERT INTO users (id, name, department, role, username, password) VALUES ($1,$2,$3,$4,$5,$6)",
-      [id, name, department || "-", role || "user", username, hash],
+      "INSERT INTO users (id, name, department, role, username, email, password) VALUES ($1,$2,$3,$4,$5,$6,$7)",
+      [id, name, department || "-", role || "user", uname, email.toLowerCase().trim(), hash],
     )
     if (req.notifyClients) req.notifyClients()
-    res.status(201).json({ id, name, department, role, username })
+    res.status(201).json({ id, name, department, role, username: uname, email })
   } catch (err) {
     if (err.code === "23505")
-      return res.status(409).json({ error: "Username already exists" })
+      return res.status(409).json({ error: "Email or username already exists" })
     res.status(500).json({ error: "Server error" })
   }
 })
@@ -45,35 +47,36 @@ router.post("/", authMiddleware, async (req, res) => {
 router.put("/:id", authMiddleware, async (req, res) => {
   if (req.user.role !== "admin" && req.user.id !== req.params.id)
     return res.status(403).json({ error: "Forbidden" })
-  const { name, department, role, username, password } = req.body
-  if (!name || !username || !role)
+  const { name, department, role, username, email, password } = req.body
+  if (!name || !role)
     return res.status(400).json({ error: "Missing fields" })
 
   try {
-    // Check if username is changed
-    const userRes = await pool.query("SELECT username FROM users WHERE id = $1", [req.params.id])
+    const userRes = await pool.query("SELECT username, email FROM users WHERE id = $1", [req.params.id])
     if (userRes.rows.length === 0) return res.status(404).json({ error: "User not found" })
     
-    const isEmailChanged = userRes.rows[0].username !== username
+    const isEmailChanged = email && userRes.rows[0].email !== email.toLowerCase().trim()
     const emailVerifiedUpdate = isEmailChanged ? "email_verified = false," : ""
+    const newEmail = email ? email.toLowerCase().trim() : userRes.rows[0].email
+    const newUsername = username || userRes.rows[0].username
 
     if (password) {
       const hash = await bcrypt.hash(password, 10)
       await pool.query(
-        `UPDATE users SET name = $1, department = $2, role = $3, username = $4, ${emailVerifiedUpdate} password = $5 WHERE id = $6`,
-        [name, department || "-", role, username, hash, req.params.id],
+        `UPDATE users SET name = $1, department = $2, role = $3, username = $4, email = $5, ${emailVerifiedUpdate} password = $6 WHERE id = $7`,
+        [name, department || "-", role, newUsername, newEmail, hash, req.params.id],
       )
     } else {
       await pool.query(
-        `UPDATE users SET name = $1, department = $2, role = $3, ${emailVerifiedUpdate} username = $4 WHERE id = $5`,
-        [name, department || "-", role, username, req.params.id],
+        `UPDATE users SET name = $1, department = $2, role = $3, username = $4, ${emailVerifiedUpdate} email = $5 WHERE id = $6`,
+        [name, department || "-", role, newUsername, newEmail, req.params.id],
       )
     }
     if (req.notifyClients) req.notifyClients()
-    res.json({ id: req.params.id, name, department, role, username, emailVerified: !isEmailChanged })
+    res.json({ id: req.params.id, name, department, role, username: newUsername, email: newEmail, emailVerified: !isEmailChanged })
   } catch (err) {
     if (err.code === "23505")
-      return res.status(409).json({ error: "Username already exists" })
+      return res.status(409).json({ error: "Email or username already exists" })
     res.status(500).json({ error: "Server error" })
   }
 })

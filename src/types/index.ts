@@ -11,6 +11,7 @@ export interface User {
   department: string
   role: "admin" | "user"
   username: string
+  email?: string
   emailVerified?: boolean
   password?: string
   createdAt?: string
@@ -57,6 +58,8 @@ export interface LoginResponse {
     department: string
     role: Role
     username: string
+    email: string
+    emailVerified: boolean
   }
 }
 

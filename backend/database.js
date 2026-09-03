@@ -15,6 +15,7 @@ async function initDB() {
         department TEXT DEFAULT '-',
         role TEXT NOT NULL CHECK(role IN ('admin','user')),
         username TEXT UNIQUE NOT NULL,
+        email TEXT UNIQUE,
         password TEXT NOT NULL,
         created_at TIMESTAMP DEFAULT NOW()
       )
@@ -60,6 +61,18 @@ async function initDB() {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT FALSE
     `)
 
+    // Add email column if it doesn't exist (for existing databases)
+    await client.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT
+    `)
+
+    // Add unique constraint on email if not exists (ignore error if already exists)
+    try {
+      await client.query(`
+        CREATE UNIQUE INDEX IF NOT EXISTS users_email_unique ON users(email) WHERE email IS NOT NULL
+      `)
+    } catch {}
+
     // Password reset tokens table
     await client.query(`
       CREATE TABLE IF NOT EXISTS password_reset_tokens (
@@ -95,9 +108,9 @@ async function initDB() {
       const userHash = await bcrypt.hash("Test123456", 10)
       await client.query(
         `
-        INSERT INTO users (id, name, department, role, username, password) VALUES
-        ('u1', 'ผู้ดูแลระบบ', 'IT', 'admin', 'Admin', $1),
-        ('u2', 'ทั่วไป', 'ทั่วไป', 'user', 'Test', $2)
+        INSERT INTO users (id, name, department, role, username, email, password) VALUES
+        ('u1', 'ผู้ดูแลระบบ', 'IT', 'admin', 'Admin', 'admin@example.com', $1),
+        ('u2', 'ทั่วไป', 'ทั่วไป', 'user', 'Test', 'test@example.com', $2)
       `,
         [adminHash, userHash],
       )

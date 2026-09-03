@@ -128,6 +128,7 @@ export const UserModal: React.FC<UserModalProps> = ({ user, onClose }) => {
         zipcode: zipcode.trim(),
         avatarUrl,
         username: username.trim(),
+        email: username.trim(),
         ...(password.trim() ? { password: password.trim() } : {}),
       })
       onClose()

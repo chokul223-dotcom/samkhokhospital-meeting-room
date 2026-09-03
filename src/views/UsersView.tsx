@@ -56,6 +56,7 @@ export const UsersView: React.FC<UsersViewProps> = ({
   const handleQuickApprove = async (u: User) => {
     await handleSaveUser({
       ...u,
+      email: u.email || `${u.username}@example.com`, // Fallback for old users without email
       department: "กลุ่มงานการพยาบาล", // default assigned department or general
     })
     setInspectingUser(null)

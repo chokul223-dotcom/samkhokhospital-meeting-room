@@ -5,13 +5,13 @@ const { pool } = require("../database")
 
 // POST /api/auth/login
 router.post("/login", async (req, res) => {
-  const { username, password } = req.body
-  if (!username || !password)
+  const { email, password } = req.body
+  if (!email || !password)
     return res.status(400).json({ error: "Missing credentials" })
 
   try {
-    const result = await pool.query("SELECT * FROM users WHERE username = $1", [
-      username,
+    const result = await pool.query("SELECT * FROM users WHERE email = $1", [
+      email.toLowerCase().trim(),
     ])
     const user = result.rows[0]
     if (!user) return res.status(401).json({ error: "Invalid credentials" })
@@ -23,6 +23,7 @@ router.post("/login", async (req, res) => {
       {
         id: user.id,
         username: user.username,
+        email: user.email,
         role: user.role,
         name: user.name,
         department: user.department,
@@ -38,6 +39,7 @@ router.post("/login", async (req, res) => {
         department: user.department,
         role: user.role,
         username: user.username,
+        email: user.email,
         emailVerified: user.email_verified,
       },
     })

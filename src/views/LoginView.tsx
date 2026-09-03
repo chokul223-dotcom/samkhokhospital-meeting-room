@@ -94,7 +94,8 @@ export const LoginView: React.FC<LoginViewProps> = ({ onBackToHome }) => {
           name: isAdmin ? "ผู้ดูแลระบบ (Admin)" : "พว. สมศรี ใจดี (บุคลากร)",
           department: isAdmin ? "ศูนย์คอมพิวเตอร์และสารสนเทศ" : "กลุ่มงานการพยาบาล",
           role: (isAdmin ? "admin" : "user") as any,
-          username,
+          username: username.split("@")[0],
+          email: username,
         }
         localStorage.setItem("user", JSON.stringify(mockUser))
         localStorage.setItem("token", "offline-mock")
@@ -102,8 +103,8 @@ export const LoginView: React.FC<LoginViewProps> = ({ onBackToHome }) => {
       } else {
         // Check registered users stored in localStorage
         const registeredRaw = localStorage.getItem("registered_users")
-        const registeredUsers: Array<{username: string; password: string; name: string; id: string; department: string}> = registeredRaw ? JSON.parse(registeredRaw) : []
-        const found = registeredUsers.find(u => u.username === username && u.password === password)
+        const registeredUsers: Array<{email?: string; username: string; password: string; name: string; id: string; department: string}> = registeredRaw ? JSON.parse(registeredRaw) : []
+        const found = registeredUsers.find(u => (u.email === username || u.username === username) && u.password === password)
         if (found) {
           const userObj = {
             id: found.id,
@@ -111,6 +112,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onBackToHome }) => {
             department: found.department,
             role: "user" as any,
             username: found.username,
+            email: found.email || username,
           }
           localStorage.setItem("user", JSON.stringify(userObj))
           localStorage.setItem("token", "offline-mock")
@@ -147,7 +149,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onBackToHome }) => {
 
     // 3. ตรวจสอบอีเมลซ้ำในระบบ
     const emailExists = users.some(
-      (u) => u.username.toLowerCase() === regUsername.trim().toLowerCase()
+      (u) => (u.email?.toLowerCase() === regUsername.trim().toLowerCase()) || (u.username.toLowerCase() === regUsername.trim().toLowerCase())
     )
     if (emailExists) {
       setRegError("อีเมลนี้มีผู้ใช้งานลงทะเบียนแล้ว กรุณาใช้อีเมลอื่น")
@@ -177,11 +179,11 @@ export const LoginView: React.FC<LoginViewProps> = ({ onBackToHome }) => {
     }
     setRegLoading(true)
     try {
-      await handleRegisterUser({ username: regUsername, password: regPassword, name: regFullName })
+      await handleRegisterUser({ email: regUsername, username: regUsername.split("@")[0], password: regPassword, name: regFullName })
       // Save to localStorage for offline login validation
       const registeredRaw = localStorage.getItem("registered_users")
-      const existing: Array<{username: string; password: string; name: string; id: string; department: string}> = registeredRaw ? JSON.parse(registeredRaw) : []
-      const newEntry = { id: "u" + Date.now(), username: regUsername, password: regPassword, name: regFullName, department: "" }
+      const existing: Array<{email?: string; username: string; password: string; name: string; id: string; department: string}> = registeredRaw ? JSON.parse(registeredRaw) : []
+      const newEntry = { id: "u" + Date.now(), email: regUsername, username: regUsername.split("@")[0], password: regPassword, name: regFullName, department: "" }
       localStorage.setItem("registered_users", JSON.stringify([...existing, newEntry]))
       setRegSuccess("สมัครสมาชิกสำเร็จ! กรุณาเข้าสู่ระบบ")
       setTimeout(() => {

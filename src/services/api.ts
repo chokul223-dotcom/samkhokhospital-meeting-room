@@ -41,19 +41,19 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 
 export async function login(
-  username: string,
+  email: string,
   password: string,
 ): Promise<LoginResponse> {
   const data = await request<LoginResponse>("/api/auth/login", {
     method: "POST",
-    body: JSON.stringify({ username, password }),
+    body: JSON.stringify({ email, password }),
   })
   localStorage.setItem("token", data.token)
   localStorage.setItem("user", JSON.stringify(data.user))
   return data
 }
 
-export async function register(data: { username: string; password: string; name: string }): Promise<any> {
+export async function register(data: { email: string; username?: string; password: string; name: string }): Promise<any> {
   // Mock registration
   return new Promise((resolve) => {
     setTimeout(() => {
@@ -166,7 +166,8 @@ export async function createUser(data: {
   name: string
   department: string
   role: string
-  username: string
+  username?: string
+  email: string
   password?: string
 }): Promise<User> {
   return request<User>("/api/users", {
@@ -181,7 +182,8 @@ export async function updateUser(
     name: string
     department: string
     role: string
-    username: string
+    username?: string
+    email?: string
     password?: string
   },
 ): Promise<User> {

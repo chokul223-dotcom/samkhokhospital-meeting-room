@@ -148,10 +148,10 @@ interface AppContextType {
   handleSaveRoom: (r: Room) => Promise<void>
   handleDeleteRoom: (id: string) => Promise<void>
   handleSaveUser: (
-    u: Partial<User> & { username: string; name: string },
+    u: Partial<User> & { email: string; name: string },
   ) => Promise<void>
   handleDeleteUser: (id: string) => Promise<void>
-  handleRegisterUser: (u: { username: string; name: string; password?: string }) => Promise<void>
+  handleRegisterUser: (u: { email: string; username?: string; name: string; password?: string }) => Promise<void>
   handleUpdateProfile: (u: Partial<User> & { id: string }) => Promise<void>
   handleClearAllBookings: () => Promise<void>
 }
@@ -396,7 +396,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   }
 
   const handleSaveUser = async (
-    userData: Partial<User> & { username: string; name: string },
+    userData: Partial<User> & { email: string; name: string },
   ) => {
     const isEdit = !!userData.id
     try {
@@ -431,7 +431,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
           name: userData.name,
           department: userData.department || "-",
           role: userData.role || "user",
-          username: userData.username,
+          username: userData.username || userData.email.split("@")[0],
+          email: userData.email,
         }
         setUsers((prev) => [...prev, newU])
         try {
@@ -463,12 +464,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     showToast(t.toastUserDeleted)
   }
 
-  const handleRegisterUser = async (u: { username: string; name: string; password?: string }) => {
+  const handleRegisterUser = async (u: { email: string; username?: string; name: string; password?: string }) => {
     try {
-      const created = await api.register?.({ username: u.username, password: u.password || "", name: u.name })
+      const created = await api.register?.({ email: u.email, username: u.username, password: u.password || "", name: u.name })
       if (created) {
         setUsers((prev) => {
-          if (prev.find((x) => x.username === u.username)) return prev
+          if (prev.find((x) => x.email === u.email || (x.username && x.username === u.username))) return prev
           return [...prev, { ...created.user, department: "" } as any]
         })
       }
@@ -476,20 +477,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       // Offline fallback — do NOT push here; LoginView already wrote to registered_users
       // and AppContext init will pick it up on next load. Just keep state in sync.
       setUsers((prev) => {
-        if (prev.find((x) => x.username === u.username)) return prev
+        if (prev.find((x) => x.email === u.email || (x.username && x.username === u.username))) return prev
         const newU: User = {
           id: "u" + Date.now(),
           name: u.name,
           department: "",
           role: "user",
-          username: u.username,
+          username: u.username || u.email.split("@")[0],
+          email: u.email,
         }
         // Also update the localStorage entry to use the same id
         try {
           const stored = localStorage.getItem("registered_users")
           if (stored) {
             const parsed: any[] = JSON.parse(stored)
-            const idx = parsed.findIndex((x) => x.username === u.username)
+            const idx = parsed.findIndex((x) => x.email === u.email || (x.username && x.username === u.username))
             if (idx >= 0) {
               parsed[idx].id = newU.id
               localStorage.setItem("registered_users", JSON.stringify(parsed))
