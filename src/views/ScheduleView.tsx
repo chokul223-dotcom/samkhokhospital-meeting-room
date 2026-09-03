@@ -1,7 +1,8 @@
 import React, { useState } from "react"
 import { useApp } from "../context/AppContext"
+import { Booking } from "../types"
 import { formatRoomName, formatRoomLocation, formatUserName, formatDepartment } from "../constants/translations"
-import { ChevronLeft, ChevronRight, Clock } from "lucide-react"
+import { BookingDetailModal } from "../components/modals/BookingDetailModal"
 
 interface ScheduleViewProps {
   dateStr: string
@@ -9,7 +10,8 @@ interface ScheduleViewProps {
 
 export const ScheduleView: React.FC<ScheduleViewProps> = ({ dateStr }) => {
   const { t, language, rooms, bookings, users } = useApp()
-  
+  const [inspectingBooking, setInspectingBooking] = useState<Booking | null>(null)
+
   const currentDate = new Date(dateStr)
 
   const availableRooms = rooms.filter((r) => r.status === "available")
@@ -38,23 +40,48 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ dateStr }) => {
     return hasBooking ? "approved" : "available"
   }
 
+  // Booking card — clickable
+  const BookingCard = ({ b }: { b: Booking }) => {
+    const u = users.find((u) => u.id === b.userId)
+    return (
+      <button
+        type="button"
+        onClick={() => setInspectingBooking(b)}
+        className="w-full text-center space-y-1.5 mb-6 last:mb-0 group cursor-pointer rounded-xl p-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors border border-transparent hover:border-blue-200 dark:hover:border-blue-800"
+      >
+        <p className="font-bold text-slate-800 dark:text-slate-100 group-hover:text-blue-700 dark:group-hover:text-blue-300 transition-colors">
+          {b.purpose}
+        </p>
+        <p className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-400">
+          {t.chairman || "ประธาน"}: {formatUserName(u, language)} {formatDepartment(u?.department, u?.role, language)}
+        </p>
+        <p className="text-[11px] sm:text-xs font-semibold text-slate-700 dark:text-slate-300">
+          {t.time || "เวลา"} {b.startTime} - {b.endTime} น.
+        </p>
+        <p className="text-[10px] text-blue-500 dark:text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity font-medium">
+          กดเพื่อดูรายละเอียด →
+        </p>
+      </button>
+    )
+  }
+
   return (
     <div className="relative rounded-3xl overflow-hidden shadow-sm border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
       {/* Background Image with Overlay */}
-      <div 
-        className="absolute inset-0 bg-cover bg-center opacity-40 dark:opacity-20" 
-        style={{ backgroundImage: "url('/backgrounds/Picture 5.jpg')" }} 
+      <div
+        className="absolute inset-0 bg-cover bg-center opacity-40 dark:opacity-20"
+        style={{ backgroundImage: "url('/backgrounds/Picture 5.jpg')" }}
       />
       <div className="absolute inset-0 bg-white/60 dark:bg-slate-900/80 backdrop-blur-[2px]" />
 
       <div className="relative z-10 p-4 sm:p-8 space-y-10">
-        
+
         {/* Section 1: Morning/Afternoon Table */}
         <div className="space-y-4">
           <h3 className="text-xl sm:text-2xl font-bold text-center text-slate-800 dark:text-slate-100 drop-shadow-sm">
             วันที่ {formatHeaderDate(currentDate)}
           </h3>
-          
+
           <div className="bg-white dark:bg-[#1a2332] rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden mx-auto max-w-5xl">
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-left border-collapse">
@@ -70,7 +97,9 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ dateStr }) => {
                   {availableRooms.map((room) => {
                     const morningStatus = getRoomStatus(room.id, "morning")
                     const afternoonStatus = getRoomStatus(room.id, "afternoon")
-                    
+                    const morningBookings = dateBookings.filter(b => b.roomId === room.id && parseInt(b.startTime.split(":")[0], 10) < 12)
+                    const afternoonBookings = dateBookings.filter(b => b.roomId === room.id && (parseInt(b.endTime.split(":")[0], 10) >= 12 || (parseInt(b.startTime.split(":")[0], 10) < 12 && parseInt(b.endTime.split(":")[0], 10) > 12)))
+
                     return (
                       <tr key={room.id} className="hover:bg-slate-50 dark:hover:bg-[#1e293b] transition-colors">
                         <td className="px-6 py-4 border-r border-slate-200 dark:border-slate-700/50">
@@ -84,22 +113,42 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ dateStr }) => {
                         <td className="px-6 py-4 border-r border-slate-200 dark:border-slate-700/50 text-center font-bold text-slate-700 dark:text-slate-300">
                           {room.capacity}
                         </td>
-                        <td className="px-6 py-4 border-r border-slate-200 dark:border-slate-700/50 text-center">
+                        <td className="px-2 py-4 border-r border-slate-200 dark:border-slate-700/50 text-center">
                           {morningStatus === "available" ? (
                             <span className="text-emerald-500 font-bold">{t.availableStatus || "ว่าง"}</span>
                           ) : (
-                            <span className="inline-block px-5 py-1.5 bg-[#6aa84f] text-white rounded-md font-bold shadow-sm">
-                              {t.approvedStatus || "อนุมัติ"}
-                            </span>
+                            <div className="space-y-1">
+                              {morningBookings.map(b => (
+                                <button
+                                  key={b.id}
+                                  type="button"
+                                  onClick={() => setInspectingBooking(b)}
+                                  className="inline-block w-full px-3 py-1.5 bg-[#6aa84f] hover:bg-[#4e8a35] text-white rounded-md font-bold shadow-sm transition-colors cursor-pointer text-xs truncate"
+                                  title={b.purpose}
+                                >
+                                  {b.purpose}
+                                </button>
+                              ))}
+                            </div>
                           )}
                         </td>
-                        <td className="px-6 py-4 text-center">
+                        <td className="px-2 py-4 text-center">
                           {afternoonStatus === "available" ? (
                             <span className="text-emerald-500 font-bold">{t.availableStatus || "ว่าง"}</span>
                           ) : (
-                            <span className="inline-block px-5 py-1.5 bg-[#6aa84f] text-white rounded-md font-bold shadow-sm">
-                              {t.approvedStatus || "อนุมัติ"}
-                            </span>
+                            <div className="space-y-1">
+                              {afternoonBookings.map(b => (
+                                <button
+                                  key={b.id}
+                                  type="button"
+                                  onClick={() => setInspectingBooking(b)}
+                                  className="inline-block w-full px-3 py-1.5 bg-[#6aa84f] hover:bg-[#4e8a35] text-white rounded-md font-bold shadow-sm transition-colors cursor-pointer text-xs truncate"
+                                  title={b.purpose}
+                                >
+                                  {b.purpose}
+                                </button>
+                              ))}
+                            </div>
                           )}
                         </td>
                       </tr>
@@ -140,21 +189,10 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ dateStr }) => {
                     {availableRooms.map(room => {
                       const mBookings = dateBookings.filter(b => b.roomId === room.id && parseInt(b.startTime.split(":")[0], 10) < 12)
                       return (
-                        <td key={room.id} className="p-4 border-r border-slate-200 dark:border-slate-700/50 align-top hover:bg-slate-50 dark:hover:bg-[#151f32] transition-colors">
-                          {mBookings.length > 0 ? mBookings.map(b => {
-                            const u = users.find(u => u.id === b.userId)
-                            return (
-                              <div key={b.id} className="text-center space-y-1.5 mb-6 last:mb-0">
-                                <p className="font-bold text-slate-800 dark:text-slate-100">{b.purpose}</p>
-                                <p className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-400">
-                                  {t.chairman || "ประธาน"}: {formatUserName(u, language)} {formatDepartment(u?.department, u?.role, language)}
-                                </p>
-                                <p className="text-[11px] sm:text-xs font-semibold text-slate-700 dark:text-slate-300">
-                                  {t.time || "เวลา"} {b.startTime} - {b.endTime} น.
-                                </p>
-                              </div>
-                            )
-                          }) : null}
+                        <td key={room.id} className="p-4 border-r border-slate-200 dark:border-slate-700/50 align-top">
+                          {mBookings.length > 0 ? mBookings.map(b => (
+                            <BookingCard key={b.id} b={b} />
+                          )) : null}
                         </td>
                       )
                     })}
@@ -172,23 +210,12 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ dateStr }) => {
                     </td>
                     {availableRooms.map(room => {
                       const aBookings = dateBookings.filter(b => b.roomId === room.id && (parseInt(b.endTime.split(":")[0], 10) >= 12 || (parseInt(b.startTime.split(":")[0], 10) < 12 && parseInt(b.endTime.split(":")[0], 10) > 12)))
-                      
+
                       return (
-                        <td key={room.id} className="p-4 border-r border-slate-200 dark:border-slate-700/50 align-top hover:bg-slate-50 dark:hover:bg-[#151f32] transition-colors">
-                          {aBookings.length > 0 ? aBookings.map(b => {
-                            const u = users.find(u => u.id === b.userId)
-                            return (
-                              <div key={b.id} className="text-center space-y-1.5 mb-6 last:mb-0">
-                                <p className="font-bold text-slate-800 dark:text-slate-100">{b.purpose}</p>
-                                <p className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-400">
-                                  {t.chairman || "ประธาน"}: {formatUserName(u, language)} {formatDepartment(u?.department, u?.role, language)}
-                                </p>
-                                <p className="text-[11px] sm:text-xs font-semibold text-slate-700 dark:text-slate-300">
-                                  {t.time || "เวลา"} {b.startTime} - {b.endTime} น.
-                                </p>
-                              </div>
-                            )
-                          }) : null}
+                        <td key={room.id} className="p-4 border-r border-slate-200 dark:border-slate-700/50 align-top">
+                          {aBookings.length > 0 ? aBookings.map(b => (
+                            <BookingCard key={b.id} b={b} />
+                          )) : null}
                         </td>
                       )
                     })}
@@ -199,6 +226,14 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ dateStr }) => {
           </div>
         </div>
       </div>
+
+      {/* Booking Detail Modal */}
+      {inspectingBooking && (
+        <BookingDetailModal
+          booking={inspectingBooking}
+          onClose={() => setInspectingBooking(null)}
+        />
+      )}
     </div>
   )
 }
