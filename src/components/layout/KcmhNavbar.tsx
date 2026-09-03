@@ -47,13 +47,20 @@ export const KcmhNavbar: React.FC<KcmhNavbarProps> = ({
   }
 
   const handleScheduleClick = () => {
+    const scrollToSchedule = () => {
+      const el = document.getElementById("schedule-section")
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" })
+      } else {
+        window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" })
+      }
+    }
+
     if (activeTab !== "dashboard" && activeTab !== "home") {
       setActiveTab("dashboard")
-      setTimeout(() => {
-        document.getElementById("schedule-section")?.scrollIntoView({ behavior: "smooth" })
-      }, 100)
+      setTimeout(scrollToSchedule, 300)
     } else {
-      document.getElementById("schedule-section")?.scrollIntoView({ behavior: "smooth" })
+      setTimeout(scrollToSchedule, 50)
     }
     setMobileMenuOpen(false)
   }
