@@ -114,13 +114,17 @@ async function initDB() {
       `,
         [adminHash, userHash],
       )
-
       await client.query(`
         INSERT INTO rooms (id, name, capacity, location, equipment, status) VALUES
         ('r1', 'ห้องประชุมใหญ่', 50, 'อาคาร A ชั้น 2', ARRAY['โปรเจคเตอร์','ไมโครโฟน','จอภาพ','ระบบเสียง'], 'available'),
         ('r2', 'ห้องประชุมเล็ก 1', 15, 'อาคาร A ชั้น 1', ARRAY['โปรเจคเตอร์','กระดานไวท์บอร์ด'], 'available')
       `)
       console.log("✅ Database seeded with initial data")
+    } else {
+      // For existing databases, ensure default users have their emails set
+      await client.query("UPDATE users SET email = 'admin@example.com' WHERE username = 'Admin' AND email IS NULL")
+      await client.query("UPDATE users SET email = 'test@example.com' WHERE username = 'Test' AND email IS NULL")
+      console.log("✅ Existing default users emails updated")
     }
 
     console.log("✅ Database initialized")
