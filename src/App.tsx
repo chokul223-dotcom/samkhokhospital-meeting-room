@@ -131,7 +131,11 @@ function MainContent() {
   }
 
   const handleOpenBookingModal = (roomId?: string, date?: string) => {
-    // If not logged in and wants to book, allow booking or prompt
+    if (!currentUser) {
+      // Redirect to login if not authenticated
+      setActiveTab("login")
+      return
+    }
     setBookingModalConfig({ open: true, roomId, date })
   }
 
