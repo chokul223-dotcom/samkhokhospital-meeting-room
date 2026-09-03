@@ -85,6 +85,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   )
 
   const [popoverDate, setPopoverDate] = useState<string | null>(null)
+  const [popoverBookings, setPopoverBookings] = useState<Booking[]>([])
   const [scheduleDate, setScheduleDate] = useState<string>(todayDateStr)
 
   // Quick stats calculations
@@ -383,24 +384,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                           onClick={(e) => {
                             e.stopPropagation()
                             setPopoverDate(cell.dateStr)
+                            setPopoverBookings(cellBookings)
                           }}
                           className="text-[11px] font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors w-full text-left px-1 py-0.5 rounded-sm hover:bg-blue-50 dark:hover:bg-blue-900/40 cursor-pointer"
                         >
                           +{cellBookings.length - 1} {t.more || "เพิ่มเติม"}
                         </button>
                       )}
-                      
-                      {/* Day Popover */}
-                      {popoverDate === cell.dateStr && (
-                        <CalendarDayPopover
-                          date={cell.dateStr}
-                          bookings={cellBookings}
-                          getRoomColor={getRoomColor}
-                          onClose={() => setPopoverDate(null)}
-                          onBookingClick={(b) => setInspectingBooking(b)}
-                          formatHeaderDate={formatHeaderDate}
-                        />
-                      )}
+
                     </div>
                   </div>
                 )
@@ -460,7 +451,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <ScheduleView dateStr={scheduleDate} />
       </div>
 
-      {/* ─── 6. Booking Detail Inspection Modal ─── */}
+      {/* ─── 6. Day Popover Modal ─── */}
+      {popoverDate && (
+        <CalendarDayPopover
+          date={popoverDate}
+          bookings={popoverBookings}
+          getRoomColor={getRoomColor}
+          onClose={() => { setPopoverDate(null); setPopoverBookings([]) }}
+          onBookingClick={(b) => { setInspectingBooking(b); setPopoverDate(null); setPopoverBookings([]) }}
+          formatHeaderDate={formatHeaderDate}
+        />
+      )}
+
+      {/* ─── 7. Booking Detail Inspection Modal ─── */}
       {inspectingBooking && (
         <BookingDetailModal
           booking={inspectingBooking}
