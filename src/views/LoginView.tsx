@@ -97,7 +97,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onBackToHome }) => {
           username,
         }
         localStorage.setItem("user", JSON.stringify(mockUser))
-        localStorage.setItem("token", "mock-token-" + Date.now())
+        localStorage.setItem("token", "offline-mock")
         setCurrentUser(mockUser)
       } else {
         // Check registered users stored in localStorage
@@ -113,7 +113,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onBackToHome }) => {
             username: found.username,
           }
           localStorage.setItem("user", JSON.stringify(userObj))
-          localStorage.setItem("token", "mock-token-" + Date.now())
+          localStorage.setItem("token", "offline-mock")
           setCurrentUser(userObj)
         } else {
           setError(t.invalidLogin)
