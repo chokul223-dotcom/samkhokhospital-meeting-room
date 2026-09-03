@@ -46,6 +46,7 @@ export async function login(
   localStorage.setItem("user", JSON.stringify(data.user))
   return data
 }
+
 export async function register(data: { username: string; password: string; name: string }): Promise<any> {
   // Mock registration
   return new Promise((resolve) => {
