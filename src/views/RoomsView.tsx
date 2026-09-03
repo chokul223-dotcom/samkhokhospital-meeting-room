@@ -52,14 +52,6 @@ export const RoomsView: React.FC<RoomsViewProps> = ({
   const displayedRooms = filteredRooms.slice(0, entriesPerPage)
 
   const handleBookClick = (roomId: string) => {
-    if (!currentUser) {
-      alert(
-        language === "th"
-          ? "กรุณาเข้าระบบ ก่อนดำเนินการต่อ"
-          : "Please sign in before proceeding",
-      )
-      return
-    }
     onOpenBookingModal(roomId)
   }
 
