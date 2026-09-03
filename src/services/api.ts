@@ -21,6 +21,12 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: "Unknown error" }))
+    // Auto-logout เมื่อ token ไม่ถูกต้องหรือหมดอายุ
+    if (res.status === 401) {
+      localStorage.removeItem("token")
+      localStorage.removeItem("user")
+      window.location.reload()
+    }
     throw new Error(err.error || `HTTP ${res.status}`)
   }
   return res.json()
