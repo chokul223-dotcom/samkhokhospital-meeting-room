@@ -174,6 +174,44 @@ router.patch("/:id", authMiddleware, async (req, res) => {
         status,
         req.params.id,
       ])
+
+      // Auto-reject overlapping pending bookings if this is an approval
+      if (status === "approved") {
+        const toMinutes = (t) => {
+          const [h, m] = t.split(":").map(Number)
+          return h * 60 + m
+        }
+
+        const bStart = toMinutes(b.start_time)
+        let bEnd = toMinutes(b.end_time)
+        if (bEnd <= bStart) bEnd += 24 * 60
+
+        // Find all pending bookings for the same room and date
+        const pendingBookings = await pool.query(
+          "SELECT id, start_time, end_time FROM bookings WHERE room_id = $1 AND date = $2 AND status = 'pending' AND id != $3",
+          [b.room_id, b.date, b.id]
+        )
+
+        const conflictingIds = []
+        for (const pending of pendingBookings.rows) {
+          const pStart = toMinutes(pending.start_time)
+          let pEnd = toMinutes(pending.end_time)
+          if (pEnd <= pStart) pEnd += 24 * 60
+
+          if (pStart < bEnd && bStart < pEnd) {
+            conflictingIds.push(pending.id)
+          }
+        }
+
+        if (conflictingIds.length > 0) {
+          const autoRejectReason = "ระบบยกเลิกอัตโนมัติเนื่องจากมีผู้จองเวลาซ้อนทับได้รับการอนุมัติแล้ว"
+          
+          await pool.query(
+            "UPDATE bookings SET status = 'rejected', reject_reason = $1 WHERE id = ANY($2::text[])",
+            [autoRejectReason, conflictingIds]
+          )
+        }
+      }
     }
     if (req.notifyClients) req.notifyClients()
     res.json({ success: true })
