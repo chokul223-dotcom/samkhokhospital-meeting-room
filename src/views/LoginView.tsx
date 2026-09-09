@@ -180,24 +180,38 @@ export const LoginView: React.FC<LoginViewProps> = ({ onBackToHome }) => {
     setRegLoading(true)
     try {
       await handleRegisterUser({ email: regUsername, username: regUsername.split("@")[0], password: regPassword, name: regFullName })
-      // Save to localStorage for offline login validation
-      const registeredRaw = localStorage.getItem("registered_users")
-      const existing: Array<{email?: string; username: string; password: string; name: string; id: string; department: string}> = registeredRaw ? JSON.parse(registeredRaw) : []
-      const newEntry = { id: "u" + Date.now(), email: regUsername, username: regUsername.split("@")[0], password: regPassword, name: regFullName, department: "" }
-      localStorage.setItem("registered_users", JSON.stringify([...existing, newEntry]))
-      setRegSuccess("สมัครสมาชิกสำเร็จ! กรุณาเข้าสู่ระบบ")
+      // Save to localStorage for offline login validation (fallback)
+      try {
+        const registeredRaw = localStorage.getItem("registered_users")
+        const existing: Array<{email?: string; username: string; password: string; name: string; id: string; department: string}> = registeredRaw ? JSON.parse(registeredRaw) : []
+        const newEntry = { id: "u" + Date.now(), email: regUsername, username: regUsername.split("@")[0], password: regPassword, name: regFullName, department: "" }
+        localStorage.setItem("registered_users", JSON.stringify([...existing, newEntry]))
+      } catch {}
+      setRegSuccess("สมัครสมาชิกสำเร็จ! กรุณารอการอนุมัติจากผู้ดูแลระบบก่อนเข้าสู่ระบบ")
       setTimeout(() => {
         setMode("login")
         setRegSuccess("")
         setUsername(regUsername)
-      }, 1500)
-    } catch {
-      setRegSuccess("สมัครสมาชิกสำเร็จ! กรุณาเข้าสู่ระบบ")
-      setTimeout(() => {
-        setMode("login")
-        setRegSuccess("")
-        setUsername(regUsername)
-      }, 1500)
+      }, 2000)
+    } catch (err: any) {
+      // Show specific error from API (e.g., duplicate email)
+      if (err.message?.includes("already exists")) {
+        setRegError("อีเมลหรือชื่อผู้ใช้นี้มีในระบบแล้ว กรุณาใช้อีเมลอื่น")
+      } else {
+        // Network or other error — still save locally and treat as success
+        try {
+          const registeredRaw = localStorage.getItem("registered_users")
+          const existing: Array<{email?: string; username: string; password: string; name: string; id: string; department: string}> = registeredRaw ? JSON.parse(registeredRaw) : []
+          const newEntry = { id: "u" + Date.now(), email: regUsername, username: regUsername.split("@")[0], password: regPassword, name: regFullName, department: "" }
+          localStorage.setItem("registered_users", JSON.stringify([...existing, newEntry]))
+        } catch {}
+        setRegSuccess("สมัครสมาชิกสำเร็จ! กรุณารอการอนุมัติจากผู้ดูแลระบบก่อนเข้าสู่ระบบ")
+        setTimeout(() => {
+          setMode("login")
+          setRegSuccess("")
+          setUsername(regUsername)
+        }, 2000)
+      }
     } finally {
       setRegLoading(false)
     }

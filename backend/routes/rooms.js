@@ -14,6 +14,7 @@ router.get("/public", async (req, res) => {
         location: r.location,
         equipment: r.equipment,
         status: r.status,
+        imageUrl: r.image_url || null,
       })),
     )
   } catch (err) {
@@ -34,6 +35,7 @@ router.get("/", authMiddleware, async (req, res) => {
         location: r.location,
         equipment: r.equipment,
         status: r.status,
+        imageUrl: r.image_url || null,
       })),
     )
   } catch (err) {
@@ -63,11 +65,11 @@ router.patch("/:id/status", authMiddleware, async (req, res) => {
 router.post("/", authMiddleware, async (req, res) => {
   if (req.user.role !== "admin")
     return res.status(403).json({ error: "Admin only" })
-  const { id, name, capacity, location, equipment, status } = req.body
+  const { id, name, capacity, location, equipment, status, imageUrl } = req.body
   try {
     await pool.query(
-      "INSERT INTO rooms (id, name, capacity, location, equipment, status) VALUES ($1, $2, $3, $4, $5, $6)",
-      [id, name, capacity, location, equipment || [], status || "available"],
+      "INSERT INTO rooms (id, name, capacity, location, equipment, status, image_url) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+      [id, name, capacity, location, equipment || [], status || "available", imageUrl || null],
     )
     if (req.notifyClients) req.notifyClients()
     res.json({ success: true, id })
@@ -80,16 +82,17 @@ router.post("/", authMiddleware, async (req, res) => {
 router.put("/:id", authMiddleware, async (req, res) => {
   if (req.user.role !== "admin")
     return res.status(403).json({ error: "Admin only" })
-  const { name, capacity, location, equipment, status } = req.body
+  const { name, capacity, location, equipment, status, imageUrl } = req.body
   try {
     await pool.query(
-      "UPDATE rooms SET name = $1, capacity = $2, location = $3, equipment = $4, status = $5 WHERE id = $6",
+      "UPDATE rooms SET name = $1, capacity = $2, location = $3, equipment = $4, status = $5, image_url = $6 WHERE id = $7",
       [
         name,
         capacity,
         location,
         equipment || [],
         status || "available",
+        imageUrl !== undefined ? imageUrl : null,
         req.params.id,
       ],
     )

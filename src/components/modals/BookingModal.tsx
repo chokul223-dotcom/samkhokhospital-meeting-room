@@ -272,6 +272,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     })
   }, [bookings, roomId, date, startTime, endTime])
 
+  // Real-time room maintenance check — show error immediately without submit
+  const isRoomMaintenance = selectedRoom?.status === 'maintenance'
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
@@ -289,6 +292,11 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     const selectedDateTime = new Date(`${date}T${startTime}:00`)
     if (selectedDateTime < now) {
       setError(language === 'th' ? 'ไม่สามารถจองเวลาย้อนหลังได้' : 'Cannot book a time in the past')
+      return
+    }
+
+    if (isRoomMaintenance) {
+      setError(language === 'th' ? 'ห้องนี้ถูกปิดปรับปรุงชั่วคราว ไม่สามารถจองได้' : 'This room is under maintenance and cannot be booked')
       return
     }
 
@@ -457,6 +465,23 @@ export const BookingModal: React.FC<BookingModalProps> = ({
             />
           </div>
 
+          {/* Room Maintenance Warning — Real-time */}
+          {isRoomMaintenance && (
+            <div className="rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 p-4 flex items-start gap-3 text-amber-700 dark:text-amber-300">
+              <AlertCircle className="h-5 w-5 flex-none mt-0.5" />
+              <div>
+                <p className="text-xs font-bold">
+                  {language === 'th' ? '⚠️ ห้องถูกปิดปรับปรุงชั่วคราว' : '⚠️ Room under maintenance'}
+                </p>
+                <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1">
+                  {language === 'th'
+                    ? 'ผู้ดูแลระบบได้ปิดห้องนี้ชั่วคราว ไม่สามารถทำการจองได้ในขณะนี้'
+                    : 'The admin has closed this room temporarily. Booking is not available.'}
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Conflict Warning */}
           {conflicts.length > 0 && (
             <div className="rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 p-4 flex items-start gap-3 text-rose-700 dark:text-rose-300">
@@ -490,7 +515,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
             </button>
             <button
               type="submit"
-              disabled={isSubmitting || conflicts.length > 0}
+              disabled={isSubmitting || conflicts.length > 0 || isRoomMaintenance}
               className="flex-1 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 py-3 text-xs font-bold text-white shadow-lg shadow-blue-600/30 hover:from-blue-700 hover:to-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             >
               {isSubmitting ? t.submitting : t.submitBooking}

@@ -54,11 +54,9 @@ export async function login(
 }
 
 export async function register(data: { email: string; username?: string; password: string; name: string }): Promise<any> {
-  // Mock registration
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({ success: true, user: data })
-    }, 500)
+  return request<any>("/api/auth/register", {
+    method: "POST",
+    body: JSON.stringify(data),
   })
 }
 
@@ -81,7 +79,8 @@ export async function fetchRooms(): Promise<Room[]> {
 export async function fetchPublicRooms(): Promise<Room[]> {
   const res = await fetch(`${BASE_URL}/api/rooms/public`)
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
-  return res.json()
+  const data = await res.json()
+  return data.map((r: any) => ({ ...r, imageUrl: r.imageUrl || r.image_url || null }))
 }
 
 export async function addRoom(

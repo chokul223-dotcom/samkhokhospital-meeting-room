@@ -297,13 +297,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       es.onmessage = (e) => {
         if (e.data === "update") refreshData()
       }
+      es.onerror = () => {
+        // SSE failed — will rely on polling fallback below
+        if (es) { es.close(); es = null }
+      }
     } catch {
       // Ignore SSE failure if backend is offline
     }
 
+    // Poll every 5s for near-real-time booking status updates
     const poll = setInterval(() => {
       refreshData()
-    }, 15000)
+    }, 5000)
 
     return () => {
       if (es) es.close()
@@ -398,19 +403,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       } else {
         await api.addRoom(room)
       }
+      // Refresh from DB to get persisted imageUrl
+      await refreshData()
     } catch {
-      // Offline fallback
+      // Offline fallback — update local state only
+      setRooms((prev) => {
+        const idx = prev.findIndex((r) => r.id === room.id)
+        if (idx >= 0) {
+          const next = [...prev]
+          next[idx] = room
+          return next
+        }
+        return [...prev, room]
+      })
     }
-
-    setRooms((prev) => {
-      const idx = prev.findIndex((r) => r.id === room.id)
-      if (idx >= 0) {
-        const next = [...prev]
-        next[idx] = room
-        return next
-      }
-      return [...prev, room]
-    })
     showToast(isEdit ? t.toastRoomEdited : t.toastRoomAdded)
   }
 
@@ -497,13 +503,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   const handleRegisterUser = async (u: { email: string; username?: string; name: string; password?: string }) => {
     try {
       const created = await api.register?.({ email: u.email, username: u.username, password: u.password || "", name: u.name })
-      if (created) {
+      if (created?.user) {
+        // Successfully registered in backend — add to users list so admin sees immediately
         setUsers((prev) => {
           if (prev.find((x) => x.email === u.email || (x.username && x.username === u.username))) return prev
-          return [...prev, { ...created.user, department: "" } as any]
+          return [...prev, { ...created.user, department: created.user.department || "รอการตรวจสอบ" } as any]
         })
       }
-    } catch {
+    } catch (err: any) {
+      // If duplicate, rethrow so LoginView can show error
+      if (err.message?.includes("already exists")) throw err
       // Offline fallback — do NOT push here; LoginView already wrote to registered_users
       // and AppContext init will pick it up on next load. Just keep state in sync.
       setUsers((prev) => {
@@ -511,7 +520,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         const newU: User = {
           id: "u" + Date.now(),
           name: u.name,
-          department: "",
+          department: "รอการตรวจสอบ",
           role: "user",
           username: u.username || u.email.split("@")[0],
           email: u.email,

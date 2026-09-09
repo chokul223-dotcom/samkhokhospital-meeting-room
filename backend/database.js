@@ -56,6 +56,11 @@ async function initDB() {
       ALTER TABLE bookings ADD COLUMN IF NOT EXISTS reject_reason TEXT DEFAULT NULL
     `)
 
+    // Add image_url column to rooms if it doesn't exist (for existing databases)
+    await client.query(`
+      ALTER TABLE rooms ADD COLUMN IF NOT EXISTS image_url TEXT DEFAULT NULL
+    `)
+
     // Add email_verified column if it doesn't exist
     await client.query(`
       ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT FALSE

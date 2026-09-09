@@ -3,6 +3,49 @@ const bcrypt = require("bcryptjs")
 const jwt = require("jsonwebtoken")
 const { pool } = require("../database")
 
+// POST /api/auth/register — public, register new user (pending approval)
+router.post("/register", async (req, res) => {
+  const { email, username, password, name } = req.body
+  if (!email || !password || !name)
+    return res.status(400).json({ error: "Missing required fields" })
+  if (password.length < 6)
+    return res.status(400).json({ error: "Password must be at least 6 characters" })
+
+  try {
+    // Check duplicate email or username
+    const emailNorm = email.toLowerCase().trim()
+    const uname = username || emailNorm.split("@")[0]
+    const existing = await pool.query(
+      "SELECT id FROM users WHERE email = $1 OR username = $2",
+      [emailNorm, uname]
+    )
+    if (existing.rows.length > 0) {
+      return res.status(409).json({ error: "Email or username already exists" })
+    }
+
+    const hash = await bcrypt.hash(password, 10)
+    const id = "u" + Date.now()
+
+    await pool.query(
+      "INSERT INTO users (id, name, department, role, username, email, password) VALUES ($1,$2,$3,$4,$5,$6,$7)",
+      [id, name.trim(), "รอการตรวจสอบ", "user", uname, emailNorm, hash]
+    )
+
+    // Notify admin clients via SSE so admin sees new user immediately
+    if (req.notifyClients) req.notifyClients()
+
+    res.status(201).json({
+      success: true,
+      user: { id, name: name.trim(), department: "รอการตรวจสอบ", role: "user", username: uname, email: emailNorm }
+    })
+  } catch (err) {
+    console.error("register error:", err)
+    if (err.code === "23505")
+      return res.status(409).json({ error: "Email or username already exists" })
+    res.status(500).json({ error: "Server error" })
+  }
+})
+
 // POST /api/auth/login
 router.post("/login", async (req, res) => {
   const { email, password } = req.body
