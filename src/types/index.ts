@@ -48,6 +48,10 @@ export interface Booking {
   rejectReason?: string | null
   createdAt: string
   note?: string
+  chairman?: string
+  onlineMeeting?: string
+  contactPerson?: string
+  relatedLinks?: { title: string; url: string }[]
 }
 
 export interface LoginResponse {

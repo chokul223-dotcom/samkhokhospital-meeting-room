@@ -137,6 +137,9 @@ export async function createBooking(data: {
   endTime: string
   purpose: string
   attendees: number
+  chairman?: string
+  onlineMeeting?: string
+  contactPerson?: string
 }): Promise<Booking> {
   return request<Booking>("/api/bookings", {
     method: "POST",
@@ -152,6 +155,16 @@ export async function updateBookingStatus(
   return request<{ success: boolean }>(`/api/bookings/${id}`, {
     method: "PATCH",
     body: JSON.stringify({ status, ...(rejectReason ? { rejectReason } : {}) }),
+  })
+}
+
+export async function updateBookingDetails(
+  id: string,
+  data: Partial<Booking>,
+): Promise<{ success: boolean }> {
+  return request<{ success: boolean }>(`/api/bookings/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
   })
 }
 

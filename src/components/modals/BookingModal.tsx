@@ -134,15 +134,14 @@ const LocalizedDatePicker: React.FC<DatePickerProps> = ({ value, min, onChange, 
                     type="button"
                     disabled={isDisabled(d)}
                     onClick={() => selectDay(d)}
-                    className={`h-8 w-8 rounded-full text-xs font-semibold transition-all cursor-pointer ${
-                      isSelected(d)
+                    className={`h-8 w-8 rounded-full text-xs font-semibold transition-all cursor-pointer ${isSelected(d)
                         ? 'bg-blue-600 text-white shadow-sm'
                         : isToday(d)
-                        ? 'border border-blue-400 text-blue-600 dark:text-blue-400'
-                        : isDisabled(d)
-                        ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed'
-                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-                    }`}
+                          ? 'border border-blue-400 text-blue-600 dark:text-blue-400'
+                          : isDisabled(d)
+                            ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed'
+                            : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                      }`}
                   >
                     {d}
                   </button>
@@ -157,7 +156,7 @@ const LocalizedDatePicker: React.FC<DatePickerProps> = ({ value, min, onChange, 
               type="button"
               onClick={() => {
                 const tDate = new Date()
-                onChange(`${tDate.getFullYear()}-${String(tDate.getMonth()+1).padStart(2,'0')}-${String(tDate.getDate()).padStart(2,'0')}`)
+                onChange(`${tDate.getFullYear()}-${String(tDate.getMonth() + 1).padStart(2, '0')}-${String(tDate.getDate()).padStart(2, '0')}`)
                 setViewYear(tDate.getFullYear())
                 setViewMonth(tDate.getMonth())
                 setOpen(false)
@@ -240,6 +239,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const [endTime, setEndTime] = useState('11:00')
   const [attendees, setAttendees] = useState(10)
   const [purpose, setPurpose] = useState('')
+  const [chairman, setChairman] = useState('')
+  const [onlineMeeting, setOnlineMeeting] = useState('ไม่ใช้ระบบออนไลน์')
+  const [contactPerson, setContactPerson] = useState(currentUser?.name || '')
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -251,8 +253,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       if (
         b.roomId !== roomId ||
         b.date !== date ||
-        b.status === 'rejected' ||
-        b.status === 'cancelled'
+        b.status !== 'approved'
       )
         return false
 
@@ -318,6 +319,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         endTime,
         purpose: purpose.trim(),
         attendees,
+        chairman: chairman.trim(),
+        onlineMeeting: onlineMeeting.trim(),
+        contactPerson: contactPerson.trim(),
       })
       onClose()
     } catch (err: any) {
@@ -370,157 +374,207 @@ export const BookingModal: React.FC<BookingModalProps> = ({
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4">
-          {/* Room Selection */}
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">
-              {t.room} <span className="text-rose-500">*</span>
-            </label>
-            <div className="relative">
-              <select
-                value={roomId}
-                onChange={e => setRoomId(e.target.value)}
-                className="w-full appearance-none rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 pl-4 pr-10 py-3 text-sm font-medium text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer"
+            {/* Room Selection */}
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">
+                {t.room} <span className="text-rose-500">*</span>
+              </label>
+              <div className="relative">
+                <select
+                  value={roomId}
+                  onChange={e => setRoomId(e.target.value)}
+                  className="w-full appearance-none rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 pl-4 pr-10 py-3 text-sm font-medium text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer"
+                >
+                  {availableRooms.map(r => (
+                    <option key={r.id} value={r.id}>
+                      {formatRoomName(r, language)} ({r.capacity} {t.people}) — {formatRoomLocation(r.location, language)}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-3.5 top-3.5 h-4 w-4 text-slate-400" />
+              </div>
+            </div>
+
+            {/* Selected Room Info & Equipment */}
+            {selectedRoom && (
+              <div className="rounded-2xl bg-blue-50/80 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/50 p-3.5 text-xs text-blue-900 dark:text-blue-200 space-y-1.5">
+                <div className="flex items-center justify-between font-semibold">
+                  <span>{formatRoomLocation(selectedRoom.location, language)}</span>
+                  <span>{t.maxCapacity} {selectedRoom.capacity} {t.people}</span>
+                </div>
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {selectedRoom.equipment.map((eq, i) => (
+                    <span
+                      key={i}
+                      className="inline-flex items-center rounded-lg bg-blue-100/70 dark:bg-blue-900/50 px-2 py-0.5 text-[11px] font-medium text-blue-800 dark:text-blue-300"
+                    >
+                      {formatEquipment(eq, language)}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Date Selector — Localized Calendar */}
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">
+                {t.date} <span className="text-rose-500">*</span>
+              </label>
+              <LocalizedDatePicker value={date} min={todayStr} onChange={setDate} lang={language} />
+            </div>
+
+            {/* Time Slot — 24-Hour Selectors */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">
+                  {t.startTime} <span className="text-rose-500">*</span>
+                </label>
+                <TimeSelect24 value={startTime} onChange={setStartTime} />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">
+                  {t.endTime} <span className="text-rose-500">*</span>
+                </label>
+                <TimeSelect24 value={endTime} onChange={setEndTime} />
+              </div>
+            </div>
+
+            {/* Attendees */}
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">
+                {t.attendees} <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="number"
+                min={1}
+                max={selectedRoom ? selectedRoom.capacity : 200}
+                value={attendees}
+                onChange={e => setAttendees(Number(e.target.value))}
+                className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+              />
+            </div>
+
+            {/* Purpose */}
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">
+                {t.purpose} <span className="text-rose-500">*</span>
+              </label>
+              <textarea
+                rows={2}
+                value={purpose}
+                onChange={e => setPurpose(e.target.value)}
+                placeholder={t.purposePlaceholder}
+                className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all resize-none"
+              />
+            </div>
+
+            {/* Chairman */}
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">
+                {language === 'th' ? 'ประธานการประชุม' : 'Chairman'}
+              </label>
+              <input
+                type="text"
+                value={chairman}
+                onChange={e => setChairman(e.target.value)}
+                placeholder={language === 'th' ? 'ระบุชื่อ-นามสกุล หรือตำแหน่งประธาน' : 'Chairman Name or Position'}
+                className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+              />
+            </div>
+
+            {/* Online Meeting System */}
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">
+                {language === 'th' ? 'ระบบออนไลน์ที่ต้องการใช้' : 'Online Meeting System'}
+              </label>
+              <div className="relative">
+                <select
+                  value={onlineMeeting}
+                  onChange={e => setOnlineMeeting(e.target.value)}
+                  className="w-full appearance-none rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 pl-4 pr-10 py-2.5 text-sm font-medium text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer"
+                >
+                  <option value="ไม่ใช้ระบบออนไลน์">{language === 'th' ? 'ไม่ใช้ระบบออนไลน์' : 'None'}</option>
+                  <option value="Zoom">Zoom</option>
+                  <option value="Google Meet">Google Meet</option>
+                  <option value="WebEx">WebEx</option>
+                  <option value="MS Teams">MS Teams</option>
+                  <option value="อื่นๆ (โปรดระบุในรายละเอียด)">{language === 'th' ? 'อื่นๆ (โปรดระบุในรายละเอียด)' : 'Other (specify in details)'}</option>
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-3.5 top-3 h-4 w-4 text-slate-400" />
+              </div>
+            </div>
+
+            {/* Contact Person */}
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">
+                {language === 'th' ? 'ประสานงานผ่าน (ชื่อ / เบอร์โทร)' : 'Contact Person (Name / Phone)'}
+              </label>
+              <input
+                type="text"
+                value={contactPerson}
+                onChange={e => setContactPerson(e.target.value)}
+                placeholder={language === 'th' ? 'เช่น สมหญิง เบอร์ 1234' : 'e.g. Jane, Ext 1234'}
+                className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+              />
+            </div>
+
+            {/* Room Maintenance Warning — Real-time */}
+            {isRoomMaintenance && (
+              <div className="rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 p-4 flex items-start gap-3 text-amber-700 dark:text-amber-300">
+                <AlertCircle className="h-5 w-5 flex-none mt-0.5" />
+                <div>
+                  <p className="text-xs font-bold">
+                    {language === 'th' ? '⚠️ ห้องถูกปิดปรับปรุงชั่วคราว' : '⚠️ Room under maintenance'}
+                  </p>
+                  <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1">
+                    {language === 'th'
+                      ? 'ผู้ดูแลระบบได้ปิดห้องนี้ชั่วคราว ไม่สามารถทำการจองได้ในขณะนี้'
+                      : 'The admin has closed this room temporarily. Booking is not available.'}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Conflict Warning */}
+            {conflicts.length > 0 && (
+              <div className="rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 p-4 flex items-start gap-3 text-rose-700 dark:text-rose-300">
+                <AlertCircle className="h-5 w-5 flex-none mt-0.5" />
+                <div>
+                  <p className="text-xs font-bold">{t.conflictWarning}</p>
+                  <p className="text-[11px] text-rose-600 dark:text-rose-400 mt-1">
+                    {language === 'th' ? 'มีการจองแล้ว:' : 'Already booked:'}{' '}
+                    {conflicts.map(c => `${c.startTime}–${c.endTime} (${c.purpose})`).join(', ')}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Error Message */}
+            {error && (
+              <div className="rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 p-3.5 text-xs font-semibold text-rose-600 dark:text-rose-300 flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 flex-none" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            {/* Footer Actions */}
+            <div className="flex gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 rounded-xl border border-slate-200 dark:border-slate-700 py-3 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
               >
-                {availableRooms.map(r => (
-                  <option key={r.id} value={r.id}>
-                    {formatRoomName(r, language)} ({r.capacity} {t.people}) — {formatRoomLocation(r.location, language)}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-3.5 top-3.5 h-4 w-4 text-slate-400" />
+                {t.cancelBtn}
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting || conflicts.length > 0 || isRoomMaintenance}
+                className="flex-1 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 py-3 text-xs font-bold text-white shadow-lg shadow-blue-600/30 hover:from-blue-700 hover:to-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              >
+                {isSubmitting ? t.submitting : t.submitBooking}
+              </button>
             </div>
-          </div>
-
-          {/* Selected Room Info & Equipment */}
-          {selectedRoom && (
-            <div className="rounded-2xl bg-blue-50/80 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/50 p-3.5 text-xs text-blue-900 dark:text-blue-200 space-y-1.5">
-              <div className="flex items-center justify-between font-semibold">
-                <span>{formatRoomLocation(selectedRoom.location, language)}</span>
-                <span>{t.maxCapacity} {selectedRoom.capacity} {t.people}</span>
-              </div>
-              <div className="flex flex-wrap gap-1.5 pt-1">
-                {selectedRoom.equipment.map((eq, i) => (
-                  <span
-                    key={i}
-                    className="inline-flex items-center rounded-lg bg-blue-100/70 dark:bg-blue-900/50 px-2 py-0.5 text-[11px] font-medium text-blue-800 dark:text-blue-300"
-                  >
-                    {formatEquipment(eq, language)}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Date Selector — Localized Calendar */}
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">
-              {t.date} <span className="text-rose-500">*</span>
-            </label>
-            <LocalizedDatePicker value={date} min={todayStr} onChange={setDate} lang={language} />
-          </div>
-
-          {/* Time Slot — 24-Hour Selectors */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">
-                {t.startTime} <span className="text-rose-500">*</span>
-              </label>
-              <TimeSelect24 value={startTime} onChange={setStartTime} />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">
-                {t.endTime} <span className="text-rose-500">*</span>
-              </label>
-              <TimeSelect24 value={endTime} onChange={setEndTime} />
-            </div>
-          </div>
-
-          {/* Attendees */}
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">
-              {t.attendees} <span className="text-rose-500">*</span>
-            </label>
-            <input
-              type="number"
-              min={1}
-              max={selectedRoom ? selectedRoom.capacity : 200}
-              value={attendees}
-              onChange={e => setAttendees(Number(e.target.value))}
-              className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
-            />
-          </div>
-
-          {/* Purpose */}
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">
-              {t.purpose} <span className="text-rose-500">*</span>
-            </label>
-            <textarea
-              rows={3}
-              value={purpose}
-              onChange={e => setPurpose(e.target.value)}
-              placeholder={t.purposePlaceholder}
-              className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all resize-none"
-            />
-          </div>
-
-          {/* Room Maintenance Warning — Real-time */}
-          {isRoomMaintenance && (
-            <div className="rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 p-4 flex items-start gap-3 text-amber-700 dark:text-amber-300">
-              <AlertCircle className="h-5 w-5 flex-none mt-0.5" />
-              <div>
-                <p className="text-xs font-bold">
-                  {language === 'th' ? '⚠️ ห้องถูกปิดปรับปรุงชั่วคราว' : '⚠️ Room under maintenance'}
-                </p>
-                <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1">
-                  {language === 'th'
-                    ? 'ผู้ดูแลระบบได้ปิดห้องนี้ชั่วคราว ไม่สามารถทำการจองได้ในขณะนี้'
-                    : 'The admin has closed this room temporarily. Booking is not available.'}
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Conflict Warning */}
-          {conflicts.length > 0 && (
-            <div className="rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 p-4 flex items-start gap-3 text-rose-700 dark:text-rose-300">
-              <AlertCircle className="h-5 w-5 flex-none mt-0.5" />
-              <div>
-                <p className="text-xs font-bold">{t.conflictWarning}</p>
-                <p className="text-[11px] text-rose-600 dark:text-rose-400 mt-1">
-                  {language === 'th' ? 'มีการจองแล้ว:' : 'Already booked:'}{' '}
-                  {conflicts.map(c => `${c.startTime}–${c.endTime} (${c.purpose})`).join(', ')}
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Error Message */}
-          {error && (
-            <div className="rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 p-3.5 text-xs font-semibold text-rose-600 dark:text-rose-300 flex items-center gap-2">
-              <AlertCircle className="h-4 w-4 flex-none" />
-              <span>{error}</span>
-            </div>
-          )}
-
-          {/* Footer Actions */}
-          <div className="flex gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 rounded-xl border border-slate-200 dark:border-slate-700 py-3 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-            >
-              {t.cancelBtn}
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting || conflicts.length > 0 || isRoomMaintenance}
-              className="flex-1 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 py-3 text-xs font-bold text-white shadow-lg shadow-blue-600/30 hover:from-blue-700 hover:to-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-            >
-              {isSubmitting ? t.submitting : t.submitBooking}
-            </button>
-          </div>
           </form>
         )}
       </div>

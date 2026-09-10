@@ -141,10 +141,14 @@ interface AppContextType {
     endTime: string
     purpose: string
     attendees: number
+    chairman?: string
+    onlineMeeting?: string
+    contactPerson?: string
   }) => Promise<void>
   handleApprove: (id: string) => Promise<void>
   handleReject: (id: string, reason?: string) => Promise<void>
   handleCancel: (id: string) => Promise<void>
+  handleUpdateBooking: (id: string, data: Partial<Booking>) => Promise<void>
   handleSaveRoom: (r: Room) => Promise<void>
   handleDeleteRoom: (id: string) => Promise<void>
   handleSaveUser: (
@@ -324,6 +328,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     endTime: string
     purpose: string
     attendees: number
+    chairman?: string
+    onlineMeeting?: string
+    contactPerson?: string
   }) => {
     try {
       const created = await api.createBooking(data)
@@ -345,6 +352,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
           purpose: data.purpose,
           attendees: data.attendees,
           status: "pending",
+          chairman: data.chairman,
+          onlineMeeting: data.onlineMeeting,
+          contactPerson: data.contactPerson,
           createdAt: TODAY,
         }
         setBookings((prev) => [newB, ...prev])
@@ -395,6 +405,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     showToast(t.toastCancelSuccess)
   }
 
+  const handleUpdateBooking = async (id: string, data: Partial<Booking>) => {
+    try {
+      await api.updateBookingDetails(id, data)
+    } catch {
+      // Offline fallback
+    }
+    setBookings((prev) =>
+      prev.map((b) => (b.id === id ? { ...b, ...data } : b)),
+    )
+    showToast(language === "th" ? "บันทึกข้อมูลการจองเรียบร้อย" : "Booking updated successfully")
+  }
+
   const handleSaveRoom = async (room: Room) => {
     const isEdit = rooms.some((r) => r.id === room.id)
     try {
@@ -403,21 +425,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       } else {
         await api.addRoom(room)
       }
-      // Refresh from DB to get persisted imageUrl
-      await refreshData()
-    } catch {
-      // Offline fallback — update local state only
-      setRooms((prev) => {
-        const idx = prev.findIndex((r) => r.id === room.id)
-        if (idx >= 0) {
-          const next = [...prev]
-          next[idx] = room
-          return next
-        }
-        return [...prev, room]
-      })
+      // Refresh both authenticated and public data to ensure state is completely synced
+      await Promise.allSettled([refreshData(), refreshPublicData()])
+      showToast(isEdit ? t.toastRoomEdited : t.toastRoomAdded)
+    } catch (err: any) {
+      console.error("Save room error:", err)
+      showToast(err.message || (language === "th" ? "บันทึกห้องประชุมไม่สำเร็จ" : "Failed to save room"))
+      throw err
     }
-    showToast(isEdit ? t.toastRoomEdited : t.toastRoomAdded)
   }
 
   const handleDeleteRoom = async (id: string) => {
@@ -460,7 +475,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
             parsed = parsed.map((u: any) => u.id === userData.id ? { ...u, ...userData } : u)
             localStorage.setItem("registered_users", JSON.stringify(parsed))
           }
-        } catch {}
+        } catch { }
       } else {
         const newU: User = {
           id: "u" + Date.now(),
@@ -476,7 +491,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
           const parsed = stored ? JSON.parse(stored) : []
           parsed.push({ ...newU, password: "Password123" })
           localStorage.setItem("registered_users", JSON.stringify(parsed))
-        } catch {}
+        } catch { }
       }
     }
     showToast(isEdit ? t.toastUserEdited : t.toastUserAdded)
@@ -494,7 +509,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
           parsed = parsed.filter((u: any) => u.id !== id)
           localStorage.setItem("registered_users", JSON.stringify(parsed))
         }
-      } catch {}
+      } catch { }
     }
     setUsers((prev) => prev.filter((u) => u.id !== id))
     showToast(t.toastUserDeleted)
@@ -536,7 +551,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
               localStorage.setItem("registered_users", JSON.stringify(parsed))
             }
           }
-        } catch {}
+        } catch { }
         return [...prev, newU]
       })
     }
@@ -571,7 +586,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         )
         localStorage.setItem("registered_users", JSON.stringify(parsed))
       }
-    } catch {}
+    } catch { }
 
     showToast(language === "th" ? "บันทึกข้อมูลส่วนตัวเรียบร้อยแล้ว" : "Profile updated successfully")
   }
@@ -605,6 +620,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     handleApprove,
     handleReject,
     handleCancel,
+    handleUpdateBooking,
     handleSaveRoom,
     handleDeleteRoom,
     handleSaveUser,

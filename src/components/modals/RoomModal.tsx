@@ -23,13 +23,41 @@ export const RoomModal: React.FC<RoomModalProps> = ({ room, onClose }) => {
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      if (file.size > 2 * 1024 * 1024) {
-        setError(language === 'th' ? 'ไฟล์ภาพต้องมีขนาดไม่เกิน 2MB' : 'Image size must be less than 2MB')
+      if (file.size > 10 * 1024 * 1024) {
+        setError(language === 'th' ? 'ไฟล์ภาพต้องมีขนาดไม่เกิน 10MB' : 'Image size must be less than 10MB')
         return
       }
       const reader = new FileReader()
       reader.onloadend = () => {
-        setImageUrl(reader.result as string)
+        const img = new Image()
+        img.onload = () => {
+          const maxDim = 1200
+          let width = img.width
+          let height = img.height
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width)
+              width = maxDim
+            } else {
+              width = Math.round((width * maxDim) / height)
+              height = maxDim
+            }
+          }
+          const canvas = document.createElement('canvas')
+          canvas.width = width
+          canvas.height = height
+          const ctx = canvas.getContext('2d')
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height)
+            setImageUrl(canvas.toDataURL('image/jpeg', 0.85))
+          } else {
+            setImageUrl(reader.result as string)
+          }
+        }
+        img.onerror = () => {
+          setImageUrl(reader.result as string)
+        }
+        img.src = reader.result as string
       }
       reader.readAsDataURL(file)
     }

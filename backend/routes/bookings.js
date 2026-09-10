@@ -20,6 +20,10 @@ router.get("/public", async (req, res) => {
         attendees: b.attendees,
         status: b.status,
         rejectReason: b.reject_reason || null,
+        chairman: b.chairman || null,
+        onlineMeeting: b.online_meeting || null,
+        contactPerson: b.contact_person || null,
+        relatedLinks: typeof b.related_links === 'string' ? JSON.parse(b.related_links) : (b.related_links || []),
         createdAt: b.created_at,
       })),
     )
@@ -55,6 +59,10 @@ router.get("/", authMiddleware, async (req, res) => {
         attendees: b.attendees,
         status: b.status,
         rejectReason: b.reject_reason || null,
+        chairman: b.chairman || null,
+        onlineMeeting: b.online_meeting || null,
+        contactPerson: b.contact_person || null,
+        relatedLinks: typeof b.related_links === 'string' ? JSON.parse(b.related_links) : (b.related_links || []),
         createdAt: b.created_at,
       })),
     )
@@ -66,7 +74,7 @@ router.get("/", authMiddleware, async (req, res) => {
 
 // POST /api/bookings — create booking
 router.post("/", authMiddleware, async (req, res) => {
-  const { roomId, date, startTime, endTime, purpose, attendees } = req.body
+  const { roomId, date, startTime, endTime, purpose, attendees, chairman, onlineMeeting, contactPerson } = req.body
   if (!roomId || !date || !startTime || !endTime || !purpose) {
     return res.status(400).json({ error: "Missing required fields" })
   }
@@ -76,7 +84,7 @@ router.post("/", authMiddleware, async (req, res) => {
     `
     SELECT * FROM bookings
     WHERE room_id = $1 AND date = $2
-    AND status NOT IN ('rejected','cancelled')
+    AND status = 'approved'
   `,
     [roomId, date],
   )
@@ -108,8 +116,8 @@ router.post("/", authMiddleware, async (req, res) => {
   try {
     await pool.query(
       `
-      INSERT INTO bookings (id, room_id, user_id, date, start_time, end_time, purpose, attendees, status, created_at)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'pending',$9)
+      INSERT INTO bookings (id, room_id, user_id, date, start_time, end_time, purpose, attendees, status, created_at, chairman, online_meeting, contact_person)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'pending',$9,$10,$11,$12)
     `,
       [
         id,
@@ -121,6 +129,9 @@ router.post("/", authMiddleware, async (req, res) => {
         purpose,
         attendees,
         today,
+        chairman || null,
+        onlineMeeting || null,
+        contactPerson || null
       ],
     )
 
@@ -137,8 +148,55 @@ router.post("/", authMiddleware, async (req, res) => {
         purpose,
         attendees,
         status: "pending",
+        chairman: chairman || null,
+        onlineMeeting: onlineMeeting || null,
+        contactPerson: contactPerson || null,
+        relatedLinks: [],
         createdAt: today,
       })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: "Server error" })
+  }
+})
+
+// PUT /api/bookings/:id — update booking details (admin only)
+router.put("/:id", authMiddleware, async (req, res) => {
+  if (req.user.role !== "admin") return res.status(403).json({ error: "Admin only" })
+
+  const { purpose, attendees, chairman, onlineMeeting, contactPerson, relatedLinks, date, startTime, endTime } = req.body
+  try {
+    const booking = await pool.query("SELECT * FROM bookings WHERE id = $1", [req.params.id])
+    if (!booking.rows[0]) return res.status(404).json({ error: "Booking not found" })
+
+    await pool.query(
+      `UPDATE bookings SET
+        purpose = COALESCE($1, purpose),
+        attendees = COALESCE($2, attendees),
+        chairman = $3,
+        online_meeting = $4,
+        contact_person = $5,
+        related_links = $6::jsonb,
+        date = COALESCE($7, date),
+        start_time = COALESCE($8, start_time),
+        end_time = COALESCE($9, end_time)
+      WHERE id = $10`,
+      [
+        purpose,
+        attendees,
+        chairman || null,
+        onlineMeeting || null,
+        contactPerson || null,
+        relatedLinks ? JSON.stringify(relatedLinks) : '[]',
+        date,
+        startTime,
+        endTime,
+        req.params.id
+      ]
+    )
+
+    if (req.notifyClients) req.notifyClients()
+    res.json({ success: true })
   } catch (err) {
     console.error(err)
     res.status(500).json({ error: "Server error" })
