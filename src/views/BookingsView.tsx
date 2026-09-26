@@ -12,6 +12,8 @@ import {
   AlertCircle,
   RotateCcw,
   Sparkles,
+  RefreshCw,
+  Bell,
 } from "lucide-react"
 import { useApp } from "../context/AppContext"
 import { Badge } from "../components/common/Badge"
@@ -48,8 +50,11 @@ export const BookingsView: React.FC<BookingsViewProps> = ({
     currentUser,
     handleApprove,
     handleCancel,
+    handleDeleteBooking,
     handleClearAllBookings,
     language,
+    hasPendingUpdate,
+    dismissUpdate,
   } = useApp()
 
   const isAdmin = currentUser?.role === "admin"
@@ -67,36 +72,51 @@ export const BookingsView: React.FC<BookingsViewProps> = ({
   }, [bookings, isAdmin, currentUser])
 
   const filteredBookings = useMemo(() => {
-    return myBookings.filter((b) => {
-      // Status filter
-      if (statusFilter === "today") {
-        if (b.date !== todayStr) return false
-      } else if (statusFilter !== "all" && b.status !== statusFilter) {
-        return false
-      }
+    const STATUS_ORDER: Record<string, number> = {
+      pending: 0,
+      approved: 1,
+      rejected: 2,
+      cancelled: 3,
+    }
 
-      // Date filter
-      if (dateFilter && b.date !== dateFilter) {
-        return false
-      }
-
-      // Search Query
-      if (searchQuery.trim()) {
-        const query = searchQuery.toLowerCase()
-        const room = rooms.find((r) => r.id === b.roomId)
-        const user = users.find((u) => u.id === b.userId)
-        const matchPurpose = b.purpose.toLowerCase().includes(query)
-        const matchRoom = room?.name.toLowerCase().includes(query)
-        const matchUser = user?.name.toLowerCase().includes(query)
-        const matchDept = user?.department.toLowerCase().includes(query)
-
-        if (!matchPurpose && !matchRoom && !matchUser && !matchDept) {
+    return myBookings
+      .filter((b) => {
+        // Status filter
+        if (statusFilter === "today") {
+          if (b.date !== todayStr) return false
+        } else if (statusFilter !== "all" && b.status !== statusFilter) {
           return false
         }
-      }
 
-      return true
-    })
+        // Date filter
+        if (dateFilter && b.date !== dateFilter) {
+          return false
+        }
+
+        // Search Query
+        if (searchQuery.trim()) {
+          const query = searchQuery.toLowerCase()
+          const room = rooms.find((r) => r.id === b.roomId)
+          const user = users.find((u) => u.id === b.userId)
+          const matchPurpose = b.purpose.toLowerCase().includes(query)
+          const matchRoom = room?.name.toLowerCase().includes(query)
+          const matchUser = user?.name.toLowerCase().includes(query)
+          const matchDept = user?.department.toLowerCase().includes(query)
+
+          if (!matchPurpose && !matchRoom && !matchUser && !matchDept) {
+            return false
+          }
+        }
+
+        return true
+      })
+      .sort((a, b) => {
+        // pending อยู่บนสุดเสมอ ถ้า status เหมือนกันให้เรียงจากใหม่ → เก่า
+        const statusDiff = (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9)
+        if (statusDiff !== 0) return statusDiff
+        // เรียงตาม createdAt DESC (ใหม่ก่อน)
+        return (b.createdAt ?? "").localeCompare(a.createdAt ?? "")
+      })
   }, [
     myBookings,
     statusFilter,
@@ -126,9 +146,56 @@ export const BookingsView: React.FC<BookingsViewProps> = ({
     })
   }
 
+  const [isRefreshing, setIsRefreshing] = useState(false)
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true)
+    await dismissUpdate()
+    setIsRefreshing(false)
+  }
+
   return (
     <>
       <div className="space-y-6 animate-in fade-in duration-200">
+
+        {/* New Booking Notification Banner — admin only */}
+        {isAdmin && hasPendingUpdate && (
+          <div className="flex items-center justify-between gap-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700/60 px-5 py-3.5 shadow-sm animate-in slide-in-from-top-2 duration-300">
+            <div className="flex items-center gap-3">
+              <span className="relative flex h-8 w-8 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/50">
+                <Bell className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-white dark:border-slate-900" />
+              </span>
+              <div>
+                <p className="text-sm font-bold text-amber-800 dark:text-amber-300">
+                  {language === "th" ? "มีการจองเข้ามาใหม่" : "New booking received"}
+                </p>
+                <p className="text-xs text-amber-600 dark:text-amber-400">
+                  {language === "th" ? "โปรดกดรีเฟรชเพื่อดูข้อมูลล่าสุด" : "Please refresh to see the latest bookings"}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 flex-none">
+              <button
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                className="flex items-center gap-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 disabled:opacity-70 text-white px-4 py-2 text-xs font-bold shadow-sm transition-all active:scale-95"
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
+                {isRefreshing
+                  ? (language === "th" ? "กำลังโหลด..." : "Loading...")
+                  : (language === "th" ? "รีเฟรช" : "Refresh")}
+              </button>
+              <button
+                onClick={() => dismissUpdate()}
+                className="flex items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-900/40 hover:bg-amber-200 dark:hover:bg-amber-900/70 text-amber-700 dark:text-amber-400 h-8 w-8 transition-colors"
+                title={language === "th" ? "ปิด" : "Dismiss"}
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </div>
+        )}
         {/* Search & Filter Toolbar */}
         <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-5 shadow-xs space-y-4">
           {/* Search & Date Filter Row */}
@@ -317,6 +384,26 @@ export const BookingsView: React.FC<BookingsViewProps> = ({
                               <span>{t.cancel}</span>
                             </button>
                           )}
+
+                        {/* Delete button — only for cancelled bookings (own or admin) */}
+                        {(isOwn || isAdmin) && b.status === "cancelled" && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              onOpenConfirmModal({
+                                title: language === 'th' ? 'ลบการจอง' : 'Delete Booking',
+                                message: language === 'th'
+                                  ? 'ต้องการลบการจองนี้ออกจากประวัติถาวรส์? ไม่สามารถย้อนกลับได้'
+                                  : 'Permanently delete this cancelled booking? This cannot be undone.',
+                                onConfirm: () => handleDeleteBooking(b.id),
+                              })
+                            }}
+                            className="flex items-center gap-1.5 rounded-xl bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 hover:bg-rose-600 hover:text-white border border-rose-200 dark:border-rose-900/60 px-3.5 py-2 text-xs font-bold transition-all"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            <span>{language === 'th' ? 'ลบออก' : 'Delete'}</span>
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>

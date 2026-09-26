@@ -55,8 +55,8 @@ export interface Booking {
 }
 
 export interface LoginResponse {
-  token: string
-  user: {
+  token?: string
+  user?: {
     id: string
     name: string
     department: string
@@ -65,6 +65,11 @@ export interface LoginResponse {
     email: string
     emailVerified: boolean
   }
+  require2FA?: boolean
+  userId?: string
+  email?: string
+  message?: string
+  trustedDeviceToken?: string
 }
 
 export interface CookieConsentPreferences {

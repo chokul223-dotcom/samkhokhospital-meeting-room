@@ -7,6 +7,7 @@ import {
   formatRoomLocation,
   formatEquipment,
 } from '../../constants/translations'
+import { getRoomImage } from '../../constants/roomColors'
 
 interface BookingModalProps {
   initialRoomId?: string
@@ -240,7 +241,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const [attendees, setAttendees] = useState(10)
   const [purpose, setPurpose] = useState('')
   const [chairman, setChairman] = useState('')
-  const [onlineMeeting, setOnlineMeeting] = useState('ไม่ใช้ระบบออนไลน์')
+  const [onlineMeeting, setOnlineMeeting] = useState('none')
+  const [onlineMeetingOther, setOnlineMeetingOther] = useState('')
   const [contactPerson, setContactPerson] = useState(currentUser?.name || '')
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -305,6 +307,11 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       setError(t.conflictWarning)
       return
     }
+    // Validate 'อื่นๆ' must have detail
+    if (onlineMeeting === 'other' && !onlineMeetingOther.trim()) {
+      setError(language === 'th' ? 'กรุณาระบุชื่อระบบออนไลน์ที่ต้องการใช้' : 'Please specify the online meeting system')
+      return
+    }
     if (selectedRoom && attendees > selectedRoom.capacity) {
       setError(`${t.errCapacity} (${selectedRoom.capacity} ${t.people})`)
       return
@@ -320,7 +327,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         purpose: purpose.trim(),
         attendees,
         chairman: chairman.trim(),
-        onlineMeeting: onlineMeeting.trim(),
+        onlineMeeting: onlineMeeting === 'other'
+          ? onlineMeetingOther.trim()
+          : onlineMeeting === 'none' ? '' : onlineMeeting.trim(),
         contactPerson: contactPerson.trim(),
       })
       onClose()
@@ -362,20 +371,51 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         </div>
 
         {/* Modal Body */}
-        {(!currentUser?.department || currentUser?.department === "") ? (
-          <div className="flex-1 p-6 flex flex-col items-center justify-center min-h-[300px] bg-slate-200/50 dark:bg-slate-800/20">
-            <div className="flex flex-col items-center mb-6">
-              <img src="/logo.png" alt="Hospital Logo" className="h-16 w-16 object-contain mb-3 drop-shadow-sm" onError={(e) => { e.currentTarget.style.display = 'none' }} />
-              <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-200">ระบบจองห้องประชุมโรงพยาบาลสามโคก</h2>
-            </div>
-            <div className="w-full bg-rose-400/90 text-white text-center py-3.5 px-4 font-medium text-sm shadow-sm border-y-[3px] border-blue-500">
-              คุณยังไม่ได้สังกัดแผนก กรุณาติดต่อผู้ดูแล
+        {(() => {
+          const dept = currentUser?.department
+          const isPendingUser = !dept || dept === "" || dept === "-" || dept === "รอการตรวจสอบ"
+          return isPendingUser
+        })() ? (
+          <div className="flex-1 p-8 flex flex-col items-center justify-center min-h-[300px]">
+            <img src="/logo.png" alt="Hospital Logo" className="h-20 w-20 object-contain mb-4 drop-shadow-md" onError={(e) => { e.currentTarget.style.display = 'none' }} />
+            <h2 className="text-sm font-bold text-slate-700 dark:text-slate-200 mb-6">ระบบจองห้องประชุมโรงพยาบาลสามโคก</h2>
+            <div className="w-full max-w-sm rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 p-5 text-center shadow-sm">
+              <div className="flex items-center justify-center w-12 h-12 rounded-full bg-rose-100 dark:bg-rose-900/50 mx-auto mb-3">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M12 3a9 9 0 100 18A9 9 0 0012 3z" />
+                </svg>
+              </div>
+              <p className="text-sm font-bold text-rose-700 dark:text-rose-300 mb-1">
+                บัญชียังรอการอนุมัติ
+              </p>
+              <p className="text-xs text-rose-600/80 dark:text-rose-400/80 leading-relaxed">
+                กรุณาติดต่อผู้ดูแลระบบ (Admin)<br />เพื่อขอสิทธิ์ก่อนจองห้องประชุม
+              </p>
             </div>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4">
             {/* Room Selection */}
             <div>
+              {/* Room image preview */}
+              {selectedRoom && (() => {
+                const roomIndex = availableRooms.findIndex(r => r.id === roomId)
+                const imgSrc = selectedRoom.imageUrl || getRoomImage(roomId, roomIndex)
+                return (
+                  <div className="w-full h-36 rounded-2xl overflow-hidden mb-3 bg-slate-200 dark:bg-slate-700 relative">
+                    <img
+                      src={imgSrc}
+                      alt={formatRoomName(selectedRoom, language)}
+                      className="w-full h-full object-cover"
+                      onError={(e) => { e.currentTarget.style.display = 'none' }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+                    <p className="absolute bottom-2 left-3 text-white text-xs font-bold drop-shadow">
+                      {formatRoomName(selectedRoom, language)}
+                    </p>
+                  </div>
+                )
+              })()}
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">
                 {t.room} <span className="text-rose-500">*</span>
               </label>
@@ -494,16 +534,43 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   onChange={e => setOnlineMeeting(e.target.value)}
                   className="w-full appearance-none rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 pl-4 pr-10 py-2.5 text-sm font-medium text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer"
                 >
-                  <option value="ไม่ใช้ระบบออนไลน์">{language === 'th' ? 'ไม่ใช้ระบบออนไลน์' : 'None'}</option>
+                  <option value="none">{language === 'th' ? 'ไม่ใช้ระบบออนไลน์' : 'None'}</option>
                   <option value="Zoom">Zoom</option>
                   <option value="Google Meet">Google Meet</option>
                   <option value="WebEx">WebEx</option>
                   <option value="MS Teams">MS Teams</option>
-                  <option value="อื่นๆ (โปรดระบุในรายละเอียด)">{language === 'th' ? 'อื่นๆ (โปรดระบุในรายละเอียด)' : 'Other (specify in details)'}</option>
+                  <option value="other">{language === 'th' ? 'อื่นๆ (โปรดระบุในรายละเอียด)' : 'Other (specify in details)'}</option>
                 </select>
                 <ChevronDown className="pointer-events-none absolute right-3.5 top-3 h-4 w-4 text-slate-400" />
               </div>
             </div>
+
+            {/* อื่นๆ — specify field */}
+            {onlineMeeting === 'other' && (
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">
+                  {language === 'th' ? 'โปรดระบุระบบออนไลน์' : 'Specify Online System'}
+                  <span className="text-rose-500 ml-1">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={onlineMeetingOther}
+                  onChange={e => setOnlineMeetingOther(e.target.value)}
+                  placeholder={language === 'th' ? 'เช่น Line, Skype, Cisco Webex...' : 'e.g. Line, Skype, Cisco Webex...'}
+                  className={`w-full rounded-xl bg-slate-50 dark:bg-slate-800/80 border px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 transition-all ${
+                    !onlineMeetingOther.trim()
+                      ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-500/20'
+                      : 'border-slate-200 dark:border-slate-700 focus:border-blue-500 focus:ring-blue-500/20'
+                  }`}
+                  autoFocus
+                />
+                {!onlineMeetingOther.trim() && (
+                  <p className="mt-1 text-xs text-rose-500 font-medium">
+                    {language === 'th' ? '* กรุณาระบุชื่อระบบออนไลน์' : '* Please specify the system name'}
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Contact Person */}
             <div>

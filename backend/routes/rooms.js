@@ -49,6 +49,9 @@ router.patch("/:id/status", authMiddleware, async (req, res) => {
   if (req.user.role !== "admin")
     return res.status(403).json({ error: "Admin only" })
   const { status } = req.body
+  const allowedStatuses = ["available", "maintenance"]
+  if (!status || !allowedStatuses.includes(status))
+    return res.status(400).json({ error: "Invalid status value" })
   try {
     await pool.query("UPDATE rooms SET status = $1 WHERE id = $2", [
       status,

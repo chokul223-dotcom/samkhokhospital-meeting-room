@@ -111,11 +111,23 @@ async function initDB() {
       )
     `)
 
+    // 2FA OTP tokens table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS two_factor_tokens (
+        id SERIAL PRIMARY KEY,
+        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        token TEXT NOT NULL,
+        expires_at TIMESTAMP NOT NULL,
+        used BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `)
+
 
     // Seed admin user if not exists
     const bcrypt = require("bcryptjs")
     const adminExists = await client.query(
-      "SELECT id FROM users WHERE username = 'Admin'",
+      "SELECT id FROM users WHERE id = 'u1'",
     )
     if (adminExists.rows.length === 0) {
       const adminHash = await bcrypt.hash("Admin123456", 10)

@@ -9,11 +9,9 @@ import {
   Phone,
   ChevronLeft,
   ChevronRight,
-  UserPlus,
-  X,
-  FileText,
   Mail,
 } from "lucide-react"
+import { useNavigate, useLocation } from "react-router-dom"
 import { PrivacyPolicyModal } from "../components/modals/PrivacyPolicyModal"
 import { useApp } from "../context/AppContext"
 import { LanguageSwitcher } from "../components/common/LanguageSwitcher"
@@ -22,34 +20,27 @@ import { VideoWidget } from "../components/common/VideoWidget"
 import { DoctorWaiAvatar } from "../components/common/DoctorWaiAvatar"
 import * as api from "../services/api"
 
-interface LoginViewProps {
-  onBackToHome?: () => void
-}
-
-
 // ─── Main LoginView ────────────────────────────────────────────────────────────
-export const LoginView: React.FC<LoginViewProps> = ({ onBackToHome }) => {
-  const { t, setCurrentUser, handleRegisterUser, users } = useApp()
+export const LoginView: React.FC = () => {
+  const { t, language, setCurrentUser, users } = useApp()
+  const navigate = useNavigate()
+  const location = useLocation()
+  // Pre-fill email if redirected from RegisterView
+  const prefillEmail = (location.state as any)?.prefillEmail || ""
 
   // ── Login state ──
-  const [username, setUsername] = useState("")
+  const [username, setUsername] = useState(prefillEmail)
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
-
-  // ── Register state ──
-  const [mode, setMode] = useState<"login" | "register">("login")
-  const [regUsername, setRegUsername] = useState("")
-  const [regPassword, setRegPassword] = useState("")
-  const [regConfirm, setRegConfirm] = useState("")
-  const [regFullName, setRegFullName] = useState("")
-  const [showRegPass, setShowRegPass] = useState(false)
-  const [showRegConfirm, setShowRegConfirm] = useState(false)
-  const [acceptPolicy, setAcceptPolicy] = useState(false)
-  const [regError, setRegError] = useState("")
-  const [regSuccess, setRegSuccess] = useState("")
-  const [regLoading, setRegLoading] = useState(false)
+  
+  // ── 2FA state ──
+  const [step, setStep] = useState(1)
+  const [otp, setOtp] = useState("")
+  const [tempUserId, setTempUserId] = useState("")
+  const [tempUserEmail, setTempUserEmail] = useState("")
+  const [rememberMe, setRememberMe] = useState(false)
 
   // ── Privacy Policy Modal ──
   const [showPrivacy, setShowPrivacy] = useState(false)
@@ -80,10 +71,40 @@ export const LoginView: React.FC<LoginViewProps> = ({ onBackToHome }) => {
     setError("")
     setLoading(true)
     try {
-      const res = await api.login(username, password)
-      setCurrentUser(res.user as any)
-    } catch {
-      // Check hardcoded mock admins first
+      if (step === 1) {
+        const res = await api.login(username, password)
+        if (res.require2FA) {
+          setTempUserId(res.userId!)
+          setTempUserEmail(res.email!)
+          setStep(2)
+        } else {
+          setCurrentUser(res.user as any)
+          navigate("/dashboard")
+        }
+      } else {
+        const res = await api.verify2FA(tempUserId, otp, rememberMe)
+        setCurrentUser(res.user as any)
+        navigate("/dashboard")
+      }
+    } catch (err: any) {
+      const errMsg = err.message || ""
+      const isNetworkError = err.message === "Failed to fetch" || err.message.includes("NetworkError")
+      
+      if (!isNetworkError) {
+        if (errMsg === "Email not found") {
+          setError(language === "th" ? "ไม่พบอีเมลในระบบ" : "Email not found")
+        } else if (errMsg === "Invalid password") {
+          setError(language === "th" ? "รหัสผ่านไม่ถูกต้อง" : "Invalid password")
+        } else if (errMsg.includes("Too many requests") || errMsg.includes("rate limit")) {
+          setError(language === "th" ? "คุณลองเข้าสู่ระบบบ่อยเกินไป กรุณารอสักครู่" : "Too many requests. Please try again later.")
+        } else {
+          setError(t.invalidLogin || errMsg)
+        }
+        setLoading(false)
+        return
+      }
+
+      // Check hardcoded mock admins ONLY if backend is down (network error)
       if (
         (username === "admin@example.com" && password === "Admin123456") ||
         (username === "test@example.com" && password === "Test123456")
@@ -100,6 +121,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onBackToHome }) => {
         localStorage.setItem("user", JSON.stringify(mockUser))
         localStorage.setItem("token", "offline-mock")
         setCurrentUser(mockUser)
+        navigate("/dashboard")
       } else {
         // Check registered users stored in localStorage
         const registeredRaw = localStorage.getItem("registered_users")
@@ -117,8 +139,9 @@ export const LoginView: React.FC<LoginViewProps> = ({ onBackToHome }) => {
           localStorage.setItem("user", JSON.stringify(userObj))
           localStorage.setItem("token", "offline-mock")
           setCurrentUser(userObj)
+          navigate("/dashboard")
         } else {
-          setError(t.invalidLogin)
+          setError(t.invalidLogin || "Network error. Please try again.")
         }
       }
     } finally {
@@ -127,96 +150,6 @@ export const LoginView: React.FC<LoginViewProps> = ({ onBackToHome }) => {
   }
 
   // ── Register Submit ──
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setRegError("")
-    setRegSuccess("")
-
-    // 1. รูปแบบอีเมลถูกต้อง
-    const emailRegex = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/
-    if (!emailRegex.test(regUsername.trim())) {
-      setRegError("รูปแบบอีเมลไม่ถูกต้อง กรุณาระบุอีเมลที่มีอยู่จริง เช่น name@example.com")
-      return
-    }
-
-    // 2. โดเมนต้องไม่ใช่โดเมนปลอม / ไม่มีตัวอักษรที่ผิดปกติ
-    const domain = regUsername.trim().split("@")[1]?.toLowerCase() || ""
-    const fakeDomains = ["test.com", "fake.com", "example.com", "dummy.com", "temp.com", "mailinator.com", "guerrillamail.com", "throwam.com", "yopmail.com", "trashmail.com"]
-    if (fakeDomains.includes(domain)) {
-      setRegError("กรุณาใช้อีเมลที่มีอยู่จริง ไม่อนุญาตให้ใช้อีเมลชั่วคราวหรืออีเมลทดสอบ")
-      return
-    }
-
-    // 3. ตรวจสอบอีเมลซ้ำในระบบ
-    const emailExists = users.some(
-      (u) => (u.email?.toLowerCase() === regUsername.trim().toLowerCase()) || (u.username.toLowerCase() === regUsername.trim().toLowerCase())
-    )
-    if (emailExists) {
-      setRegError("อีเมลนี้มีผู้ใช้งานลงทะเบียนแล้ว กรุณาใช้อีเมลอื่น")
-      return
-    }
-
-    // 4. ตรวจสอบชื่อ-นามสกุลซ้ำในระบบ
-    const nameExists = users.some(
-      (u) => u.name.trim().toLowerCase() === regFullName.trim().toLowerCase()
-    )
-    if (nameExists) {
-      setRegError("ชื่อ-นามสกุลนี้มีผู้ใช้งานในระบบแล้ว หากเป็นบัญชีของคุณกรุณาเข้าสู่ระบบ หรือติดต่อผู้ดูแลระบบ")
-      return
-    }
-
-    if (regPassword !== regConfirm) {
-      setRegError("รหัสผ่านและยืนยันรหัสผ่านไม่ตรงกัน")
-      return
-    }
-    if (!acceptPolicy) {
-      setRegError("กรุณายอมรับนโยบายความเป็นส่วนตัวก่อนสมัครสมาชิก")
-      return
-    }
-    if (regPassword.length < 6) {
-      setRegError("รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร")
-      return
-    }
-    setRegLoading(true)
-    try {
-      await handleRegisterUser({ email: regUsername, username: regUsername.split("@")[0], password: regPassword, name: regFullName })
-      // Save to localStorage for offline login validation (fallback)
-      try {
-        const registeredRaw = localStorage.getItem("registered_users")
-        const existing: Array<{email?: string; username: string; password: string; name: string; id: string; department: string}> = registeredRaw ? JSON.parse(registeredRaw) : []
-        const newEntry = { id: "u" + Date.now(), email: regUsername, username: regUsername.split("@")[0], password: regPassword, name: regFullName, department: "" }
-        localStorage.setItem("registered_users", JSON.stringify([...existing, newEntry]))
-      } catch {}
-      setRegSuccess("สมัครสมาชิกสำเร็จ! กรุณารอการอนุมัติจากผู้ดูแลระบบก่อนเข้าสู่ระบบ")
-      setTimeout(() => {
-        setMode("login")
-        setRegSuccess("")
-        setUsername(regUsername)
-      }, 2000)
-    } catch (err: any) {
-      // Show specific error from API (e.g., duplicate email)
-      if (err.message?.includes("already exists")) {
-        setRegError("อีเมลหรือชื่อผู้ใช้นี้มีในระบบแล้ว กรุณาใช้อีเมลอื่น")
-      } else {
-        // Network or other error — still save locally and treat as success
-        try {
-          const registeredRaw = localStorage.getItem("registered_users")
-          const existing: Array<{email?: string; username: string; password: string; name: string; id: string; department: string}> = registeredRaw ? JSON.parse(registeredRaw) : []
-          const newEntry = { id: "u" + Date.now(), email: regUsername, username: regUsername.split("@")[0], password: regPassword, name: regFullName, department: "" }
-          localStorage.setItem("registered_users", JSON.stringify([...existing, newEntry]))
-        } catch {}
-        setRegSuccess("สมัครสมาชิกสำเร็จ! กรุณารอการอนุมัติจากผู้ดูแลระบบก่อนเข้าสู่ระบบ")
-        setTimeout(() => {
-          setMode("login")
-          setRegSuccess("")
-          setUsername(regUsername)
-        }, 2000)
-      }
-    } finally {
-      setRegLoading(false)
-    }
-  }
-
   const inputClass =
     "w-full rounded-2xl bg-slate-50 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 pl-11 pr-4 py-3 text-sm font-medium text-slate-900 dark:text-white placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/25 transition-all"
 
@@ -239,12 +172,14 @@ export const LoginView: React.FC<LoginViewProps> = ({ onBackToHome }) => {
               <Phone className="h-4 w-4 text-sky-600 dark:text-sky-400" />
               <span>{t.phoneLabel} : 02-199-3791-2</span>
             </div>
-            {onBackToHome && (
-              <button type="button" onClick={onBackToHome} className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-xs transition-all cursor-pointer">
-                <span>←</span>
-                <span>{t.homeNav || "หน้าหลัก"}</span>
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => navigate("/")}
+              className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-xs transition-all cursor-pointer"
+            >
+              <span>←</span>
+              <span>{t.homeNav || "หน้าหลัก"}</span>
+            </button>
             <div className="flex items-center gap-1.5 md:gap-2.5">
               <LanguageSwitcher variant="floating" />
               <ThemeToggle variant="inline" />
@@ -296,14 +231,15 @@ export const LoginView: React.FC<LoginViewProps> = ({ onBackToHome }) => {
             <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">{t.appName}</p>
           </div>
 
-          {mode === "login" ? (
-            /* ────── LOGIN FORM ────── */
-            <>
-              <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-white text-center mb-5 flex items-center justify-center gap-2">
-                <LogIn className="h-5 w-5 text-blue-600" />
-                {t.loginTitle}
-              </h2>
-              <form onSubmit={handleSubmit} className="space-y-4">
+          {/* LOGIN FORM only */}
+          <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-white text-center mb-5 flex items-center justify-center gap-2">
+            <LogIn className="h-5 w-5 text-blue-600" />
+            {step === 1 ? t.loginTitle : "ยืนยันรหัส OTP 6 หลัก"}
+          </h2>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            
+            {step === 1 && (
+              <>
                 <div className="relative">
                   <Mail className="pointer-events-none absolute left-4 top-3.5 h-4 w-4 text-slate-400" />
                   <input type="email" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="อีเมล" required className={inputClass} />
@@ -317,115 +253,67 @@ export const LoginView: React.FC<LoginViewProps> = ({ onBackToHome }) => {
                   </button>
                 </div>
 
-                <div className="flex justify-end -mt-1">
+                <div className="flex justify-between items-center -mt-1">
+                  <label className="flex items-center gap-2 cursor-pointer group">
+                    <input 
+                      type="checkbox" 
+                      checked={rememberMe} 
+                      onChange={(e) => setRememberMe(e.target.checked)} 
+                      className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-600/50 cursor-pointer"
+                    />
+                    <span className="text-xs font-medium text-slate-600 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
+                      จดจำฉันไว้ 30 วัน
+                    </span>
+                  </label>
                   <button type="button" onClick={() => alert(t.contactAdmin)} className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer">
                     {t.forgotPassword}
                   </button>
                 </div>
+              </>
+            )}
 
-                {error && (
-                  <div className="rounded-2xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900/60 p-3 text-xs font-semibold text-rose-600 dark:text-rose-300 flex items-center gap-2">
-                    <ShieldAlert className="h-4 w-4 flex-none" />
-                    <span>{error}</span>
-                  </div>
-                )}
-
-                <button type="submit" disabled={loading} className="w-full flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 py-3.5 text-sm font-bold text-white shadow-lg shadow-blue-600/30 hover:from-blue-700 hover:to-indigo-700 active:scale-[0.99] transition-all disabled:opacity-50 cursor-pointer">
-                  <LogIn className="h-4 w-4" />
-                  <span>{loading ? t.loggingIn : t.loginBtn}</span>
-                </button>
-              </form>
-
-              <p className="text-center text-xs text-slate-500 dark:text-slate-400 mt-4">
-                ยังไม่มีบัญชี?{" "}
-                <button type="button" onClick={() => { setMode("register"); setError("") }} className="font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer">
-                  สมัครสมาชิก
-                </button>
-              </p>
-            </>
-          ) : (
-            /* ────── REGISTER FORM ────── */
-            <>
-              <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-white text-center mb-5 flex items-center justify-center gap-2">
-                <UserPlus className="h-5 w-5 text-green-600" />
-                สมัครสมาชิก
-              </h2>
-              <form onSubmit={handleRegister} className="space-y-3">
+            {step === 2 && (
+              <div className="text-center">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+                  กรุณากรอกรหัส 6 หลักที่ถูกส่งไปยังอีเมล<br />
+                  <strong className="text-slate-700 dark:text-slate-200">{tempUserEmail}</strong>
+                </p>
                 <div className="relative">
-                  <Mail className="pointer-events-none absolute left-4 top-3.5 h-4 w-4 text-slate-400" />
-                  <input type="email" value={regUsername} onChange={(e) => setRegUsername(e.target.value)} placeholder="อีเมล" required className={inputClass} />
-                </div>
-
-                <div className="relative">
-                  <Lock className="pointer-events-none absolute left-4 top-3.5 h-4 w-4 text-slate-400" />
-                  <input type={showRegPass ? "text" : "password"} value={regPassword} onChange={(e) => setRegPassword(e.target.value)} placeholder="รหัสผ่าน" required className={`${inputClass} pr-12`} />
-                  <button type="button" onClick={() => setShowRegPass((v) => !v)} className="absolute right-4 top-3.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer">
-                    {showRegPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-
-                <div className="relative">
-                  <Lock className="pointer-events-none absolute left-4 top-3.5 h-4 w-4 text-slate-400" />
-                  <input type={showRegConfirm ? "text" : "password"} value={regConfirm} onChange={(e) => setRegConfirm(e.target.value)} placeholder="ยืนยันรหัสผ่าน" required className={`${inputClass} pr-12`} />
-                  <button type="button" onClick={() => setShowRegConfirm((v) => !v)} className="absolute right-4 top-3.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer">
-                    {showRegConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-
-                <div className="relative">
-                  <UserIcon className="pointer-events-none absolute left-4 top-3.5 h-4 w-4 text-slate-400" />
-                  <input type="text" value={regFullName} onChange={(e) => setRegFullName(e.target.value)} placeholder="ชื่อ นามสกุล" required className={inputClass} />
-                </div>
-
-                {/* Accept Policy Checkbox */}
-                <label className="flex items-start gap-2.5 cursor-pointer mt-1">
-                  <input
-                    type="checkbox"
-                    checked={acceptPolicy}
-                    onChange={(e) => setAcceptPolicy(e.target.checked)}
-                    className="mt-0.5 h-4 w-4 rounded border-slate-300 text-green-600 focus:ring-green-500 cursor-pointer flex-none"
+                  <ShieldAlert className="pointer-events-none absolute left-4 top-3.5 h-4 w-4 text-slate-400" />
+                  <input 
+                    type="text" 
+                    value={otp} 
+                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').substring(0, 6))} 
+                    placeholder="รหัส OTP 6 หลัก" 
+                    required 
+                    className={`${inputClass} text-center tracking-widest font-bold text-lg`} 
                   />
-                  <span className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                    ยอมรับข้อตกลง{" "}
-                    <button
-                      type="button"
-                      onClick={() => setShowPrivacy(true)}
-                      className="font-bold text-green-700 dark:text-green-400 hover:underline cursor-pointer"
-                    >
-                      นโยบายความเป็นส่วนตัว
-                    </button>
-                  </span>
-                </label>
-
-                {regError && (
-                  <div className="rounded-2xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900/60 p-3 text-xs font-semibold text-rose-600 dark:text-rose-300 flex items-center gap-2">
-                    <ShieldAlert className="h-4 w-4 flex-none" />
-                    <span>{regError}</span>
-                  </div>
-                )}
-                {regSuccess && (
-                  <div className="rounded-2xl bg-green-50 dark:bg-green-950/50 border border-green-200 dark:border-green-900/60 p-3 text-xs font-semibold text-green-700 dark:text-green-300 text-center">
-                    {regSuccess}
-                  </div>
-                )}
-
-                <button type="submit" disabled={regLoading} className="w-full flex items-center justify-center gap-2 rounded-2xl border-2 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 py-3 text-sm font-bold text-slate-800 dark:text-white hover:bg-slate-50 dark:hover:bg-slate-700 active:scale-[0.99] transition-all disabled:opacity-50 cursor-pointer">
-                  <UserPlus className="h-4 w-4" />
-                  <span>{regLoading ? "กำลังสมัคร..." : "สมัครสมาชิก"}</span>
+                </div>
+                <button type="button" onClick={() => setStep(1)} className="mt-3 text-xs text-blue-600 hover:underline">
+                  กลับไปหน้าเข้าสู่ระบบ
                 </button>
-              </form>
+              </div>
+            )}
 
-              <p className="text-center text-xs text-slate-500 dark:text-slate-400 mt-4">
-                <button type="button" onClick={() => { setMode("login"); setRegError(""); setRegSuccess("") }} className="font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer">
-                  เข้าสู่ระบบ
-                </button>
-                {" / "}
-                <button type="button" onClick={() => alert(t.contactAdmin)} className="font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer">
-                  ลืมรหัสผ่าน
-                </button>
-              </p>
-            </>
-          )}
+            {error && (
+              <div className="rounded-2xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900/60 p-3 text-xs font-semibold text-rose-600 dark:text-rose-300 flex items-center gap-2">
+                <ShieldAlert className="h-4 w-4 flex-none" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            <button type="submit" disabled={loading} className="w-full flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 py-3.5 text-sm font-bold text-white shadow-lg shadow-blue-600/30 hover:from-blue-700 hover:to-indigo-700 active:scale-[0.99] transition-all disabled:opacity-50 cursor-pointer">
+              <LogIn className="h-4 w-4" />
+              <span>{loading ? "กำลังดำเนินการ..." : (step === 1 ? t.loginBtn : "ยืนยันรหัส OTP")}</span>
+            </button>
+          </form>
+
+          <p className="text-center text-xs text-slate-500 dark:text-slate-400 mt-4">
+            ยังไม่มีบัญชี?{" "}
+            <button type="button" onClick={() => navigate("/register")} className="font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer">
+              สมัครสมาชิก
+            </button>
+          </p>
         </div>
       </div>
 

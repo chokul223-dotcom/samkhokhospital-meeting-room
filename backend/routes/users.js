@@ -2,6 +2,7 @@ const router = require("express").Router()
 const bcrypt = require("bcryptjs")
 const { pool } = require("../database")
 const { authMiddleware } = require("../middleware/auth")
+const { validateUserCreate } = require("../middleware/validate")
 
 // GET /api/users — admin only
 router.get("/", authMiddleware, async (req, res) => {
@@ -18,7 +19,7 @@ router.get("/", authMiddleware, async (req, res) => {
 })
 
 // POST /api/users — admin creates user
-router.post("/", authMiddleware, async (req, res) => {
+router.post("/", authMiddleware, validateUserCreate, async (req, res) => {
   if (req.user.role !== "admin")
     return res.status(403).json({ error: "Admin only" })
   const { name, department, role, username, email, password } = req.body
@@ -52,27 +53,53 @@ router.put("/:id", authMiddleware, async (req, res) => {
     return res.status(400).json({ error: "Missing fields" })
 
   try {
-    const userRes = await pool.query("SELECT username, email FROM users WHERE id = $1", [req.params.id])
+    const userRes = await pool.query("SELECT username, email, department FROM users WHERE id = $1", [req.params.id])
     if (userRes.rows.length === 0) return res.status(404).json({ error: "User not found" })
-    
-    const isEmailChanged = email && userRes.rows[0].email !== email.toLowerCase().trim()
-    const emailVerifiedUpdate = isEmailChanged ? "email_verified = false," : ""
+
+    const prevDepartment = userRes.rows[0].department
     const newEmail = email ? email.toLowerCase().trim() : userRes.rows[0].email
     const newUsername = username || userRes.rows[0].username
+    // email_verified: reset to false only when email actually changes
+    const isEmailChanged = email && userRes.rows[0].email !== newEmail
 
     if (password) {
       const hash = await bcrypt.hash(password, 10)
       await pool.query(
-        `UPDATE users SET name = $1, department = $2, role = $3, username = $4, email = $5, ${emailVerifiedUpdate} password = $6 WHERE id = $7`,
-        [name, department || "-", role, newUsername, newEmail, hash, req.params.id],
+        `UPDATE users
+         SET name = $1,
+             department = $2,
+             role = $3,
+             username = $4,
+             email = $5,
+             password = $6,
+             email_verified = CASE WHEN $7 THEN FALSE ELSE email_verified END
+         WHERE id = $8`,
+        [name, department || "-", role, newUsername, newEmail, hash, isEmailChanged, req.params.id],
       )
     } else {
       await pool.query(
-        `UPDATE users SET name = $1, department = $2, role = $3, username = $4, ${emailVerifiedUpdate} email = $5 WHERE id = $6`,
-        [name, department || "-", role, newUsername, newEmail, req.params.id],
+        `UPDATE users
+         SET name = $1,
+             department = $2,
+             role = $3,
+             username = $4,
+             email = $5,
+             email_verified = CASE WHEN $6 THEN FALSE ELSE email_verified END
+         WHERE id = $7`,
+        [name, department || "-", role, newUsername, newEmail, isEmailChanged, req.params.id],
       )
     }
+
+    // Notify all clients about user list change
     if (req.notifyClients) req.notifyClients()
+
+    // If admin is approving a pending user (department changed from "รอการตรวจสอบ")
+    const wasPending = prevDepartment === "รอการตรวจสอบ" || prevDepartment === "-"
+    const isNowApproved = department && department !== "รอการตรวจสอบ" && department !== "-"
+    if (req.user.role === "admin" && wasPending && isNowApproved && req.notifyUser) {
+      req.notifyUser(req.params.id, "user_approved")
+    }
+
     res.json({ id: req.params.id, name, department, role, username: newUsername, email: newEmail, emailVerified: !isEmailChanged })
   } catch (err) {
     if (err.code === "23505")
@@ -121,13 +148,15 @@ router.post("/:id/send-reset", authMiddleware, async (req, res) => {
     return res.status(403).json({ error: "Admin only" })
 
   try {
-    // Get user
+    // Get user (include email for sending)
     const result = await pool.query(
-      "SELECT id, name, username FROM users WHERE id = $1",
+      "SELECT id, name, username, email FROM users WHERE id = $1",
       [req.params.id],
     )
     if (result.rows.length === 0)
       return res.status(404).json({ error: "User not found" })
+    if (!result.rows[0].email)
+      return res.status(400).json({ error: "User has no email address" })
 
     const user = result.rows[0]
 
@@ -168,11 +197,11 @@ router.post("/:id/send-reset", authMiddleware, async (req, res) => {
     const resend = new Resend(apiKey)
 
     const fromEmail = process.env.SMTP_FROM || "onboarding@resend.dev"
-    const hospitalName = "ระบบจองห้องประชุม โรงพยาบาลสามโคก"
+    const hospitalName = "eBooking Samkhok Hospital"
 
     const { error: emailError } = await resend.emails.send({
       from: `${hospitalName} <${fromEmail}>`,
-      to: [user.username],
+      to: [user.email],
       subject: "รีเซ็ตรหัสผ่าน — ระบบจองห้องประชุม โรงพยาบาลสามโคก",
       html: `
 <!DOCTYPE html>
@@ -210,7 +239,7 @@ router.post("/:id/send-reset", authMiddleware, async (req, res) => {
             <hr style="margin:28px 0;border:none;border-top:1px solid #e2e8f0;">
             <p style="margin:0;color:#94a3b8;font-size:11px;">
               ลิงก์นี้จะใช้ได้ถึง: <strong>${expiresAt.toLocaleString("th-TH")}</strong><br>
-              อีเมลนี้ส่งถึง: ${user.username}
+              อีเมลนี้ส่งถึง: ${user.email}
             </p>
           </td>
         </tr>
@@ -232,7 +261,7 @@ router.post("/:id/send-reset", authMiddleware, async (req, res) => {
       return res.status(500).json({ error: "Failed to send email: " + emailError.message })
     }
 
-    res.json({ success: true, message: "Reset email sent to " + user.username })
+    res.json({ success: true, message: "Reset email sent to " + user.email })
   } catch (err) {
     console.error("send-reset error:", err)
     res.status(500).json({ error: "Server error" })
@@ -246,7 +275,7 @@ router.post("/:id/send-verify-email", authMiddleware, async (req, res) => {
   }
 
   try {
-    const result = await pool.query("SELECT id, name, username, email_verified FROM users WHERE id = $1", [req.params.id])
+    const result = await pool.query("SELECT id, name, username, email, email_verified FROM users WHERE id = $1", [req.params.id])
     if (result.rows.length === 0) return res.status(404).json({ error: "User not found" })
     
     const user = result.rows[0]
@@ -286,11 +315,11 @@ router.post("/:id/send-verify-email", authMiddleware, async (req, res) => {
     const { Resend } = require("resend")
     const resend = new Resend(apiKey)
     const fromEmail = process.env.SMTP_FROM || "onboarding@resend.dev"
-    const hospitalName = "ระบบจองห้องประชุม โรงพยาบาลสามโคก"
+    const hospitalName = "eBooking Samkhok Hospital"
 
     const { error: emailError } = await resend.emails.send({
       from: `${hospitalName} <${fromEmail}>`,
-      to: [user.username],
+      to: [user.email],
       subject: "ยืนยันอีเมลของคุณ — ระบบจองห้องประชุม โรงพยาบาลสามโคก",
       html: `
 <!DOCTYPE html>
@@ -331,11 +360,11 @@ router.post("/:id/send-verify-email", authMiddleware, async (req, res) => {
     })
 
     if (emailError) {
-      console.error("Resend error:", emailError)
-      return res.status(500).json({ error: "Failed to send email" })
+      console.error("Resend error:", JSON.stringify(emailError))
+      return res.status(500).json({ error: "Failed to send email: " + (emailError.message || JSON.stringify(emailError)) })
     }
 
-    res.json({ success: true, message: "Verification email sent to " + user.username })
+    res.json({ success: true, message: "Verification email sent to " + user.email })
   } catch (err) {
     console.error(err)
     res.status(500).json({ error: "Server error" })

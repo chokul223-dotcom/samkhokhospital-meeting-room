@@ -28,6 +28,13 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: "Unknown error" }))
     // แจ้ง AppContext ให้ logout เมื่อ token ไม่ถูกต้องหรือหมดอายุ (ไม่รวม offline mock session)
+    // ถ้า token เป็น offline-mock แต่ backend กลับมาแล้ว (401) ให้ logout เพื่อ login ใหม่
+    if (res.status === 401 && token === "offline-mock") {
+      localStorage.removeItem("token")
+      localStorage.removeItem("user")
+      _onUnauthorized?.()
+    }
+    // token จริงที่หมดอายุหรือไม่ถูกต้อง
     if (res.status === 401 && token && token !== "offline-mock") {
       localStorage.removeItem("token")
       localStorage.removeItem("user")
@@ -44,12 +51,39 @@ export async function login(
   email: string,
   password: string,
 ): Promise<LoginResponse> {
+  const trustedDeviceToken = localStorage.getItem("trustedDeviceToken")
   const data = await request<LoginResponse>("/api/auth/login", {
     method: "POST",
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email, password, trustedDeviceToken }),
   })
-  localStorage.setItem("token", data.token)
-  localStorage.setItem("user", JSON.stringify(data.user))
+  
+  if (data.require2FA) {
+    return data
+  }
+
+  if (data.token && data.user) {
+    localStorage.setItem("token", data.token)
+    localStorage.setItem("user", JSON.stringify(data.user))
+  }
+  return data
+}
+
+export async function verify2FA(
+  userId: string,
+  code: string,
+  rememberMe: boolean = false,
+): Promise<LoginResponse> {
+  const data = await request<LoginResponse>("/api/auth/verify-2fa", {
+    method: "POST",
+    body: JSON.stringify({ userId, code, rememberMe }),
+  })
+  if (data.token && data.user) {
+    localStorage.setItem("token", data.token)
+    localStorage.setItem("user", JSON.stringify(data.user))
+  }
+  if (data.trustedDeviceToken) {
+    localStorage.setItem("trustedDeviceToken", data.trustedDeviceToken)
+  }
   return data
 }
 
@@ -66,14 +100,20 @@ export function logout() {
 }
 
 export function getSavedUser(): User | null {
-  const u = localStorage.getItem("user")
-  return u ? JSON.parse(u) : null
+  try {
+    const u = localStorage.getItem("user")
+    return u ? JSON.parse(u) : null
+  } catch {
+    localStorage.removeItem("user")
+    return null
+  }
 }
 
 // ─── Rooms ────────────────────────────────────────────────────────────────────
 
 export async function fetchRooms(): Promise<Room[]> {
-  return request<Room[]>("/api/rooms")
+  const data = await request<any[]>("/api/rooms")
+  return data.map((r: any) => ({ ...r, imageUrl: r.imageUrl || r.image_url || null }))
 }
 
 export async function fetchPublicRooms(): Promise<Room[]> {

@@ -266,6 +266,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 ))}
               </select>
 
+              {/* Jump to Today */}
+              {(currentYear !== todayYear || currentMonth !== todayMonth) && (
+                <button
+                  type="button"
+                  onClick={handleJumpToday}
+                  className="flex h-9 items-center justify-center rounded-xl bg-blue-600 hover:bg-blue-700 border border-blue-600 text-white text-xs font-bold px-3 transition-colors cursor-pointer shadow-xs"
+                  title={language === "th" ? "เดือนปัจจุบัน" : "This Month"}
+                >
+                  {language === "th" ? "วันนี้" : "Today"}
+                </button>
+              )}
+
               {/* Next button */}
               <button
                 type="button"
@@ -448,7 +460,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
       {/* ─── 5. Schedule Section (Scroll Target) ─── */}
       <div id="schedule-section" className="pt-4 scroll-mt-24">
-        <ScheduleView dateStr={scheduleDate} />
+        <ScheduleView
+          dateStr={scheduleDate}
+          onOpenBookingModal={onOpenBookingModal}
+          onNavigateToLogin={() => onNavigateTab?.("login")}
+        />
       </div>
 
       {/* ─── 6. Day Popover Modal ─── */}

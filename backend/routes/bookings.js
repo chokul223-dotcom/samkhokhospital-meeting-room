@@ -43,7 +43,10 @@ router.get("/", authMiddleware, async (req, res) => {
       )
     } else {
       result = await pool.query(
-        "SELECT * FROM bookings WHERE user_id = $1 ORDER BY date DESC, start_time",
+        `SELECT * FROM bookings
+         WHERE user_id = $1
+            OR status = 'approved'
+         ORDER BY date DESC, start_time`,
         [req.user.id],
       )
     }
@@ -79,46 +82,40 @@ router.post("/", authMiddleware, async (req, res) => {
     return res.status(400).json({ error: "Missing required fields" })
   }
 
-  // Check conflicts
-  const allBookings = await pool.query(
-    `
-    SELECT * FROM bookings
-    WHERE room_id = $1 AND date = $2
-    AND status = 'approved'
-  `,
-    [roomId, date],
-  )
-
   const toMinutes = (t) => {
     const [h, m] = t.split(":").map(Number)
     return h * 60 + m
   }
 
-  const isConflict = allBookings.rows.some((b) => {
-    let bStart = toMinutes(b.start_time)
-    let bEnd = toMinutes(b.end_time)
-    let newStart = toMinutes(startTime)
-    let newEnd = toMinutes(endTime)
-
-    if (bEnd <= bStart) bEnd += 24 * 60
-    if (newEnd <= newStart) newEnd += 24 * 60
-
-    return newStart < bEnd && bStart < newEnd
-  })
-
-  if (isConflict) {
-    return res.status(409).json({ error: "Time slot conflict" })
-  }
-
-  const id = "b" + Date.now()
-  const today = new Date().toISOString().split("T")[0]
-
   try {
+    // Check conflicts inside try-catch to handle DB errors properly
+    const allBookings = await pool.query(
+      `SELECT * FROM bookings WHERE room_id = $1 AND date = $2 AND status = 'approved'`,
+      [roomId, date],
+    )
+
+    const isConflict = allBookings.rows.some((b) => {
+      let bStart = toMinutes(b.start_time)
+      let bEnd = toMinutes(b.end_time)
+      let newStart = toMinutes(startTime)
+      let newEnd = toMinutes(endTime)
+
+      if (bEnd <= bStart) bEnd += 24 * 60
+      if (newEnd <= newStart) newEnd += 24 * 60
+
+      return newStart < bEnd && bStart < newEnd
+    })
+
+    if (isConflict) {
+      return res.status(409).json({ error: "Time slot conflict" })
+    }
+
+    const id = "b" + Date.now()
+    const today = new Date().toISOString().split("T")[0]
+
     await pool.query(
-      `
-      INSERT INTO bookings (id, room_id, user_id, date, start_time, end_time, purpose, attendees, status, created_at, chairman, online_meeting, contact_person)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'pending',$9,$10,$11,$12)
-    `,
+      `INSERT INTO bookings (id, room_id, user_id, date, start_time, end_time, purpose, attendees, status, created_at, chairman, online_meeting, contact_person)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'pending',$9,$10,$11,$12)`,
       [
         id,
         roomId,
@@ -136,24 +133,22 @@ router.post("/", authMiddleware, async (req, res) => {
     )
 
     if (req.notifyClients) req.notifyClients()
-    res
-      .status(201)
-      .json({
-        id,
-        roomId,
-        userId: req.user.id,
-        date,
-        startTime,
-        endTime,
-        purpose,
-        attendees,
-        status: "pending",
-        chairman: chairman || null,
-        onlineMeeting: onlineMeeting || null,
-        contactPerson: contactPerson || null,
-        relatedLinks: [],
-        createdAt: today,
-      })
+    res.status(201).json({
+      id,
+      roomId,
+      userId: req.user.id,
+      date,
+      startTime,
+      endTime,
+      purpose,
+      attendees,
+      status: "pending",
+      chairman: chairman || null,
+      onlineMeeting: onlineMeeting || null,
+      contactPerson: contactPerson || null,
+      relatedLinks: [],
+      createdAt: today,
+    })
   } catch (err) {
     console.error(err)
     res.status(500).json({ error: "Server error" })
@@ -206,12 +201,17 @@ router.put("/:id", authMiddleware, async (req, res) => {
 // PATCH /api/bookings/:id — update status (admin approve/reject, user cancel)
 router.patch("/:id", authMiddleware, async (req, res) => {
   const { status, rejectReason } = req.body
+  const client = await pool.connect()
   try {
-    const booking = await pool.query("SELECT * FROM bookings WHERE id = $1", [
+    await client.query("BEGIN")
+
+    const booking = await client.query("SELECT * FROM bookings WHERE id = $1 FOR UPDATE", [
       req.params.id,
     ])
-    if (!booking.rows[0])
+    if (!booking.rows[0]) {
+      await client.query("ROLLBACK")
       return res.status(404).json({ error: "Booking not found" })
+    }
 
     const b = booking.rows[0]
     // User can only cancel their own bookings
@@ -219,75 +219,90 @@ router.patch("/:id", authMiddleware, async (req, res) => {
       req.user.role !== "admin" &&
       (b.user_id !== req.user.id || status !== "cancelled")
     ) {
+      await client.query("ROLLBACK")
       return res.status(403).json({ error: "Forbidden" })
     }
 
+    // Update the target booking status
     if (status === "rejected" && rejectReason) {
-      await pool.query(
+      await client.query(
         "UPDATE bookings SET status = $1, reject_reason = $2 WHERE id = $3",
         [status, rejectReason, req.params.id],
       )
     } else {
-      await pool.query("UPDATE bookings SET status = $1 WHERE id = $2", [
+      await client.query("UPDATE bookings SET status = $1 WHERE id = $2", [
         status,
         req.params.id,
       ])
+    }
 
-      // Auto-reject overlapping pending bookings if this is an approval
-      if (status === "approved") {
-        const toMinutes = (t) => {
-          const [h, m] = t.split(":").map(Number)
-          return h * 60 + m
-        }
+    // Auto-reject ALL overlapping pending bookings when an approval is made
+    if (status === "approved") {
+      const autoRejectReason = "ระบบยกเลิกอัตโนมัติเนื่องจากมีผู้จองเวลาซ้อนทับได้รับการอนุมัติแล้ว"
 
-        const bStart = toMinutes(b.start_time)
-        let bEnd = toMinutes(b.end_time)
-        if (bEnd <= bStart) bEnd += 24 * 60
+      // Use SQL-level time cast comparison to detect overlap reliably
+      // Overlap condition: pendingStart < approvedEnd AND pendingEnd > approvedStart
+      const autoRejectResult = await client.query(
+        `UPDATE bookings
+         SET status = 'rejected', reject_reason = $1
+         WHERE room_id = $2
+           AND date = $3
+           AND status = 'pending'
+           AND id != $4
+           AND start_time::time < $5::time
+           AND end_time::time   > $6::time
+         RETURNING id`,
+        [
+          autoRejectReason,
+          b.room_id,
+          b.date,
+          b.id,
+          b.end_time,    // pending.start_time must be < approved.end_time
+          b.start_time,  // pending.end_time   must be > approved.start_time
+        ]
+      )
 
-        // Find all pending bookings for the same room and date
-        const pendingBookings = await pool.query(
-          "SELECT id, start_time, end_time FROM bookings WHERE room_id = $1 AND date = $2 AND status = 'pending' AND id != $3",
-          [b.room_id, b.date, b.id]
+      if (autoRejectResult.rows.length > 0) {
+        console.log(
+          `[AUTO-REJECT] ✅ Rejected ${autoRejectResult.rows.length} conflicting bookings:`,
+          autoRejectResult.rows.map((r) => r.id)
         )
-
-        const conflictingIds = []
-        for (const pending of pendingBookings.rows) {
-          const pStart = toMinutes(pending.start_time)
-          let pEnd = toMinutes(pending.end_time)
-          if (pEnd <= pStart) pEnd += 24 * 60
-
-          if (pStart < bEnd && bStart < pEnd) {
-            conflictingIds.push(pending.id)
-          }
-        }
-
-        if (conflictingIds.length > 0) {
-          const autoRejectReason = "ระบบยกเลิกอัตโนมัติเนื่องจากมีผู้จองเวลาซ้อนทับได้รับการอนุมัติแล้ว"
-          
-          await pool.query(
-            "UPDATE bookings SET status = 'rejected', reject_reason = $1 WHERE id = ANY($2::text[])",
-            [autoRejectReason, conflictingIds]
-          )
-        }
       }
     }
+
+    await client.query("COMMIT")
     if (req.notifyClients) req.notifyClients()
     res.json({ success: true })
   } catch (err) {
+    await client.query("ROLLBACK")
     console.error(err)
     res.status(500).json({ error: "Server error" })
+  } finally {
+    client.release()
   }
 })
 
-// DELETE /api/bookings/:id — admin only
+// DELETE /api/bookings/:id — admin can delete any; user can delete their own cancelled booking
 router.delete("/:id", authMiddleware, async (req, res) => {
-  if (req.user.role !== "admin")
-    return res.status(403).json({ error: "Admin only" })
   try {
+    const booking = await pool.query("SELECT * FROM bookings WHERE id = $1", [req.params.id])
+    if (!booking.rows[0]) return res.status(404).json({ error: "Booking not found" })
+
+    const b = booking.rows[0]
+    const isAdmin = req.user.role === "admin"
+    const isOwner = b.user_id === req.user.id
+    const isCancelled = b.status === "cancelled"
+
+    // Admin can delete anything; user can only delete their own cancelled bookings
+    if (!isAdmin && !(isOwner && isCancelled)) {
+      return res.status(403).json({ error: "Forbidden" })
+    }
+
     await pool.query("DELETE FROM bookings WHERE id = $1", [req.params.id])
     if (req.notifyClients) req.notifyClients()
     res.json({ success: true })
   } catch (err) {
+    console.error(err)
     res.status(500).json({ error: "Server error" })
   }
 })

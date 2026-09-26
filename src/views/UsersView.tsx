@@ -10,6 +10,7 @@ import {
   Clock,
   Edit2,
   Trash2,
+  Plus,
 } from "lucide-react"
 import { User } from "../types"
 import { useApp } from "../context/AppContext"
@@ -93,6 +94,14 @@ export const UsersView: React.FC<UsersViewProps> = ({
               </>
             )}
           </div>
+          <button
+            type="button"
+            onClick={() => onOpenUserModal()}
+            className="flex items-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-95 px-3.5 py-2 text-xs font-bold text-white shadow-sm transition-all cursor-pointer"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">{t.addUser}</span>
+          </button>
         </div>
       </div>
 

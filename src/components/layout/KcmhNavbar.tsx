@@ -1,4 +1,5 @@
 import React from "react"
+import { useNavigate } from "react-router-dom"
 import {
   Home,
   DoorOpen,
@@ -41,20 +42,38 @@ export const KcmhNavbar: React.FC<KcmhNavbarProps> = ({
     return formatDepartment(currentUser?.department, currentUser?.role, language)
   }, [currentUser, language])
 
+  const tabToPath = (tabId: string): string => {
+    if (tabId === "dashboard" || tabId === "home") {
+      return currentUser ? "/dashboard" : "/"
+    }
+    const map: Record<string, string> = {
+      rooms: "/rooms",
+      bookings: "/bookings",
+      users: "/users",
+      settings: "/settings",
+      profile: "/profile",
+      login: "/login",
+      register: "/register",
+    }
+    return map[tabId] ?? (currentUser ? "/dashboard" : "/")
+  }
+
+  const navigate = useNavigate()
+
   const handleNavClick = (tabId: string) => {
-    setActiveTab(tabId)
+    setActiveTab(tabId) // keep for highlight sync
+    navigate(tabToPath(tabId))
     setMobileMenuOpen(false)
   }
 
   const handleScheduleClick = () => {
     const scrollToSchedule = () => {
-      // Always scroll to the absolute bottom to ensure the schedule is fully visible
-      window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" })
+      document.getElementById("schedule-section")?.scrollIntoView({ behavior: "smooth", block: "start" })
     }
 
     if (activeTab !== "dashboard" && activeTab !== "home") {
-      setActiveTab("dashboard")
-      setTimeout(scrollToSchedule, 300)
+      navigate(tabToPath("dashboard"))
+      setTimeout(scrollToSchedule, 400)
     } else {
       setTimeout(scrollToSchedule, 50)
     }
@@ -83,7 +102,7 @@ export const KcmhNavbar: React.FC<KcmhNavbarProps> = ({
           <nav className="hidden md:flex items-center gap-1">
             <button
               onClick={() => handleNavClick("dashboard")}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition-all cursor-pointer ${
                 activeTab === "dashboard" || activeTab === "home"
                   ? "bg-white/20 text-white shadow-inner font-bold"
                   : "text-purple-200 hover:bg-white/10 hover:text-white"
@@ -95,7 +114,7 @@ export const KcmhNavbar: React.FC<KcmhNavbarProps> = ({
 
             <button
               onClick={() => handleNavClick("rooms")}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition-all cursor-pointer ${
                 activeTab === "rooms"
                   ? "bg-white/20 text-white shadow-inner font-bold"
                   : "text-purple-200 hover:bg-white/10 hover:text-white"
@@ -107,7 +126,7 @@ export const KcmhNavbar: React.FC<KcmhNavbarProps> = ({
 
             <button
               onClick={handleScheduleClick}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer text-purple-200 hover:bg-white/10 hover:text-white`}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition-all cursor-pointer text-purple-200 hover:bg-white/10 hover:text-white`}
             >
               <CalendarDays className="h-4 w-4" />
               <span>{t.schedule || "กำหนดการ"}</span>
@@ -117,7 +136,7 @@ export const KcmhNavbar: React.FC<KcmhNavbarProps> = ({
             {currentUser && (
               <button
                 onClick={() => handleNavClick("bookings")}
-                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition-all cursor-pointer ${
                   activeTab === "bookings"
                     ? "bg-white/20 text-white shadow-inner font-bold"
                     : "text-purple-200 hover:bg-white/10 hover:text-white"
@@ -136,7 +155,7 @@ export const KcmhNavbar: React.FC<KcmhNavbarProps> = ({
             {currentUser && isAdmin && (
               <button
                 onClick={() => handleNavClick("users")}
-                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition-all cursor-pointer ${
                   activeTab === "users"
                     ? "bg-white/20 text-white shadow-inner font-bold"
                     : "text-purple-200 hover:bg-white/10 hover:text-white"
@@ -150,7 +169,7 @@ export const KcmhNavbar: React.FC<KcmhNavbarProps> = ({
             {currentUser && (
               <button
                 onClick={() => handleNavClick("settings")}
-                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition-all cursor-pointer ${
                   activeTab === "settings"
                     ? "bg-white/20 text-white shadow-inner font-bold"
                     : "text-purple-200 hover:bg-white/10 hover:text-white"
@@ -165,7 +184,7 @@ export const KcmhNavbar: React.FC<KcmhNavbarProps> = ({
             {!currentUser && (
               <button
                 onClick={() => handleNavClick("login")}
-                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition-all cursor-pointer ${
                   activeTab === "login"
                     ? "bg-white/20 text-white shadow-inner font-bold"
                     : "text-purple-200 hover:bg-white/10 hover:text-white"
@@ -213,7 +232,7 @@ export const KcmhNavbar: React.FC<KcmhNavbarProps> = ({
                 onClick={(e) => {
                   e.stopPropagation()
                   setCurrentUser(null)
-                  setActiveTab("dashboard")
+                  navigate("/")
                 }}
                 title={t.logout}
                 className="p-1 rounded-lg text-purple-300 hover:text-rose-300 hover:bg-rose-500/20 transition-colors cursor-pointer ml-0.5"

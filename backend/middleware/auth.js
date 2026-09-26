@@ -1,3 +1,5 @@
+// auth middleware
+// trigger restart
 const jwt = require("jsonwebtoken")
 
 function authMiddleware(req, res, next) {
@@ -9,7 +11,8 @@ function authMiddleware(req, res, next) {
     const decoded = jwt.verify(token, process.env.JWT_SECRET)
     req.user = decoded
     next()
-  } catch {
+  } catch (err) {
+    console.error("[AUTH] JWT verify failed:", err.message, "| token prefix:", token?.substring(0, 20))
     return res.status(401).json({ error: "Invalid token" })
   }
 }

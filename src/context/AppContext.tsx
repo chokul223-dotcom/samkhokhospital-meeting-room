@@ -3,6 +3,7 @@ import React, {
   useContext,
   useState,
   useEffect,
+  useRef,
   useMemo,
   useCallback,
 } from "react"
@@ -134,6 +135,10 @@ interface AppContextType {
   toast: string | null
   showToast: (msg: string) => void
   refreshData: () => Promise<void>
+  hasPendingUpdate: boolean
+  dismissUpdate: () => Promise<void>
+  approvalVisible: boolean
+  dismissApproval: () => void
   handleBookingSubmit: (b: {
     roomId: string
     date: string
@@ -148,6 +153,7 @@ interface AppContextType {
   handleApprove: (id: string) => Promise<void>
   handleReject: (id: string, reason?: string) => Promise<void>
   handleCancel: (id: string) => Promise<void>
+  handleDeleteBooking: (id: string) => Promise<void>
   handleUpdateBooking: (id: string, data: Partial<Booking>) => Promise<void>
   handleSaveRoom: (r: Room) => Promise<void>
   handleDeleteRoom: (id: string) => Promise<void>
@@ -184,6 +190,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const [loading, setLoading] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
+  const [hasPendingUpdate, setHasPendingUpdate] = useState(false)
+  const [approvalVisible, setApprovalVisible] = useState(false)
 
   const t = useMemo(() => getTranslation(language), [language])
 
@@ -235,6 +243,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
 
   // Public data fetcher — runs even when not logged in
   const refreshPublicData = useCallback(async () => {
+    if (currentUser) return // Logged in users get full data via refreshData, no need to merge public data
     try {
       const [r, b] = await Promise.allSettled([
         api.fetchPublicRooms(),
@@ -244,17 +253,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         setRooms(r.value)
       }
       if (b.status === "fulfilled" && Array.isArray(b.value)) {
-        // Merge: keep private bookings from auth fetch, add public approved ones
-        setBookings((prev) => {
-          const publicIds = new Set(b.value.map((x) => x.id))
-          const privateOnly = prev.filter((x) => !publicIds.has(x.id))
-          return [...b.value, ...privateOnly]
-        })
+        setBookings(b.value)
       }
     } catch (err) {
       console.warn("Public data fetch warning:", err)
     }
-  }, [])
+  }, [currentUser])
 
   // Authenticated data fetcher — full data for logged-in users
   const refreshData = useCallback(async () => {
@@ -290,33 +294,69 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     return () => clearInterval(poll)
   }, [refreshPublicData])
 
-  // Real-time EventSource & Polling for authenticated users
+  // Refs to always access latest values inside SSE closure without re-connecting
+  const languageRef = useRef(language)
+  const showToastRef = useRef(showToast)
+  useEffect(() => { languageRef.current = language }, [language])
+  useEffect(() => { showToastRef.current = showToast }, [showToast])
+
+  // Real-time EventSource — ทำงานเฉพาะเมื่อมีเหตุการณ์จาก backend เท่านั้น
   useEffect(() => {
     if (!currentUser) return
+    // Initial load — fetch data immediately
     refreshData()
 
     let es: EventSource | null = null
-    try {
-      es = new EventSource(`${API_URL}/api/stream`)
-      es.onmessage = (e) => {
-        if (e.data === "update") refreshData()
+    let retryTimeout: ReturnType<typeof setTimeout> | null = null
+    let retryDelay = 2000 // เริ่มต้น 2 วินาที
+
+    const connect = () => {
+      try {
+        // ส่ง userId ไปด้วยเพื่อ subscribe user-specific channel
+        const streamUrl = `${API_URL}/api/stream?userId=${encodeURIComponent(currentUser.id)}`
+        es = new EventSource(streamUrl)
+
+        es.onopen = () => {
+          retryDelay = 2000 // reset delay เมื่อเชื่อมต่อสำเร็จ
+        }
+
+        es.onmessage = (e) => {
+          if (e.data === "update") {
+            // โหลดข้อมูลใหม่ทันทีแบบ background
+            refreshData()
+            // แสดง banner ว่ามีข้อมูลใหม่ (ถ้าต้องการให้เห็นชัดเจน)
+            setHasPendingUpdate(true)
+          } else if (e.data === "user_approved") {
+            // แจ้งเตือนผู้ใช้ทันทีเมื่อแอดมินอนุมัติบัญชี — real-time via SSE
+            setApprovalVisible(true)
+            showToastRef.current(
+              languageRef.current === "th"
+                ? "🎉 บัญชีของคุณได้รับการอนุมัติแล้ว! คุณสามารถใช้งานระบบได้เต็มรูปแบบ"
+                : "🎉 Your account has been approved! You can now use the full system."
+            )
+            // Refresh ข้อมูลเพื่ออัปเดต department และสถานะล่าสุด
+            refreshData()
+          }
+        }
+
+        es.onerror = () => {
+          if (es) { es.close(); es = null }
+          // Auto-reconnect ด้วย exponential backoff (สูงสุด 30 วินาที)
+          retryTimeout = setTimeout(() => {
+            retryDelay = Math.min(retryDelay * 2, 30000)
+            connect()
+          }, retryDelay)
+        }
+      } catch {
+        // Ignore SSE failure if backend is offline
       }
-      es.onerror = () => {
-        // SSE failed — will rely on polling fallback below
-        if (es) { es.close(); es = null }
-      }
-    } catch {
-      // Ignore SSE failure if backend is offline
     }
 
-    // Poll every 5s for near-real-time booking status updates
-    const poll = setInterval(() => {
-      refreshData()
-    }, 5000)
+    connect()
 
     return () => {
       if (es) es.close()
-      clearInterval(poll)
+      if (retryTimeout) clearTimeout(retryTimeout)
     }
   }, [currentUser, refreshData])
 
@@ -368,28 +408,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   const handleApprove = async (id: string) => {
     try {
       await api.updateBookingStatus(id, "approved")
+      // Refresh จาก backend เพื่อให้เห็น auto-reject ของรายการที่ซ้อนทับ
+      await refreshData()
     } catch {
-      // Offline fallback
+      // Offline fallback — optimistic update
+      setBookings((prev) =>
+        prev.map((b) => (b.id === id ? { ...b, status: "approved" } : b)),
+      )
     }
-    setBookings((prev) =>
-      prev.map((b) => (b.id === id ? { ...b, status: "approved" } : b)),
-    )
     showToast(t.toastApproveSuccess)
   }
 
   const handleReject = async (id: string, reason?: string) => {
     try {
       await api.updateBookingStatus(id, "rejected", reason)
+      // Refresh เพื่อ sync สถานะล่าสุดจาก backend
+      await refreshData()
     } catch {
-      // Offline fallback
+      // Offline fallback — optimistic update
+      setBookings((prev) =>
+        prev.map((b) =>
+          b.id === id
+            ? { ...b, status: "rejected", rejectReason: reason || null }
+            : b,
+        ),
+      )
     }
-    setBookings((prev) =>
-      prev.map((b) =>
-        b.id === id
-          ? { ...b, status: "rejected", rejectReason: reason || null }
-          : b,
-      ),
-    )
     showToast(t.toastRejectSuccess)
   }
 
@@ -403,6 +447,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       prev.map((b) => (b.id === id ? { ...b, status: "cancelled" } : b)),
     )
     showToast(t.toastCancelSuccess)
+  }
+
+  const handleDeleteBooking = async (id: string) => {
+    try {
+      await api.deleteBooking(id)
+    } catch {
+      // Offline fallback
+    }
+    setBookings((prev) => prev.filter((b) => b.id !== id))
+    showToast(language === 'th' ? 'ลบการจองเรียบร้อยแล้ว' : 'Booking deleted')
   }
 
   const handleUpdateBooking = async (id: string, data: Partial<Booking>) => {
@@ -489,7 +543,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         try {
           const stored = localStorage.getItem("registered_users")
           const parsed = stored ? JSON.parse(stored) : []
-          parsed.push({ ...newU, password: "Password123" })
+          parsed.push({ ...newU })
           localStorage.setItem("registered_users", JSON.stringify(parsed))
         } catch { }
       }
@@ -594,12 +648,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   const handleClearAllBookings = async () => {
     try {
       await api.deleteAllBookings()
+      // Clear ข้อมูลเฉพาะเมื่อ API สำเร็จเท่านั้น
+      setBookings([])
+      await refreshData()
+      showToast(t.toastAllBookingsDeleted)
     } catch {
-      // Offline fallback
+      // ถ้า API ล้มเหลว แสดง error แทน (ไม่ clear state ปลอม)
+      showToast(language === "th" ? "ล้างประวัติไม่สำเร็จ กรุณาลองใหม่" : "Failed to clear bookings, please try again")
     }
-    setBookings([])
-    showToast(t.toastAllBookingsDeleted)
   }
+
+  const dismissUpdate = useCallback(async () => {
+    await refreshData()
+    setHasPendingUpdate(false)
+  }, [refreshData])
+
+  const dismissApproval = useCallback(() => {
+    setApprovalVisible(false)
+  }, [])
 
   const value = {
     t,
@@ -616,10 +682,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     toast,
     showToast,
     refreshData,
+    hasPendingUpdate,
+    dismissUpdate,
+    approvalVisible,
+    dismissApproval,
     handleBookingSubmit,
     handleApprove,
     handleReject,
     handleCancel,
+    handleDeleteBooking,
     handleUpdateBooking,
     handleSaveRoom,
     handleDeleteRoom,

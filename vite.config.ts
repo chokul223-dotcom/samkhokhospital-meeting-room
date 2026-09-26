@@ -33,6 +33,8 @@ export default defineConfig(({ mode }) => {
       port: parseInt(process.env.PORT || "8443"),
       strictPort: true,
       watch: { ignored: ["**/node_modules/**"] },
+      // Required for React Router — serve index.html for all routes
+      historyApiFallback: true,
     },
     preview: {
       host: "0.0.0.0",
