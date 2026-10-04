@@ -105,6 +105,7 @@ app.use("/api/auth", authLimiter, require("./routes/auth"))
 app.use("/api/rooms", require("./routes/rooms"))
 app.use("/api/bookings", require("./routes/bookings"))
 app.use("/api/users", require("./routes/users"))
+app.use("/api/evaluations", require("./routes/evaluations"))
 
 // Health check
 app.get("/api/health", (req, res) =>

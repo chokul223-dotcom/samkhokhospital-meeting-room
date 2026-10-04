@@ -1,4 +1,4 @@
-import { Booking, Room, User, LoginResponse } from "../types"
+import { Booking, Room, User, LoginResponse, EvaluationSummary } from "../types"
 
 const BASE_URL = (
   import.meta.env.VITE_API_URL || "http://localhost:3001"
@@ -263,6 +263,13 @@ export async function deleteUser(id: string): Promise<{ success: boolean }> {
   })
 }
 
+export async function changePassword(id: string, oldPassword?: string, password?: string): Promise<{ success: boolean }> {
+  return request<{ success: boolean }>(`/api/users/${id}/password`, {
+    method: "PATCH",
+    body: JSON.stringify({ oldPassword, password }),
+  })
+}
+
 export async function sendPasswordReset(userId: string): Promise<{ success: boolean; message: string; dev_token?: string; reset_link?: string }> {
   return request(`/api/users/${userId}/send-reset`, { method: "POST" })
 }
@@ -287,4 +294,20 @@ export async function verifyEmail(token: string): Promise<{ success: boolean; me
     method: "POST",
     body: JSON.stringify({ token }),
   })
+}
+
+// ─── Evaluations ──────────────────────────────────────────────────────────────
+
+export async function submitEvaluation(data: {
+  answers: Record<string, number>
+  suggestion?: string
+}): Promise<{ success: boolean; id: number }> {
+  return request("/api/evaluations", {
+    method: "POST",
+    body: JSON.stringify(data),
+  })
+}
+
+export async function fetchEvaluationSummary(): Promise<EvaluationSummary> {
+  return request<EvaluationSummary>("/api/evaluations/summary")
 }

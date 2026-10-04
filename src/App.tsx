@@ -16,6 +16,8 @@ import { SettingsView } from "./views/SettingsView"
 import { ProfileView } from "./views/ProfileView"
 import { ResetPasswordView } from "./views/ResetPasswordView"
 import { VerifyEmailView } from "./views/VerifyEmailView"
+import { EvaluationView } from "./views/EvaluationView"
+import { AboutView } from "./views/AboutView"
 
 import { BookingModal } from "./components/modals/BookingModal"
 import { RoomModal } from "./components/modals/RoomModal"
@@ -69,6 +71,8 @@ function MainShell() {
     "/users": "users",
     "/settings": "settings",
     "/profile": "profile",
+    "/evaluation": "evaluation",
+    "/about": "about",
     "/login": "login",
     "/register": "register",
   }
@@ -111,6 +115,10 @@ function MainShell() {
       users: "/users",
       settings: "/settings",
       profile: "/profile",
+      evaluation: "/evaluation",
+      about: "/about",
+      login: "/login",
+      register: "/register",
     }
     navigate(tabToPath[tab] ?? (currentUser ? "/dashboard" : "/"))
     if (filter) setInitialBookingFilter(filter)
@@ -155,6 +163,8 @@ function MainShell() {
                 />
               }
             />
+            <Route path="/evaluation" element={<EvaluationView />} />
+            <Route path="/about" element={<AboutView />} />
 
             {/* Protected routes */}
             <Route

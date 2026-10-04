@@ -123,6 +123,16 @@ async function initDB() {
       )
     `)
 
+    // System satisfaction evaluations table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS evaluations (
+        id SERIAL PRIMARY KEY,
+        user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+        answers JSONB NOT NULL,
+        suggestion TEXT DEFAULT NULL,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `)
 
     // Seed admin user if not exists
     const bcrypt = require("bcryptjs")

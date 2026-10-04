@@ -99,6 +99,34 @@ router.post("/login", validateLogin, async (req, res) => {
       }
     }
 
+    // If email is not verified, skip OTP and log in directly
+    if (!user.email_verified) {
+      const token = jwt.sign(
+        {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          role: user.role,
+          name: user.name,
+          department: user.department,
+        },
+        process.env.JWT_SECRET,
+        { expiresIn: "8h" }
+      )
+      return res.json({
+        token,
+        user: {
+          id: user.id,
+          name: user.name,
+          department: user.department,
+          role: user.role,
+          username: user.username,
+          email: user.email,
+          emailVerified: user.email_verified,
+        }
+      })
+    }
+
     // Generate 6-digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString()
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000) // 10 minutes

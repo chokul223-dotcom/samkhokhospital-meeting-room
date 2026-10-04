@@ -91,14 +91,14 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ dateStr, onOpenBooki
 
         {/* Section 1: Morning/Afternoon Table */}
         <div className="space-y-4">
-          <h3 className="text-xl sm:text-2xl font-bold text-center text-slate-800 dark:text-slate-100 drop-shadow-sm">
+          <h3 className="text-xl sm:text-2xl font-bold text-center text-purple-900 dark:text-purple-300 drop-shadow-sm">
             วันที่ {formatHeaderDate(currentDate)}
           </h3>
 
-          <div className="bg-white dark:bg-[#1a2332] rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden mx-auto max-w-5xl">
+          <div className="bg-white dark:bg-[#1a2332] rounded-xl shadow-lg border border-purple-200/50 dark:border-purple-900/50 overflow-hidden mx-auto max-w-5xl">
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-left border-collapse">
-                <thead className="bg-[#24272c] dark:bg-[#0f172a] text-white font-semibold">
+                <thead className="bg-gradient-to-r from-purple-900 to-indigo-900 text-white font-semibold">
                   <tr>
                     <th className="px-6 py-4 border-r border-slate-600 dark:border-slate-800 min-w-[250px]">{t.roomBreadcrumb?.split("/")[0] || "ห้องประชุม"}</th>
                     <th className="px-6 py-4 border-r border-slate-600 dark:border-slate-800 text-center whitespace-nowrap w-24">{t.capacity || "ความจุ"}</th>
@@ -195,8 +195,8 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ dateStr, onOpenBooki
 
         {/* Section 2: Detailed Agenda Table */}
         <div className="space-y-4 pt-4">
-          <div className="bg-[#151f32] dark:bg-[#1a2332] rounded-xl shadow-lg border border-slate-300 dark:border-slate-700 overflow-hidden mx-auto max-w-6xl">
-            <div className="bg-[#0f172a] text-white text-center py-4 border-b border-slate-700/50">
+          <div className="bg-[#151f32] dark:bg-[#1a2332] rounded-xl shadow-lg border border-purple-200/50 dark:border-purple-900/50 overflow-hidden mx-auto max-w-6xl">
+            <div className="bg-gradient-to-r from-purple-900 to-indigo-900 text-white text-center py-4 border-b border-purple-800/50">
               <h3 className="text-lg md:text-xl font-bold">
                 วันที่ {formatHeaderDate(currentDate)}
               </h3>
@@ -204,7 +204,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ dateStr, onOpenBooki
 
             <div className="overflow-x-auto">
               <table className="w-full text-xs sm:text-sm text-left border-collapse min-w-[800px]">
-                <thead className="bg-[#1e293b] text-white font-semibold border-b border-slate-700/50">
+                <thead className="bg-purple-950/80 text-white font-semibold border-b border-purple-800/50">
                   <tr>
                     <th className="px-4 py-4 border-r border-slate-700/50 text-center w-24">{t.time || "เวลา"}</th>
                     {availableRooms.map(room => (

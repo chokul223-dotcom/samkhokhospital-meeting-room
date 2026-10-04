@@ -79,3 +79,20 @@ export interface CookieConsentPreferences {
   hasAnswered: boolean
   updatedAt?: string
 }
+
+export interface EvaluationQuestionStat {
+  average: number
+  count: number
+  distribution: Record<1 | 2 | 3 | 4 | 5, number>
+}
+
+export interface EvaluationSummary {
+  total: number
+  questions: Record<string, EvaluationQuestionStat>
+  suggestions: {
+    id: number
+    suggestion: string
+    createdAt: string
+    userName: string | null
+  }[]
+}

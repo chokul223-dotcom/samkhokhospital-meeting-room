@@ -69,10 +69,11 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
 
   // Form state
   const [username, setUsername] = useState("")
-  const [password, setPassword] = useState("")
-  const [confirmPassword, setConfirmPassword] = useState("")
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [oldPassword, setOldPassword] = useState("")
+  const [newPassword, setNewPassword] = useState("")
+  const [showOldPassword, setShowOldPassword] = useState(false)
+  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [isChangingPassword, setIsChangingPassword] = useState(false)
 
   const [name, setName] = useState("")
   const [gender, setGender] = useState("ไม่ระบุ")
@@ -94,6 +95,12 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
+
+  const [isEmailUnlocked, setIsEmailUnlocked] = useState(false)
+  const [showEmailUnlockModal, setShowEmailUnlockModal] = useState(false)
+  const [unlockPassword, setUnlockPassword] = useState("")
+  const [showUnlockPassword, setShowUnlockPassword] = useState(false)
+  const [unlockError, setUnlockError] = useState("")
 
   // Load current user data
   useEffect(() => {
@@ -162,6 +169,33 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
     }
   }
 
+  const handleChangePassword = async () => {
+    if (!currentUser) return
+    if (!oldPassword) {
+      setError(language === "th" ? "กรุณาระบุรหัสผ่านเดิม" : "Please specify old password")
+      return
+    }
+    if (newPassword.length < 4) {
+      setError(language === "th" ? "รหัสผ่านใหม่ต้องมีอย่างน้อย 4 ตัวอักษร" : "New password must be at least 4 characters")
+      return
+    }
+
+    setError("")
+    setSuccess("")
+    setIsChangingPassword(true)
+
+    try {
+      await api.changePassword(currentUser.id, oldPassword, newPassword)
+      setSuccess(language === "th" ? "เปลี่ยนรหัสผ่านสำเร็จ" : "Password changed successfully")
+      setOldPassword("")
+      setNewPassword("")
+    } catch (err: any) {
+      setError(err.message || (language === "th" ? "เกิดข้อผิดพลาดในการเปลี่ยนรหัสผ่าน" : "Failed to change password"))
+    } finally {
+      setIsChangingPassword(false)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
@@ -169,24 +203,6 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
 
     if (!name.trim()) {
       setError(language === "th" ? "กรุณาระบุ ชื่อ-นามสกุล" : "Please specify Name")
-      return
-    }
-
-    if (password && password.length < 4) {
-      setError(
-        language === "th"
-          ? "รหัสผ่านต้องมีอย่างน้อย 4 ตัวอักษร"
-          : "Password must be at least 4 characters",
-      )
-      return
-    }
-
-    if (password && password !== confirmPassword) {
-      setError(
-        language === "th"
-          ? "รหัสผ่านและยืนยันรหัสผ่านไม่ตรงกัน"
-          : "Passwords do not match",
-      )
       return
     }
 
@@ -213,18 +229,12 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
         avatarUrl: deleteAvatar ? "" : avatarUrl,
       }
 
-      if (password) {
-        updateData.password = password
-      }
-
       await handleUpdateProfile(updateData)
       setSuccess(
         language === "th"
           ? "บันทึกข้อมูลส่วนตัวสำเร็จเรียบร้อยแล้ว"
           : "Profile updated successfully",
       )
-      setPassword("")
-      setConfirmPassword("")
     } catch (err: any) {
       setError(err.message || (language === "th" ? "เกิดข้อผิดพลาดในการบันทึก" : "Failed to update profile"))
     } finally {
@@ -313,10 +323,27 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     required
-                    className="w-full rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 pl-10 pr-4 py-2.5 text-xs sm:text-sm font-semibold text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+                    readOnly={!isEmailUnlocked}
+                    className={`w-full rounded-xl border pl-10 pr-4 py-2.5 text-xs sm:text-sm font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${!isEmailUnlocked
+                      ? "bg-slate-100 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 cursor-not-allowed"
+                      : "bg-slate-50 dark:bg-slate-800 border-blue-400 dark:border-blue-500 text-slate-900 dark:text-white"
+                      }`}
                   />
                 </div>
-                {!emailVerified && username === currentUser?.username && (
+                {!isEmailUnlocked ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUnlockPassword("")
+                      setUnlockError("")
+                      setShowEmailUnlockModal(true)
+                    }}
+                    className="flex-none flex items-center justify-center rounded-xl bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 px-4 py-2.5 text-xs font-bold transition-colors cursor-pointer"
+                  >
+                    <Lock className="h-3.5 w-3.5 mr-1.5" />
+                    {language === "th" ? "เปลี่ยนอีเมล" : "Change Email"}
+                  </button>
+                ) : !emailVerified && username === currentUser?.username && (
                   <button
                     type="button"
                     onClick={handleSendVerifyEmail}
@@ -338,27 +365,27 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  {language === "th" ? "รหัสผ่าน" : "Password"}
+                  {language === "th" ? "รหัสผ่านเดิม" : "Old Password"}
                 </label>
                 <div className="relative">
                   <Lock className="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
                   <input
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    type={showOldPassword ? "text" : "password"}
+                    value={oldPassword}
+                    onChange={(e) => setOldPassword(e.target.value)}
                     placeholder={
                       language === "th"
-                        ? "รหัสผ่านต้องไม่น้อยกว่า 4 ตัวอักษร"
-                        : "Password (min 4 chars)"
+                        ? "รหัสผ่านเดิมของคุณ"
+                        : "Your old password"
                     }
                     className="w-full rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 pl-10 pr-10 py-2.5 text-xs sm:text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                   />
                   <button
                     type="button"
-                    onClick={() => setShowPassword((v) => !v)}
+                    onClick={() => setShowOldPassword((v) => !v)}
                     className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
                   >
-                    {showPassword ? (
+                    {showOldPassword ? (
                       <EyeOff className="h-4 w-4" />
                     ) : (
                       <Eye className="h-4 w-4" />
@@ -367,34 +394,34 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
                 </div>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
                   {language === "th"
-                    ? "ถ้าต้องการเปลี่ยนรหัสผ่าน กรุณากรอกรหัสผ่านสองช่องให้ตรงกัน"
-                    : "To change password, enter matching passwords in both fields"}
+                    ? "ถ้าต้องการเปลี่ยนรหัสผ่าน กรุณากรอกรหัสผ่านเดิม"
+                    : "To change password, please enter your old password"}
                 </p>
               </div>
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  {language === "th" ? "ยืนยันรหัสผ่าน" : "Confirm Password"}
+                  {language === "th" ? "รหัสผ่านใหม่" : "New Password"}
                 </label>
                 <div className="relative">
                   <Lock className="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
                   <input
-                    type={showConfirmPassword ? "text" : "password"}
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    type={showNewPassword ? "text" : "password"}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
                     placeholder={
                       language === "th"
-                        ? "กรอกรหัสผ่านของคุณอีกครั้ง"
-                        : "Confirm your password again"
+                        ? "รหัสผ่านใหม่ (อย่างน้อย 4 ตัวอักษร)"
+                        : "New password (min 4 chars)"
                     }
                     className="w-full rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 pl-10 pr-10 py-2.5 text-xs sm:text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                   />
                   <button
                     type="button"
-                    onClick={() => setShowConfirmPassword((v) => !v)}
+                    onClick={() => setShowNewPassword((v) => !v)}
                     className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
                   >
-                    {showConfirmPassword ? (
+                    {showNewPassword ? (
                       <EyeOff className="h-4 w-4" />
                     ) : (
                       <Eye className="h-4 w-4" />
@@ -402,6 +429,20 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
                   </button>
                 </div>
               </div>
+            </div>
+
+            <div className="flex justify-end pt-1">
+              <button
+                type="button"
+                onClick={handleChangePassword}
+                disabled={isChangingPassword || !oldPassword || !newPassword}
+                className="flex items-center justify-center rounded-xl bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white px-5 py-2 text-xs font-bold transition-colors cursor-pointer disabled:opacity-50"
+              >
+                {isChangingPassword
+                  ? (language === "th" ? "กำลังเปลี่ยน..." : "Changing...")
+                  : (language === "th" ? "ยืนยันการเปลี่ยนรหัสผ่าน" : "Confirm Password Change")
+                }
+              </button>
             </div>
           </div>
 
@@ -700,8 +741,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
                   disabled={currentUser?.role !== "admin"}
                   onChange={(e) => setRole(e.target.value as any)}
                   className={`w-full rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 pl-10 pr-8 py-2.5 text-xs sm:text-sm font-medium text-slate-900 dark:text-white ${currentUser?.role !== "admin"
-                      ? "cursor-not-allowed opacity-80"
-                      : "cursor-pointer focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    ? "cursor-not-allowed opacity-80"
+                    : "cursor-pointer focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                     }`}
                 >
                   <option value="user">
@@ -751,6 +792,73 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
           </div>
         </form>
       </div>
+
+      {/* Password Modal for Unlocking Email */}
+      {showEmailUnlockModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="w-full max-w-sm rounded-3xl bg-white dark:bg-slate-900 shadow-2xl p-6 border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200">
+            <div className="flex flex-col items-center text-center mb-6">
+              <div className="h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center mb-3">
+                <Lock className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+              </div>
+              <h3 className="text-lg font-black text-slate-900 dark:text-white">
+                {language === "th" ? "ยืนยันตัวตนเพื่อเปลี่ยนอีเมล" : "Verify Identity"}
+              </h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                {language === "th" ? "กรุณากรอกรหัสผ่านเพื่อยืนยันการปลดล็อกอีเมล" : "Please enter your password to unlock the email field."}
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <div className="relative">
+                <Lock className="absolute left-3 top-2.5 h-5 w-5 text-slate-400" />
+                <input
+                  type={showUnlockPassword ? "text" : "password"}
+                  value={unlockPassword}
+                  onChange={(e) => setUnlockPassword(e.target.value)}
+                  placeholder={language === "th" ? "รหัสผ่านของคุณ" : "Your Password"}
+                  className="w-full rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 pl-10 pr-10 py-2.5 text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowUnlockPassword((prev) => !prev)}
+                  className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+                >
+                  {showUnlockPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
+              </div>
+
+              {unlockError && (
+                <p className="text-xs font-bold text-rose-500 text-center">{unlockError}</p>
+              )}
+
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowEmailUnlockModal(false)}
+                  className="flex-1 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 py-2.5 text-sm font-bold transition-colors cursor-pointer"
+                >
+                  {language === "th" ? "ยกเลิก" : "Cancel"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (unlockPassword.length < 4) {
+                      setUnlockError(language === "th" ? "รหัสผ่านไม่ถูกต้อง" : "Invalid password")
+                      return
+                    }
+                    setIsEmailUnlocked(true)
+                    setShowEmailUnlockModal(false)
+                  }}
+                  className="flex-1 rounded-xl bg-blue-600 hover:bg-blue-700 text-white py-2.5 text-sm font-bold transition-colors cursor-pointer"
+                >
+                  {language === "th" ? "ยืนยัน" : "Verify"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

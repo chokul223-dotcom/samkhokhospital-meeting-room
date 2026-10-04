@@ -216,16 +216,27 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       {/* ─── 3. Main Monthly Booking Calendar Container ─── */}
-      <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm overflow-hidden">
-        {/* Calendar Title & Month Toolbar */}
-        <div className="p-4 sm:p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+      <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xl overflow-hidden">
+        {/* Calendar Title & Month Toolbar (Purple Theme) */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-[#1b0738] via-[#3b1170] to-[#6d28d9] p-4 sm:p-6 text-white border-b border-purple-900/50">
+          {/* Decorative blurs */}
+          <div className="pointer-events-none absolute -top-16 -right-10 h-56 w-56 rounded-full bg-fuchsia-400/25 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-20 left-10 h-48 w-48 rounded-full bg-indigo-400/25 blur-3xl" />
+          
+          <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-4">
             {/* Calendar Section Header */}
-            <div className="flex items-center gap-2">
-              <CalendarIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-              <h3 className="text-base sm:text-lg font-extrabold text-slate-800 dark:text-white">
-                {t.calendarTitle || "ปฏิทินการจอง ห้องประชุม"}
-              </h3>
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 flex-none items-center justify-center rounded-2xl bg-white/15 ring-1 ring-white/25 backdrop-blur shadow-inner animate-float-subtle">
+                <CalendarIcon className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-widest text-purple-200/90 mb-0.5">
+                  {language === "th" ? "ตารางการใช้งาน" : "Schedule"}
+                </p>
+                <h3 className="text-lg sm:text-xl font-bold leading-tight">
+                  {t.calendarTitle || "ปฏิทินการจอง ห้องประชุม"}
+                </h3>
+              </div>
             </div>
 
             {/* Month & Year Navigator */}
@@ -234,7 +245,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <button
                 type="button"
                 onClick={handlePrevMonth}
-                className="flex h-9 w-9 items-center justify-center rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer shadow-xs"
+                className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 ring-1 ring-white/20 text-white hover:bg-white/20 transition-colors cursor-pointer shadow-xs backdrop-blur"
                 title="เดือนก่อนหน้า"
               >
                 <ChevronLeft className="h-5 w-5" />
@@ -244,10 +255,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <select
                 value={currentMonth}
                 onChange={(e) => setCurrentMonth(Number(e.target.value))}
-                className="rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-2 text-xs sm:text-sm font-bold text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer shadow-xs"
+                className="rounded-xl bg-white/10 ring-1 ring-white/20 px-3 py-2 text-xs sm:text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-white/40 cursor-pointer shadow-xs backdrop-blur appearance-none [&>option]:text-slate-800"
               >
                 {monthNames.map((m, idx) => (
-                  <option key={idx} value={idx}>
+                  <option key={idx} value={idx} className="text-slate-800">
                     {m}
                   </option>
                 ))}
@@ -257,10 +268,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <select
                 value={currentYear}
                 onChange={(e) => setCurrentYear(Number(e.target.value))}
-                className="rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-2 text-xs sm:text-sm font-bold text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer shadow-xs"
+                className="rounded-xl bg-white/10 ring-1 ring-white/20 px-3 py-2 text-xs sm:text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-white/40 cursor-pointer shadow-xs backdrop-blur appearance-none [&>option]:text-slate-800"
               >
                 {[2024, 2025, 2026, 2027, 2028, 2029].map((y) => (
-                  <option key={y} value={y}>
+                  <option key={y} value={y} className="text-slate-800">
                     {language === "th" ? y + 543 : y}
                   </option>
                 ))}
@@ -271,7 +282,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <button
                   type="button"
                   onClick={handleJumpToday}
-                  className="flex h-9 items-center justify-center rounded-xl bg-blue-600 hover:bg-blue-700 border border-blue-600 text-white text-xs font-bold px-3 transition-colors cursor-pointer shadow-xs"
+                  className="flex h-10 items-center justify-center rounded-xl bg-fuchsia-500/80 hover:bg-fuchsia-500 text-white text-xs font-bold px-4 transition-colors cursor-pointer shadow-xs ring-1 ring-fuchsia-400/50 backdrop-blur"
                   title={language === "th" ? "เดือนปัจจุบัน" : "This Month"}
                 >
                   {language === "th" ? "วันนี้" : "Today"}
@@ -282,7 +293,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <button
                 type="button"
                 onClick={handleNextMonth}
-                className="flex h-9 w-9 items-center justify-center rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer shadow-xs"
+                className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 ring-1 ring-white/20 text-white hover:bg-white/20 transition-colors cursor-pointer shadow-xs backdrop-blur"
                 title="เดือนถัดไป"
               >
                 <ChevronRight className="h-5 w-5" />
@@ -295,7 +306,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div className="w-full overflow-x-auto">
           <div className="min-w-[760px]">
             {/* Day Name Header Row */}
-            <div className="grid grid-cols-7 border-b border-slate-200 dark:border-slate-800 bg-slate-100/60 dark:bg-slate-800/60 text-center text-xs font-bold text-blue-600 dark:text-blue-400 py-3">
+            <div className="grid grid-cols-7 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 text-center text-xs font-bold text-purple-700 dark:text-purple-400 py-3">
               {dayNames.map((dName, idx) => (
                 <div
                   key={idx}

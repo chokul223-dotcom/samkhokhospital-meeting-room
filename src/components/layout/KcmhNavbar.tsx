@@ -13,6 +13,8 @@ import {
   User as UserIcon,
   Menu,
   X,
+  ClipboardCheck,
+  Building2,
 } from "lucide-react"
 import { useApp } from "../../context/AppContext"
 import { LanguageSwitcher } from "../common/LanguageSwitcher"
@@ -52,6 +54,8 @@ export const KcmhNavbar: React.FC<KcmhNavbarProps> = ({
       users: "/users",
       settings: "/settings",
       profile: "/profile",
+      evaluation: "/evaluation",
+      about: "/about",
       login: "/login",
       register: "/register",
     }
@@ -83,8 +87,8 @@ export const KcmhNavbar: React.FC<KcmhNavbarProps> = ({
   return (
     <header className="sticky top-0 z-40 w-full select-none bg-gradient-to-r from-[#1b0738] via-[#2f0e54] to-[#1a0836] border-b border-purple-900/60 shadow-lg text-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between gap-4">
-        {/* Left Navigation Links */}
-        <div className="flex items-center gap-1 sm:gap-2">
+        {/* Left Side: Mobile Menu + Theme & Language */}
+        <div className="flex items-center gap-2 sm:gap-3 flex-none">
           {/* Mobile hamburger button */}
           <button
             onClick={() => setMobileMenuOpen((o) => !o)}
@@ -97,9 +101,16 @@ export const KcmhNavbar: React.FC<KcmhNavbarProps> = ({
               <Menu className="h-5 w-5" />
             )}
           </button>
+          
+          <div className="hidden sm:flex items-center gap-1.5">
+            <ThemeToggle variant="inline" />
+            <LanguageSwitcher variant="floating" />
+          </div>
+        </div>
 
-          {/* Desktop Nav Items */}
-          <nav className="hidden md:flex items-center gap-1">
+        {/* Center: Desktop Nav Items */}
+        <div className="hidden md:flex flex-1 items-center justify-start overflow-x-auto no-scrollbar mx-2">
+          <nav className="flex items-center gap-1 mx-auto px-1">
             <button
               onClick={() => handleNavClick("dashboard")}
               className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition-all cursor-pointer ${
@@ -180,25 +191,39 @@ export const KcmhNavbar: React.FC<KcmhNavbarProps> = ({
               </button>
             )}
 
-            {/* If NOT logged in, show Login link */}
+            <button
+              id="nav-evaluation"
+              onClick={() => handleNavClick("evaluation")}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                activeTab === "evaluation"
+                  ? "bg-white/20 text-white shadow-inner font-bold"
+                  : "text-purple-200 hover:bg-white/10 hover:text-white"
+              }`}
+            >
+              <ClipboardCheck className="h-4 w-4" />
+              <span>{language === "th" ? "แบบประเมิน" : "Survey"}</span>
+            </button>
+
             {!currentUser && (
               <button
-                onClick={() => handleNavClick("login")}
+                id="nav-about"
+                onClick={() => handleNavClick("about")}
                 className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition-all cursor-pointer ${
-                  activeTab === "login"
+                  activeTab === "about"
                     ? "bg-white/20 text-white shadow-inner font-bold"
                     : "text-purple-200 hover:bg-white/10 hover:text-white"
                 }`}
               >
-                <LogIn className="h-4 w-4" />
-                <span>{t.loginNav || "เข้าสู่ระบบ"}</span>
+                <Building2 className="h-4 w-4" />
+                <span>{language === "th" ? "เกี่ยวกับเรา" : "About Us"}</span>
               </button>
             )}
+
           </nav>
         </div>
 
-        {/* Right Side: Profile / Login + Theme + Language */}
-        <div className="flex items-center gap-2 sm:gap-3">
+        {/* Right Side: Profile / Login */}
+        <div className="flex items-center gap-2 sm:gap-3 flex-none">
           {/* User Profile Pill when logged in */}
           {currentUser ? (
             <div
@@ -249,12 +274,6 @@ export const KcmhNavbar: React.FC<KcmhNavbarProps> = ({
               <span>{t.loginNav || "เข้าสู่ระบบ"}</span>
             </button>
           )}
-
-          {/* Theme & Language Switchers */}
-          <div className="flex items-center gap-1.5">
-            <ThemeToggle variant="inline" />
-            <LanguageSwitcher variant="floating" />
-          </div>
         </div>
       </div>
 
@@ -353,6 +372,32 @@ export const KcmhNavbar: React.FC<KcmhNavbarProps> = ({
             >
               <Settings className="h-4 w-4" />
               <span>{t.settings}</span>
+            </button>
+          )}
+
+          <button
+            onClick={() => handleNavClick("evaluation")}
+            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold ${
+              activeTab === "evaluation"
+                ? "bg-white/20 text-white font-bold"
+                : "text-purple-200 hover:bg-white/10"
+            }`}
+          >
+            <ClipboardCheck className="h-4 w-4" />
+            <span>{language === "th" ? "แบบประเมิน" : "Survey"}</span>
+          </button>
+
+          {!currentUser && (
+            <button
+              onClick={() => handleNavClick("about")}
+              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold ${
+                activeTab === "about"
+                  ? "bg-white/20 text-white font-bold"
+                  : "text-purple-200 hover:bg-white/10"
+              }`}
+            >
+              <Building2 className="h-4 w-4" />
+              <span>{language === "th" ? "เกี่ยวกับเรา" : "About Us"}</span>
             </button>
           )}
 

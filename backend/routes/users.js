@@ -128,9 +128,19 @@ router.patch("/:id/password", authMiddleware, async (req, res) => {
   if (req.params.id !== req.user.id && req.user.role !== "admin") {
     return res.status(403).json({ error: "Forbidden" })
   }
-  const { password } = req.body
+  const { oldPassword, password } = req.body
   if (!password) return res.status(400).json({ error: "Missing password" })
+  
   try {
+    // If user is changing their own password, verify old password
+    if (req.params.id === req.user.id) {
+      if (!oldPassword) return res.status(400).json({ error: "Missing old password" })
+      const userRes = await pool.query("SELECT password FROM users WHERE id = $1", [req.params.id])
+      if (userRes.rows.length === 0) return res.status(404).json({ error: "User not found" })
+      const match = await bcrypt.compare(oldPassword, userRes.rows[0].password)
+      if (!match) return res.status(401).json({ error: "รหัสผ่านเดิมไม่ถูกต้อง" })
+    }
+
     const hash = await bcrypt.hash(password, 10)
     await pool.query("UPDATE users SET password = $1 WHERE id = $2", [
       hash,
