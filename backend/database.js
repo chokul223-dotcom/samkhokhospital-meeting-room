@@ -180,9 +180,9 @@ async function initDB() {
         [adminHash, userHash],
       )
       await client.query(`
-        INSERT INTO rooms (id, name, capacity, location, equipment, status) VALUES
-        ('r1', 'ห้องประชุมใหญ่', 50, 'อาคาร A ชั้น 2', ARRAY['โปรเจคเตอร์','ไมโครโฟน','จอภาพ','ระบบเสียง'], 'available'),
-        ('r2', 'ห้องประชุมเล็ก 1', 15, 'อาคาร A ชั้น 1', ARRAY['โปรเจคเตอร์','กระดานไวท์บอร์ด'], 'available')
+        INSERT INTO rooms (id, name, capacity, location, equipment, status, image_url) VALUES
+        ('r1', 'ห้องประชุมใหญ่', 50, 'อาคาร A ชั้น 2', ARRAY['โปรเจคเตอร์','ไมโครโฟน','จอภาพ','ระบบเสียง'], 'available', '/rooms/room_large.jpg'),
+        ('r2', 'ห้องประชุมเล็ก 1', 15, 'อาคาร A ชั้น 1', ARRAY['โปรเจคเตอร์','กระดานไวท์บอร์ด'], 'available', '/rooms/room_small.jpg')
       `)
       console.log("✅ Database seeded with initial data")
     } else {

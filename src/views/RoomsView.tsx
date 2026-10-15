@@ -59,15 +59,21 @@ export const RoomsView: React.FC<RoomsViewProps> = ({
   const getRoomDescription = (room: Room) => {
     if (language === "th") {
       if (room.id === "r1") {
-        return "ห้องประชุมขนาดเล็ก พร้อมอุปกรณ์นำเสนอและไวท์บอร์ด"
+        return "ห้องประชุมขนาดใหญ่ รองรับการประชุม สัมมนา และระบบเสียงครบครัน"
       }
       if (room.id === "r2") {
-        return "ห้องประชุมขนาดใหญ่ รองรับการประชุม สัมมนา และระบบเสียงครบครัน"
+        return "ห้องประชุมขนาดเล็ก พร้อมอุปกรณ์นำเสนอและไวท์บอร์ด"
       }
       return room.status === "available"
         ? "ห้องประชุมพร้อมสิ่งอำนวยความสะดวกครบครัน"
         : "ห้องอยู่ระหว่างปิดปรับปรุง/ซ่อมบำรุง"
     } else {
+      if (room.id === "r1") {
+        return "Large conference room equipped for meetings, seminars, and full audio-visual systems"
+      }
+      if (room.id === "r2") {
+        return "Small meeting room with presentation equipment and whiteboard"
+      }
       return room.status === "available"
         ? "Fully equipped meeting room"
         : "Currently under maintenance"

@@ -11,42 +11,42 @@ export interface RoomColorConfig {
 export const ROOM_COLORS: Record<string, RoomColorConfig> = {
   r1: {
     id: "r1",
-    name: "ห้องประชุมเล็ก 1",
-    bgClass: "bg-blue-600 dark:bg-blue-600",
-    textClass: "text-white",
-    borderClass: "border-blue-700",
-    dotClass: "bg-blue-500",
-    hex: "#3b82f6",
-  },
-  r2: {
-    id: "r2",
     name: "ห้องประชุมใหญ่",
     bgClass: "bg-purple-600 dark:bg-purple-600",
     textClass: "text-white",
     borderClass: "border-purple-700",
     dotClass: "bg-purple-500",
     hex: "#9333ea",
+  },
+  r2: {
+    id: "r2",
+    name: "ห้องประชุมเล็ก 1",
+    bgClass: "bg-blue-600 dark:bg-blue-600",
+    textClass: "text-white",
+    borderClass: "border-blue-700",
+    dotClass: "bg-blue-500",
+    hex: "#3b82f6",
   },
 }
 
 const FALLBACK_PALETTE: RoomColorConfig[] = [
   {
     id: "fb1",
-    name: "ห้องประชุมเล็ก 1",
-    bgClass: "bg-blue-600 dark:bg-blue-600",
-    textClass: "text-white",
-    borderClass: "border-blue-700",
-    dotClass: "bg-blue-500",
-    hex: "#3b82f6",
-  },
-  {
-    id: "fb2",
     name: "ห้องประชุมใหญ่",
     bgClass: "bg-purple-600 dark:bg-purple-600",
     textClass: "text-white",
     borderClass: "border-purple-700",
     dotClass: "bg-purple-500",
     hex: "#9333ea",
+  },
+  {
+    id: "fb2",
+    name: "ห้องประชุมเล็ก 1",
+    bgClass: "bg-blue-600 dark:bg-blue-600",
+    textClass: "text-white",
+    borderClass: "border-blue-700",
+    dotClass: "bg-blue-500",
+    hex: "#3b82f6",
   },
   {
     id: "fb3",
@@ -67,11 +67,12 @@ export function getRoomColor(roomId: string, index = 0): RoomColorConfig {
 }
 
 export function getRoomImage(roomId: string, index = 0): string {
-  if (roomId === "r1" || index === 0) {
-    return "/rooms/room_small.jpg"
-  }
-  if (roomId === "r2" || index === 1) {
+  const id = (roomId || "").toLowerCase()
+  if (id === "r1" || id.includes("large") || id.includes("ใหญ่")) {
     return "/rooms/room_large.jpg"
   }
-  return "/rooms/room_small.jpg"
+  if (id === "r2" || id.includes("small") || id.includes("เล็ก")) {
+    return "/rooms/room_small.jpg"
+  }
+  return index % 2 === 0 ? "/rooms/room_large.jpg" : "/rooms/room_small.jpg"
 }
