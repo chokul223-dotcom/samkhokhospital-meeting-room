@@ -15,6 +15,7 @@ router.get("/public", async (req, res) => {
         equipment: r.equipment,
         status: r.status,
         imageUrl: r.image_url || null,
+        description: r.description || null,
       })),
     )
   } catch (err) {
@@ -36,6 +37,7 @@ router.get("/", authMiddleware, async (req, res) => {
         equipment: r.equipment,
         status: r.status,
         imageUrl: r.image_url || null,
+        description: r.description || null,
       })),
     )
   } catch (err) {
@@ -68,11 +70,20 @@ router.patch("/:id/status", authMiddleware, async (req, res) => {
 router.post("/", authMiddleware, async (req, res) => {
   if (req.user.role !== "admin")
     return res.status(403).json({ error: "Admin only" })
-  const { id, name, capacity, location, equipment, status, imageUrl } = req.body
+  const { id, name, capacity, location, equipment, status, imageUrl, description } = req.body
   try {
     await pool.query(
-      "INSERT INTO rooms (id, name, capacity, location, equipment, status, image_url) VALUES ($1, $2, $3, $4, $5, $6, $7)",
-      [id, name, capacity, location, equipment || [], status || "available", imageUrl || null],
+      "INSERT INTO rooms (id, name, capacity, location, equipment, status, image_url, description) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+      [
+        id,
+        name,
+        capacity,
+        location,
+        equipment || [],
+        status || "available",
+        imageUrl || null,
+        description !== undefined ? description : null,
+      ],
     )
     if (req.notifyClients) req.notifyClients()
     res.json({ success: true, id })
@@ -85,10 +96,10 @@ router.post("/", authMiddleware, async (req, res) => {
 router.put("/:id", authMiddleware, async (req, res) => {
   if (req.user.role !== "admin")
     return res.status(403).json({ error: "Admin only" })
-  const { name, capacity, location, equipment, status, imageUrl } = req.body
+  const { name, capacity, location, equipment, status, imageUrl, description } = req.body
   try {
     await pool.query(
-      "UPDATE rooms SET name = $1, capacity = $2, location = $3, equipment = $4, status = $5, image_url = $6 WHERE id = $7",
+      "UPDATE rooms SET name = $1, capacity = $2, location = $3, equipment = $4, status = $5, image_url = $6, description = $7 WHERE id = $8",
       [
         name,
         capacity,
@@ -96,6 +107,7 @@ router.put("/:id", authMiddleware, async (req, res) => {
         equipment || [],
         status || "available",
         imageUrl !== undefined ? imageUrl : null,
+        description !== undefined ? description : null,
         req.params.id,
       ],
     )

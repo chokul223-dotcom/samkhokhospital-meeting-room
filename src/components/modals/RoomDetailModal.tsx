@@ -87,9 +87,11 @@ export const RoomDetailModal: React.FC<RoomDetailModalProps> = ({
                   {language === "th" ? "รายละเอียด" : "Description"}
                 </td>
                 <td className="px-4 py-3 text-slate-600 dark:text-slate-400">
-                  {language === "th"
-                    ? `${room.status === "available" ? "ห้องประชุมขนาดใหญ่" : "ห้องอยู่ระหว่างซ่อมบำรุง"}`
-                    : `${room.status === "available" ? "Large meeting room" : "Under maintenance"}`}
+                  {room.description || (
+                    language === "th"
+                      ? (room.id === "r1" ? "ห้องประชุมขนาดใหญ่ รองรับการประชุม สัมมนา และระบบเสียงครบครัน" : room.id === "r2" ? "ห้องประชุมขนาดเล็ก พร้อมอุปกรณ์นำเสนอและไวท์บอร์ด" : (room.status === "available" ? "ห้องประชุมพร้อมสิ่งอำนวยความสะดวกครบครัน" : "ห้องอยู่ระหว่างปิดปรับปรุง/ซ่อมบำรุง"))
+                      : (room.id === "r1" ? "Large conference room equipped for meetings, seminars, and full audio-visual systems" : room.id === "r2" ? "Small meeting room with presentation equipment and whiteboard" : (room.status === "available" ? "Fully equipped meeting room" : "Currently under maintenance"))
+                  )}
                 </td>
               </tr>
 

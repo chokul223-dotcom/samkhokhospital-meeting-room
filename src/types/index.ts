@@ -34,6 +34,7 @@ export interface Room {
   equipment: string[]
   status: RoomStatus
   imageUrl?: string
+  description?: string
 }
 
 export interface Booking {

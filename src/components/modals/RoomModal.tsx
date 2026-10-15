@@ -12,6 +12,15 @@ export const RoomModal: React.FC<RoomModalProps> = ({ room, onClose }) => {
   const { t, language, handleSaveRoom } = useApp()
 
   const [name, setName] = useState(room?.name || '')
+  const [description, setDescription] = useState(
+    room?.description !== undefined && room?.description !== null
+      ? room.description
+      : room?.id === 'r1'
+        ? (language === 'th' ? 'ห้องประชุมขนาดใหญ่ รองรับการประชุม สัมมนา และระบบเสียงครบครัน' : 'Large conference room equipped for meetings, seminars, and full audio-visual systems')
+        : room?.id === 'r2'
+          ? (language === 'th' ? 'ห้องประชุมขนาดเล็ก พร้อมอุปกรณ์นำเสนอและไวท์บอร์ด' : 'Small meeting room with presentation equipment and whiteboard')
+          : ''
+  )
   const [capacity, setCapacity] = useState(room?.capacity || 20)
   const [location, setLocation] = useState(room?.location || '')
   const [equipment, setEquipment] = useState(room?.equipment.join(', ') || '')
@@ -85,6 +94,7 @@ export const RoomModal: React.FC<RoomModalProps> = ({ room, onClose }) => {
       await handleSaveRoom({
         id: room?.id || 'r' + Date.now(),
         name: name.trim(),
+        description: description.trim(),
         capacity,
         location: location.trim(),
         equipment: equipment
@@ -168,6 +178,19 @@ export const RoomModal: React.FC<RoomModalProps> = ({ room, onClose }) => {
               onChange={e => setName(e.target.value)}
               placeholder={language === 'th' ? 'เช่น ห้องประชุมใหญ่ (Grand Hall)' : 'e.g. Main Conference Hall (Grand Hall)'}
               className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">
+              {language === 'th' ? 'รายละเอียด / คำอธิบายห้อง' : 'Room Description'}
+            </label>
+            <textarea
+              rows={2}
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              placeholder={language === 'th' ? 'เช่น ห้องประชุมขนาดใหญ่ รองรับการประชุม สัมมนา และระบบเสียงครบครัน' : 'e.g. Large conference room for meetings and seminars'}
+              className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all resize-none"
             />
           </div>
 

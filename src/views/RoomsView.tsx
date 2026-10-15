@@ -57,6 +57,9 @@ export const RoomsView: React.FC<RoomsViewProps> = ({
 
   // Room custom description helper
   const getRoomDescription = (room: Room) => {
+    if (room.description) {
+      return room.description
+    }
     if (language === "th") {
       if (room.id === "r1") {
         return "ห้องประชุมขนาดใหญ่ รองรับการประชุม สัมมนา และระบบเสียงครบครัน"

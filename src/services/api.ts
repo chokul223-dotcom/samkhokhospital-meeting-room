@@ -113,14 +113,22 @@ export function getSavedUser(): User | null {
 
 export async function fetchRooms(): Promise<Room[]> {
   const data = await request<any[]>("/api/rooms")
-  return data.map((r: any) => ({ ...r, imageUrl: r.imageUrl || r.image_url || null }))
+  return data.map((r: any) => ({
+    ...r,
+    imageUrl: r.imageUrl || r.image_url || null,
+    description: r.description || null,
+  }))
 }
 
 export async function fetchPublicRooms(): Promise<Room[]> {
   const res = await fetch(`${BASE_URL}/api/rooms/public`)
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   const data = await res.json()
-  return data.map((r: any) => ({ ...r, imageUrl: r.imageUrl || r.image_url || null }))
+  return data.map((r: any) => ({
+    ...r,
+    imageUrl: r.imageUrl || r.image_url || null,
+    description: r.description || null,
+  }))
 }
 
 export async function addRoom(

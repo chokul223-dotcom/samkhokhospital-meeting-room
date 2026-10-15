@@ -68,9 +68,10 @@ async function initDB() {
         ADD COLUMN IF NOT EXISTS related_links JSONB DEFAULT '[]'::jsonb
     `)
 
-    // Add image_url column to rooms if it doesn't exist (for existing databases)
+    // Add image_url and description columns to rooms if they don't exist (for existing databases)
     await client.query(`
-      ALTER TABLE rooms ADD COLUMN IF NOT EXISTS image_url TEXT DEFAULT NULL
+      ALTER TABLE rooms ADD COLUMN IF NOT EXISTS image_url TEXT DEFAULT NULL;
+      ALTER TABLE rooms ADD COLUMN IF NOT EXISTS description TEXT DEFAULT NULL;
     `)
 
     // Add email_verified column if it doesn't exist
@@ -180,9 +181,9 @@ async function initDB() {
         [adminHash, userHash],
       )
       await client.query(`
-        INSERT INTO rooms (id, name, capacity, location, equipment, status, image_url) VALUES
-        ('r1', 'ห้องประชุมใหญ่', 50, 'อาคาร A ชั้น 2', ARRAY['โปรเจคเตอร์','ไมโครโฟน','จอภาพ','ระบบเสียง'], 'available', '/rooms/room_large.jpg'),
-        ('r2', 'ห้องประชุมเล็ก 1', 15, 'อาคาร A ชั้น 1', ARRAY['โปรเจคเตอร์','กระดานไวท์บอร์ด'], 'available', '/rooms/room_small.jpg')
+        INSERT INTO rooms (id, name, capacity, location, equipment, status, image_url, description) VALUES
+        ('r1', 'ห้องประชุมใหญ่', 50, 'อาคาร A ชั้น 2', ARRAY['โปรเจคเตอร์','ไมโครโฟน','จอภาพ','ระบบเสียง'], 'available', '/rooms/room_large.jpg', 'ห้องประชุมขนาดใหญ่ รองรับการประชุม สัมมนา และระบบเสียงครบครัน'),
+        ('r2', 'ห้องประชุมเล็ก 1', 15, 'อาคาร A ชั้น 1', ARRAY['โปรเจคเตอร์','กระดานไวท์บอร์ด'], 'available', '/rooms/room_small.jpg', 'ห้องประชุมขนาดเล็ก พร้อมอุปกรณ์นำเสนอและไวท์บอร์ด')
       `)
       console.log("✅ Database seeded with initial data")
     } else {
