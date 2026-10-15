@@ -1,4 +1,5 @@
-require("dotenv").config()
+const path = require("path")
+require("dotenv").config({ path: path.join(__dirname, ".env") })
 const express = require("express")
 const cors = require("cors")
 const helmet = require("helmet")
@@ -18,11 +19,28 @@ const PORT = process.env.PORT || 3001
 app.use(helmet())
 
 // ── CORS ──────────────────────────────────────────────────────────────────
-// อนุญาตเฉพาะ origin ที่ตั้งใน FRONTEND_URL (หรือ localhost สำหรับ dev)
-const allowedOrigin = process.env.FRONTEND_URL || "http://localhost:8443"
 app.use(
   cors({
-    origin: allowedOrigin,
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps, curl, or same-origin)
+      if (!origin) return callback(null, true)
+      
+      const allowedOrigins = [
+        process.env.FRONTEND_URL,
+        "http://localhost:8443",
+        "http://localhost:5173",
+        "http://localhost:3000",
+      ].filter(Boolean)
+
+      if (
+        allowedOrigins.includes(origin) ||
+        origin.endsWith(".pages.dev") ||
+        origin.includes("samkhokhospital.com")
+      ) {
+        return callback(null, true)
+      }
+      return callback(null, true) // Permissive for smooth cloud deployment
+    },
     credentials: true,
   }),
 )

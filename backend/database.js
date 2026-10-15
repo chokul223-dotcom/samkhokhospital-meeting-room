@@ -1,7 +1,10 @@
 const { Pool } = require("pg")
 
+const isLocal = !process.env.DATABASE_URL || process.env.DATABASE_URL.includes("localhost") || process.env.DATABASE_URL.includes("127.0.0.1")
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
+  ssl: isLocal ? false : { rejectUnauthorized: false },
 })
 
 async function initDB() {
@@ -80,12 +83,38 @@ async function initDB() {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT
     `)
 
+    // Add member_id column if it doesn't exist
+    await client.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS member_id TEXT
+    `)
+    try {
+      await client.query(`
+        CREATE UNIQUE INDEX IF NOT EXISTS users_member_id_unique ON users(member_id) WHERE member_id IS NOT NULL
+      `)
+    } catch {}
+
+
     // Add unique constraint on email if not exists (ignore error if already exists)
     try {
       await client.query(`
         CREATE UNIQUE INDEX IF NOT EXISTS users_email_unique ON users(email) WHERE email IS NOT NULL
       `)
     } catch {}
+
+    // Backfill member_id for existing users
+    const usersWithoutMemberId = await client.query(`SELECT id FROM users WHERE member_id IS NULL`)
+    if (usersWithoutMemberId.rows.length > 0) {
+      for (const row of usersWithoutMemberId.rows) {
+        let memberId
+        let isUnique = false
+        while (!isUnique) {
+          memberId = Math.floor(10000000 + Math.random() * 90000000).toString()
+          const check = await client.query(`SELECT id FROM users WHERE member_id = $1`, [memberId])
+          if (check.rows.length === 0) isUnique = true
+        }
+        await client.query(`UPDATE users SET member_id = $1 WHERE id = $2`, [memberId, row.id])
+      }
+    }
 
     // Password reset tokens table
     await client.query(`

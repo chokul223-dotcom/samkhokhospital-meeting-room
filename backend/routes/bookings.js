@@ -88,7 +88,36 @@ router.post("/", authMiddleware, async (req, res) => {
   }
 
   try {
-    // Check conflicts inside try-catch to handle DB errors properly
+    // 1. Check user approval status (non-admins cannot book if pending approval)
+    if (req.user.role !== "admin") {
+      const userRes = await pool.query(
+        "SELECT department FROM users WHERE id = $1",
+        [req.user.id]
+      )
+      const userDept = userRes.rows[0]?.department
+      const isPending =
+        !userDept ||
+        userDept === "รอการตรวจสอบ" ||
+        userDept === "-" ||
+        userDept.trim() === ""
+      if (isPending) {
+        return res.status(403).json({
+          error:
+            "บัญชีของคุณยังอยู่ระหว่างรอการอนุมัติจากผู้ดูแลระบบ กรุณาติดต่อผู้ดูแลระบบก่อนทำการจองห้องประชุม",
+        })
+      }
+    }
+
+    // 2. Check room existence & availability
+    const roomRes = await pool.query("SELECT status FROM rooms WHERE id = $1", [roomId])
+    if (!roomRes.rows[0]) {
+      return res.status(404).json({ error: "ไม่พบห้องประชุมที่ระบุ" })
+    }
+    if (roomRes.rows[0].status !== "available" && req.user.role !== "admin") {
+      return res.status(400).json({ error: "ห้องประชุมนี้ปิดปรับปรุงหรือไม่พร้อมใช้งาน" })
+    }
+
+    // 3. Check conflicts inside try-catch to handle DB errors properly
     const allBookings = await pool.query(
       `SELECT * FROM bookings WHERE room_id = $1 AND date = $2 AND status = 'approved'`,
       [roomId, date],

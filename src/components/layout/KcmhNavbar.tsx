@@ -15,6 +15,8 @@ import {
   X,
   ClipboardCheck,
   Building2,
+  ChevronDown,
+  LayoutGrid,
 } from "lucide-react"
 import { useApp } from "../../context/AppContext"
 import { LanguageSwitcher } from "../common/LanguageSwitcher"
@@ -26,15 +28,159 @@ interface KcmhNavbarProps {
   setActiveTab: (tab: string) => void
 }
 
+type IconType = React.ComponentType<{ className?: string }>
+
+interface NavItem {
+  id: string
+  label: string
+  description?: string
+  icon: IconType
+  active: boolean
+  badge?: number
+  onClick: () => void
+  /** Only show in the mobile drawer (e.g. profile — desktop has the profile pill) */
+  mobileOnly?: boolean
+}
+
+interface NavGroup {
+  id: string
+  label: string
+  icon: IconType
+  items: NavItem[]
+}
+
+/* ─────────────────────────── Desktop dropdown ─────────────────────────── */
+
+interface NavDropdownProps {
+  group: NavGroup
+  open: boolean
+  onToggle: () => void
+  onClose: () => void
+}
+
+const NavDropdown: React.FC<NavDropdownProps> = ({ group, open, onToggle, onClose }) => {
+  const ref = React.useRef<HTMLDivElement>(null)
+  const isGroupActive = group.items.some((i) => i.active)
+  const totalBadge = group.items.reduce((sum, i) => sum + (i.badge || 0), 0)
+  const GroupIcon = group.icon
+
+  React.useEffect(() => {
+    if (!open) return
+    const handleClickOutside = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose()
+    }
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose()
+    }
+    document.addEventListener("mousedown", handleClickOutside)
+    document.addEventListener("keydown", handleEsc)
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside)
+      document.removeEventListener("keydown", handleEsc)
+    }
+  }, [open, onClose])
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        id={`nav-group-${group.id}`}
+        type="button"
+        onClick={onToggle}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition-all cursor-pointer ${
+          isGroupActive || open
+            ? "bg-white/20 text-white shadow-inner font-bold"
+            : "text-purple-200 hover:bg-white/10 hover:text-white"
+        }`}
+      >
+        <GroupIcon className="h-4 w-4" />
+        <span>{group.label}</span>
+        {totalBadge > 0 && (
+          <span className="px-1.5 rounded-full bg-amber-400 text-slate-950 text-[10px] font-black leading-4">
+            {totalBadge}
+          </span>
+        )}
+        <ChevronDown
+          className={`h-3.5 w-3.5 opacity-70 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+        />
+      </button>
+
+      {open && (
+        <div
+          role="menu"
+          className="absolute left-1/2 -translate-x-1/2 top-full mt-2 z-50 w-64 rounded-2xl bg-white dark:bg-slate-900 p-1.5 shadow-xl ring-1 ring-black/5 dark:ring-white/10 border border-slate-200/80 dark:border-slate-800 animate-in fade-in zoom-in-95 duration-150"
+        >
+          <p className="px-3 pt-1.5 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+            {group.label}
+          </p>
+          {group.items.map((item) => {
+            const ItemIcon = item.icon
+            return (
+              <button
+                key={item.id}
+                id={`nav-${item.id}`}
+                role="menuitem"
+                type="button"
+                onClick={() => {
+                  item.onClick()
+                  onClose()
+                }}
+                className={`group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors cursor-pointer ${
+                  item.active
+                    ? "bg-blue-600 text-white shadow-xs"
+                    : "text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                }`}
+              >
+                <span
+                  className={`flex h-8 w-8 flex-none items-center justify-center rounded-lg transition-colors ${
+                    item.active
+                      ? "bg-white/20 text-white"
+                      : "bg-purple-50 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 group-hover:bg-purple-100 dark:group-hover:bg-purple-900/60"
+                  }`}
+                >
+                  <ItemIcon className="h-4 w-4" />
+                </span>
+                <span className="flex-1 min-w-0">
+                  <span className="block text-sm font-semibold truncate">{item.label}</span>
+                  {item.description && (
+                    <span
+                      className={`block text-[11px] truncate ${
+                        item.active ? "text-blue-100" : "text-slate-500 dark:text-slate-400"
+                      }`}
+                    >
+                      {item.description}
+                    </span>
+                  )}
+                </span>
+                {!!item.badge && item.badge > 0 && (
+                  <span className="px-1.5 rounded-full bg-amber-400 text-slate-950 text-[10px] font-black leading-4">
+                    {item.badge}
+                  </span>
+                )}
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ─────────────────────────────── Navbar ─────────────────────────────── */
+
 export const KcmhNavbar: React.FC<KcmhNavbarProps> = ({
   activeTab,
   setActiveTab,
 }) => {
   const { t, language, currentUser, setCurrentUser, bookings } = useApp()
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false)
+  const [openGroup, setOpenGroup] = React.useState<string | null>(null)
+  const closeGroup = React.useCallback(() => setOpenGroup(null), [])
 
   const isAdmin = currentUser?.role === "admin"
   const pendingCount = bookings.filter((b) => b.status === "pending").length
+  const th = language === "th"
 
   const userDisplayName = React.useMemo(() => {
     return formatUserName(currentUser, language)
@@ -84,6 +230,170 @@ export const KcmhNavbar: React.FC<KcmhNavbarProps> = ({
     setMobileMenuOpen(false)
   }
 
+  /* ── Menu structure (grouped) ── */
+  const homeItem: NavItem = {
+    id: "dashboard",
+    label: t.homeNav || "หน้าหลัก",
+    icon: Home,
+    active: activeTab === "dashboard" || activeTab === "home",
+    onClick: () => handleNavClick("dashboard"),
+  }
+
+  const scheduleItem: NavItem = {
+    id: "schedule",
+    label: t.schedule || "กำหนดการ",
+    icon: CalendarDays,
+    active: false,
+    onClick: handleScheduleClick,
+  }
+
+  const groups: NavGroup[] = [
+    {
+      id: "booking",
+      label: th ? "การจองห้อง" : "Booking",
+      icon: DoorOpen,
+      items: [
+        {
+          id: "rooms",
+          label: t.bookRoomsNav || "จองห้องประชุม",
+          description: th ? "เลือกห้องและทำรายการจอง" : "Pick a room and book",
+          icon: DoorOpen,
+          active: activeTab === "rooms",
+          onClick: () => handleNavClick("rooms"),
+        },
+        ...(currentUser
+          ? [
+              {
+                id: "bookings",
+                label: isAdmin ? t.allBookings : t.myBookings,
+                description: isAdmin
+                  ? th ? "ตรวจสอบและอนุมัติคำขอจอง" : "Review and approve requests"
+                  : th ? "ติดตามสถานะการจองของคุณ" : "Track your booking status",
+                icon: ClipboardList,
+                active: activeTab === "bookings",
+                badge: isAdmin ? pendingCount : 0,
+                onClick: () => handleNavClick("bookings"),
+              },
+            ]
+          : []),
+      ],
+    },
+    {
+      id: "manage",
+      label: isAdmin ? (th ? "ผู้ดูแลระบบ" : "Admin") : th ? "บัญชีของฉัน" : "My Account",
+      icon: isAdmin ? ShieldCheck : UserIcon,
+      items: [
+        ...(isAdmin
+          ? [
+              {
+                id: "users",
+                label: t.users,
+                description: th ? "อนุมัติและกำหนดสิทธิ์ผู้ใช้" : "Approve users and roles",
+                icon: Users,
+                active: activeTab === "users",
+                onClick: () => handleNavClick("users"),
+              },
+            ]
+          : []),
+        ...(currentUser
+          ? [
+              {
+                id: "profile",
+                label: th ? "ข้อมูลส่วนตัว" : "Profile",
+                description: th ? "แก้ไขข้อมูลและรหัสผ่าน" : "Edit details and password",
+                icon: UserIcon,
+                active: activeTab === "profile",
+                mobileOnly: true,
+                onClick: () => handleNavClick("profile"),
+              },
+              {
+                id: "settings",
+                label: t.settings,
+                description: th ? "ตั้งค่าการใช้งานระบบ" : "System preferences",
+                icon: Settings,
+                active: activeTab === "settings",
+                onClick: () => handleNavClick("settings"),
+              },
+            ]
+          : []),
+      ],
+    },
+    {
+      id: "more",
+      label: th ? "เพิ่มเติม" : "More",
+      icon: LayoutGrid,
+      items: [
+        {
+          id: "evaluation",
+          label: th ? "แบบประเมิน" : "Survey",
+          description: th ? "ประเมินความพึงพอใจการใช้งาน" : "Rate your experience",
+          icon: ClipboardCheck,
+          active: activeTab === "evaluation",
+          onClick: () => handleNavClick("evaluation"),
+        },
+        ...(!currentUser
+          ? [
+              {
+                id: "about",
+                label: th ? "เกี่ยวกับเรา" : "About Us",
+                description: th ? "ข้อมูลโรงพยาบาลสามโคก" : "About Samkhok Hospital",
+                icon: Building2,
+                active: activeTab === "about",
+                onClick: () => handleNavClick("about"),
+              },
+            ]
+          : []),
+      ],
+    },
+  ]
+
+  const desktopGroups = groups
+    .map((g) => ({ ...g, items: g.items.filter((i) => !i.mobileOnly) }))
+    .filter((g) => g.items.length > 0)
+  const mobileGroups = groups.filter((g) => g.items.length > 0)
+
+  const plainBtnClass = (active: boolean) =>
+    `flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition-all cursor-pointer ${
+      active
+        ? "bg-white/20 text-white shadow-inner font-bold"
+        : "text-purple-200 hover:bg-white/10 hover:text-white"
+    }`
+
+  const renderPlainButton = (item: NavItem) => {
+    const Icon = item.icon
+    return (
+      <button key={item.id} id={`nav-${item.id}`} onClick={item.onClick} className={plainBtnClass(item.active)}>
+        <Icon className="h-4 w-4" />
+        <span>{item.label}</span>
+        {!!item.badge && item.badge > 0 && (
+          <span className="px-1.5 rounded-full bg-amber-400 text-slate-950 text-[10px] font-black leading-4">
+            {item.badge}
+          </span>
+        )}
+      </button>
+    )
+  }
+
+  const mobileItemClass = (active: boolean) =>
+    `w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold ${
+      active ? "bg-white/20 text-white font-bold" : "text-purple-200 hover:bg-white/10"
+    }`
+
+  const renderMobileItem = (item: NavItem) => {
+    const Icon = item.icon
+    return (
+      <button key={item.id} onClick={item.onClick} className={mobileItemClass(item.active)}>
+        <Icon className="h-4 w-4" />
+        <span className="flex-1 text-left">{item.label}</span>
+        {!!item.badge && item.badge > 0 && (
+          <span className="px-2 py-0.5 rounded-full bg-amber-400 text-slate-950 text-xs font-bold">
+            {item.badge}
+          </span>
+        )}
+      </button>
+    )
+  }
+
   return (
     <header className="sticky top-0 z-40 w-full select-none bg-gradient-to-r from-[#1b0738] via-[#2f0e54] to-[#1a0836] border-b border-purple-900/60 shadow-lg text-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between gap-4">
@@ -101,124 +411,33 @@ export const KcmhNavbar: React.FC<KcmhNavbarProps> = ({
               <Menu className="h-5 w-5" />
             )}
           </button>
-          
+
           <div className="hidden sm:flex items-center gap-1.5">
             <ThemeToggle variant="inline" />
             <LanguageSwitcher variant="floating" />
           </div>
         </div>
 
-        {/* Center: Desktop Nav Items */}
-        <div className="hidden md:flex flex-1 items-center justify-start overflow-x-auto no-scrollbar mx-2">
-          <nav className="flex items-center gap-1 mx-auto px-1">
-            <button
-              onClick={() => handleNavClick("dashboard")}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition-all cursor-pointer ${
-                activeTab === "dashboard" || activeTab === "home"
-                  ? "bg-white/20 text-white shadow-inner font-bold"
-                  : "text-purple-200 hover:bg-white/10 hover:text-white"
-              }`}
-            >
-              <Home className="h-4 w-4" />
-              <span>{t.homeNav || "หน้าหลัก"}</span>
-            </button>
-
-            <button
-              onClick={() => handleNavClick("rooms")}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition-all cursor-pointer ${
-                activeTab === "rooms"
-                  ? "bg-white/20 text-white shadow-inner font-bold"
-                  : "text-purple-200 hover:bg-white/10 hover:text-white"
-              }`}
-            >
-              <DoorOpen className="h-4 w-4" />
-              <span>{t.bookRoomsNav || "จองห้องประชุม"}</span>
-            </button>
-
-            <button
-              onClick={handleScheduleClick}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition-all cursor-pointer text-purple-200 hover:bg-white/10 hover:text-white`}
-            >
-              <CalendarDays className="h-4 w-4" />
-              <span>{t.schedule || "กำหนดการ"}</span>
-            </button>
-
-            {/* Authenticated Links */}
-            {currentUser && (
-              <button
-                onClick={() => handleNavClick("bookings")}
-                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition-all cursor-pointer ${
-                  activeTab === "bookings"
-                    ? "bg-white/20 text-white shadow-inner font-bold"
-                    : "text-purple-200 hover:bg-white/10 hover:text-white"
-                }`}
-              >
-                <ClipboardList className="h-4 w-4" />
-                <span>{isAdmin ? t.allBookings : t.myBookings}</span>
-                {isAdmin && pendingCount > 0 && (
-                  <span className="ml-1 px-1.5 py-0.2 rounded-full bg-amber-400 text-slate-950 text-[10px] font-black">
-                    {pendingCount}
-                  </span>
+        {/* Center: Desktop Nav (grouped dropdowns) */}
+        <div className="hidden md:flex flex-1 items-center justify-center mx-2">
+          <nav className="flex items-center gap-1">
+            {renderPlainButton(homeItem)}
+            {desktopGroups.map((group) => (
+              <React.Fragment key={group.id}>
+                {group.items.length === 1 ? (
+                  renderPlainButton(group.items[0])
+                ) : (
+                  <NavDropdown
+                    group={group}
+                    open={openGroup === group.id}
+                    onToggle={() => setOpenGroup((g) => (g === group.id ? null : group.id))}
+                    onClose={closeGroup}
+                  />
                 )}
-              </button>
-            )}
-
-            {currentUser && isAdmin && (
-              <button
-                onClick={() => handleNavClick("users")}
-                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition-all cursor-pointer ${
-                  activeTab === "users"
-                    ? "bg-white/20 text-white shadow-inner font-bold"
-                    : "text-purple-200 hover:bg-white/10 hover:text-white"
-                }`}
-              >
-                <Users className="h-4 w-4" />
-                <span>{t.users}</span>
-              </button>
-            )}
-
-            {currentUser && (
-              <button
-                onClick={() => handleNavClick("settings")}
-                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition-all cursor-pointer ${
-                  activeTab === "settings"
-                    ? "bg-white/20 text-white shadow-inner font-bold"
-                    : "text-purple-200 hover:bg-white/10 hover:text-white"
-                }`}
-              >
-                <Settings className="h-4 w-4" />
-                <span>{t.settings}</span>
-              </button>
-            )}
-
-            <button
-              id="nav-evaluation"
-              onClick={() => handleNavClick("evaluation")}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition-all cursor-pointer ${
-                activeTab === "evaluation"
-                  ? "bg-white/20 text-white shadow-inner font-bold"
-                  : "text-purple-200 hover:bg-white/10 hover:text-white"
-              }`}
-            >
-              <ClipboardCheck className="h-4 w-4" />
-              <span>{language === "th" ? "แบบประเมิน" : "Survey"}</span>
-            </button>
-
-            {!currentUser && (
-              <button
-                id="nav-about"
-                onClick={() => handleNavClick("about")}
-                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition-all cursor-pointer ${
-                  activeTab === "about"
-                    ? "bg-white/20 text-white shadow-inner font-bold"
-                    : "text-purple-200 hover:bg-white/10 hover:text-white"
-                }`}
-              >
-                <Building2 className="h-4 w-4" />
-                <span>{language === "th" ? "เกี่ยวกับเรา" : "About Us"}</span>
-              </button>
-            )}
-
+                {/* กำหนดการ — ปุ่มแยก ต่อจากเมนูการจองห้อง */}
+                {group.id === "booking" && renderPlainButton(scheduleItem)}
+              </React.Fragment>
+            ))}
           </nav>
         </div>
 
@@ -228,7 +447,7 @@ export const KcmhNavbar: React.FC<KcmhNavbarProps> = ({
           {currentUser ? (
             <div
               onClick={() => handleNavClick("profile")}
-              title={language === "th" ? "แก้ไขข้อมูลส่วนตัว" : "Edit Profile"}
+              title={th ? "แก้ไขข้อมูลส่วนตัว" : "Edit Profile"}
               className={`flex items-center gap-2 px-2.5 py-1 rounded-2xl border transition-all cursor-pointer ${
                 activeTab === "profile"
                   ? "bg-white/25 border-white/40 shadow-inner ring-2 ring-white/20"
@@ -277,151 +496,44 @@ export const KcmhNavbar: React.FC<KcmhNavbarProps> = ({
         </div>
       </div>
 
-      {/* Mobile Drawer Menu */}
+      {/* Mobile Drawer Menu (grouped with section headings) */}
       {mobileMenuOpen && (
         <div className="md:hidden px-4 pt-2 pb-4 border-t border-purple-800/60 bg-[#1f0a42] space-y-1.5 animate-in slide-in-from-top-2 duration-200">
-          <button
-            onClick={() => handleNavClick("dashboard")}
-            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold ${
-              activeTab === "dashboard"
-                ? "bg-white/20 text-white font-bold"
-                : "text-purple-200 hover:bg-white/10"
-            }`}
-          >
-            <Home className="h-4 w-4" />
-            <span>{t.homeNav || "หน้าหลัก"}</span>
-          </button>
+          {renderMobileItem(homeItem)}
+          {renderMobileItem(scheduleItem)}
 
-          <button
-            onClick={() => handleNavClick("rooms")}
-            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold ${
-              activeTab === "rooms"
-                ? "bg-white/20 text-white font-bold"
-                : "text-purple-200 hover:bg-white/10"
-            }`}
-          >
-            <DoorOpen className="h-4 w-4" />
-            <span>{t.bookRoomsNav || "จองห้องประชุม"}</span>
-          </button>
+          {mobileGroups.map((group) => (
+            <div key={group.id} className="pt-2 space-y-1">
+              <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-purple-400">
+                {group.label}
+              </p>
+              {group.items.map(renderMobileItem)}
+            </div>
+          ))}
 
-          <button
-            onClick={handleScheduleClick}
-            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold text-purple-200 hover:bg-white/10`}
-          >
-            <CalendarDays className="h-4 w-4" />
-            <span>{t.schedule || "กำหนดการ"}</span>
-          </button>
-
-          {currentUser && (
-            <button
-              onClick={() => handleNavClick("bookings")}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-sm font-semibold ${
-                activeTab === "bookings"
-                  ? "bg-white/20 text-white font-bold"
-                  : "text-purple-200 hover:bg-white/10"
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <ClipboardList className="h-4 w-4" />
-                <span>{isAdmin ? t.allBookings : t.myBookings}</span>
-              </div>
-              {isAdmin && pendingCount > 0 && (
-                <span className="px-2 py-0.5 rounded-full bg-amber-400 text-slate-950 text-xs font-bold">
-                  {pendingCount}
-                </span>
-              )}
-            </button>
-          )}
-
-          {currentUser && isAdmin && (
-            <button
-              onClick={() => handleNavClick("users")}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold ${
-                activeTab === "users"
-                  ? "bg-white/20 text-white font-bold"
-                  : "text-purple-200 hover:bg-white/10"
-              }`}
-            >
-              <Users className="h-4 w-4" />
-              <span>{t.users}</span>
-            </button>
-          )}
-
-          {currentUser && (
-            <button
-              onClick={() => handleNavClick("profile")}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold ${
-                activeTab === "profile"
-                  ? "bg-white/20 text-white font-bold"
-                  : "text-purple-200 hover:bg-white/10"
-              }`}
-            >
-              <UserIcon className="h-4 w-4" />
-              <span>{language === "th" ? "ข้อมูลส่วนตัว" : "Profile"}</span>
-            </button>
-          )}
-
-          {currentUser && (
-            <button
-              onClick={() => handleNavClick("settings")}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold ${
-                activeTab === "settings"
-                  ? "bg-white/20 text-white font-bold"
-                  : "text-purple-200 hover:bg-white/10"
-              }`}
-            >
-              <Settings className="h-4 w-4" />
-              <span>{t.settings}</span>
-            </button>
-          )}
-
-          <button
-            onClick={() => handleNavClick("evaluation")}
-            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold ${
-              activeTab === "evaluation"
-                ? "bg-white/20 text-white font-bold"
-                : "text-purple-200 hover:bg-white/10"
-            }`}
-          >
-            <ClipboardCheck className="h-4 w-4" />
-            <span>{language === "th" ? "แบบประเมิน" : "Survey"}</span>
-          </button>
-
-          {!currentUser && (
-            <button
-              onClick={() => handleNavClick("about")}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-semibold ${
-                activeTab === "about"
-                  ? "bg-white/20 text-white font-bold"
-                  : "text-purple-200 hover:bg-white/10"
-              }`}
-            >
-              <Building2 className="h-4 w-4" />
-              <span>{language === "th" ? "เกี่ยวกับเรา" : "About Us"}</span>
-            </button>
-          )}
-
-          {!currentUser ? (
-            <button
-              onClick={() => handleNavClick("login")}
-              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-bold bg-emerald-600 text-white"
-            >
-              <LogIn className="h-4 w-4" />
-              <span>{t.loginNav || "เข้าสู่ระบบ"}</span>
-            </button>
-          ) : (
-            <button
-              onClick={() => {
-                setCurrentUser(null)
-                setActiveTab("dashboard")
-                setMobileMenuOpen(false)
-              }}
-              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-bold text-rose-300 hover:bg-rose-500/20"
-            >
-              <LogOut className="h-4 w-4" />
-              <span>{t.logout}</span>
-            </button>
-          )}
+          <div className="pt-2">
+            {!currentUser ? (
+              <button
+                onClick={() => handleNavClick("login")}
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-bold bg-emerald-600 text-white"
+              >
+                <LogIn className="h-4 w-4" />
+                <span>{t.loginNav || "เข้าสู่ระบบ"}</span>
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  setCurrentUser(null)
+                  setActiveTab("dashboard")
+                  setMobileMenuOpen(false)
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-bold text-rose-300 hover:bg-rose-500/20"
+              >
+                <LogOut className="h-4 w-4" />
+                <span>{t.logout}</span>
+              </button>
+            )}
+          </div>
         </div>
       )}
     </header>

@@ -15,17 +15,19 @@ import {
   Clock,
   KeyRound,
   Loader2,
+  Hash,
 } from "lucide-react"
 import { User } from "../../types"
 import { useApp } from "../../context/AppContext"
 import { formatUserName, formatDepartment } from "../../constants/translations"
+import { DEPARTMENTS } from "../../constants/departments"
 import * as api from "../../services/api"
 
 interface UserDetailModalProps {
   user: User | null
   onClose: () => void
   onEditUser?: (user: User) => void
-  onApproveUser?: (user: User) => void
+  onApproveUser?: (user: User, department: string) => void
 }
 
 export const UserDetailModal: React.FC<UserDetailModalProps> = ({
@@ -36,6 +38,8 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
 }) => {
   const { language, showToast } = useApp()
   const [resetting, setResetting] = useState(false)
+  const [selectedDept, setSelectedDept] = useState<string>("กลุ่มงานการพยาบาล")
+  const [customDept, setCustomDept] = useState<string>("")
 
   if (!user) return null
 
@@ -100,31 +104,62 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
         <div className="flex-1 overflow-y-auto p-6 space-y-5">
           {/* Pending Approval Banner */}
           {isPending && (
-            <div className="rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 p-3.5 flex items-center justify-between gap-3 animate-in fade-in">
+            <div className="rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 p-4 space-y-3 animate-in fade-in">
               <div className="flex items-center gap-2.5">
                 <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-none" />
                 <div>
                   <p className="text-xs font-bold text-amber-900 dark:text-amber-200">
                     {language === "th"
-                      ? "ผู้ใช้งานนี้กำลังรอการตรวจสอบ/กำหนดแผนก"
+                      ? "ผู้ใช้งานนี้กำลังรอการตรวจสอบและกำหนดกลุ่มงาน/แผนก"
                       : "User is pending department assignment"}
                   </p>
                   <p className="text-[11px] text-amber-700 dark:text-amber-400">
                     {language === "th"
-                      ? "คุณสามารถกดอนุมัติหรือแก้ไขแผนกได้ทันที"
-                      : "You can approve or assign department"}
+                      ? "เลือกกลุ่มงาน/แผนกที่สังกัดเพื่ออนุมัติสิทธิ์การใช้งาน"
+                      : "Select department before approving access"}
                   </p>
                 </div>
               </div>
+
               {onApproveUser && (
-                <button
-                  type="button"
-                  onClick={() => onApproveUser(user)}
-                  className="flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 text-xs font-bold shadow-xs active:scale-95 transition-all cursor-pointer flex-none"
-                >
-                  <CheckCircle className="h-3.5 w-3.5" />
-                  <span>{language === "th" ? "อนุมัติ" : "Approve"}</span>
-                </button>
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1 border-t border-amber-200/60 dark:border-amber-900/40">
+                  <div className="flex-1 flex gap-2">
+                    <select
+                      value={selectedDept}
+                      onChange={(e) => setSelectedDept(e.target.value)}
+                      className="flex-1 rounded-xl bg-white dark:bg-slate-800 border border-amber-300 dark:border-amber-700/70 px-3 py-1.5 text-xs font-medium text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500/30"
+                    >
+                      {DEPARTMENTS.map((dept) => (
+                        <option key={dept} value={dept}>
+                          {dept}
+                        </option>
+                      ))}
+                      <option value="อื่นๆ">{language === "th" ? "อื่นๆ (ระบุเอง)" : "Other (Specify)"}</option>
+                    </select>
+
+                    {selectedDept === "อื่นๆ" && (
+                      <input
+                        type="text"
+                        value={customDept}
+                        onChange={(e) => setCustomDept(e.target.value)}
+                        placeholder={language === "th" ? "ระบุชื่อแผนก..." : "Specify department..."}
+                        className="flex-1 rounded-xl bg-white dark:bg-slate-800 border border-amber-300 dark:border-amber-700/70 px-3 py-1.5 text-xs font-medium text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500/30"
+                      />
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const finalDept = selectedDept === "อื่นๆ" ? (customDept.trim() || "ทั่วไป") : selectedDept
+                      onApproveUser(user, finalDept)
+                    }}
+                    className="flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 text-xs font-bold shadow-xs active:scale-95 transition-all cursor-pointer flex-none"
+                  >
+                    <CheckCircle className="h-3.5 w-3.5" />
+                    <span>{language === "th" ? "ยืนยันอนุมัติ" : "Approve User"}</span>
+                  </button>
+                </div>
               )}
             </div>
           )}
@@ -201,6 +236,19 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
                         </span>
                       )}
                     </div>
+                  </td>
+                </tr>
+
+                {/* Member ID */}
+                <tr>
+                  <td className="px-4 py-2.5 font-bold text-slate-600 dark:text-slate-400 bg-slate-50/70 dark:bg-slate-800/40 whitespace-nowrap">
+                    <span className="flex items-center gap-1.5">
+                      <Hash className="h-3.5 w-3.5 text-slate-400" />
+                      <span>{language === "th" ? "รหัสสมาชิก" : "Member ID"}</span>
+                    </span>
+                  </td>
+                  <td className="px-4 py-2.5 text-slate-800 dark:text-slate-200 font-mono font-bold tracking-wider">
+                    {user.member_id || (language === "th" ? "ไม่ระบุ" : "Not specified")}
                   </td>
                 </tr>
 

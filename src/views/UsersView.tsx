@@ -54,11 +54,11 @@ export const UsersView: React.FC<UsersViewProps> = ({
       u.department === "-",
   ).length
 
-  const handleQuickApprove = async (u: User) => {
+  const handleQuickApprove = async (u: User, department?: string) => {
     await handleSaveUser({
       ...u,
       email: u.email || `${u.username}@example.com`, // Fallback for old users without email
-      department: "กลุ่มงานการพยาบาล", // default assigned department or general
+      department: department?.trim() || "กลุ่มงานการพยาบาล",
     })
     setInspectingUser(null)
   }
@@ -242,7 +242,7 @@ export const UsersView: React.FC<UsersViewProps> = ({
           user={inspectingUser}
           onClose={() => setInspectingUser(null)}
           onEditUser={(u) => onOpenUserModal(u)}
-          onApproveUser={(u) => handleQuickApprove(u)}
+          onApproveUser={(u, dept) => handleQuickApprove(u, dept)}
         />
       )}
     </div>

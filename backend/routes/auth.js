@@ -27,9 +27,17 @@ router.post("/register", validateRegister, async (req, res) => {
     const hash = await bcrypt.hash(password, 10)
     const id = "u" + Date.now()
 
+    let memberId
+    let isUnique = false
+    while (!isUnique) {
+      memberId = Math.floor(10000000 + Math.random() * 90000000).toString()
+      const check = await pool.query("SELECT id FROM users WHERE member_id = $1", [memberId])
+      if (check.rows.length === 0) isUnique = true
+    }
+
     await pool.query(
-      "INSERT INTO users (id, name, department, role, username, email, password) VALUES ($1,$2,$3,$4,$5,$6,$7)",
-      [id, name.trim(), "รอการตรวจสอบ", "user", uname, emailNorm, hash]
+      "INSERT INTO users (id, name, department, role, username, email, password, member_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)",
+      [id, name.trim(), "รอการตรวจสอบ", "user", uname, emailNorm, hash, memberId]
     )
 
     // Notify admin clients via SSE so admin sees new user immediately
@@ -37,7 +45,7 @@ router.post("/register", validateRegister, async (req, res) => {
 
     res.status(201).json({
       success: true,
-      user: { id, name: name.trim(), department: "รอการตรวจสอบ", role: "user", username: uname, email: emailNorm }
+      user: { id, name: name.trim(), department: "รอการตรวจสอบ", role: "user", username: uname, email: emailNorm, member_id: memberId }
     })
   } catch (err) {
     console.error("register error:", err)
@@ -91,6 +99,7 @@ router.post("/login", validateLogin, async (req, res) => {
               username: user.username,
               email: user.email,
               emailVerified: user.email_verified,
+              member_id: user.member_id,
             }
           })
         }
@@ -123,6 +132,7 @@ router.post("/login", validateLogin, async (req, res) => {
           username: user.username,
           email: user.email,
           emailVerified: user.email_verified,
+          member_id: user.member_id,
         }
       })
     }
@@ -225,6 +235,7 @@ router.post("/verify-2fa", async (req, res) => {
         username: user.username,
         email: user.email,
         emailVerified: user.email_verified,
+        member_id: user.member_id,
       }
     })
   } catch (err) {

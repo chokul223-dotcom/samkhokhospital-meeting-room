@@ -219,6 +219,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     })
   }, [])
 
+  // Security cleanup: ล้างข้อมูล offline login เดิม (เคยเก็บรหัสผ่านแบบ plaintext ไว้ใน localStorage)
+  useEffect(() => {
+    localStorage.removeItem("registered_users")
+    if (localStorage.getItem("token") === "offline-mock") {
+      setCurrentUserState(null)
+      api.logout()
+    }
+  }, [])
+
   const showToast = useCallback((msg: string) => {
     setToast(msg)
     setTimeout(() => {
@@ -522,14 +531,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
             u.id === userData.id ? { ...u, ...userData } as User : u,
           ),
         )
-        try {
-          const stored = localStorage.getItem("registered_users")
-          if (stored) {
-            let parsed = JSON.parse(stored)
-            parsed = parsed.map((u: any) => u.id === userData.id ? { ...u, ...userData } : u)
-            localStorage.setItem("registered_users", JSON.stringify(parsed))
-          }
-        } catch { }
       } else {
         const newU: User = {
           id: "u" + Date.now(),
@@ -540,12 +541,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
           email: userData.email,
         }
         setUsers((prev) => [...prev, newU])
-        try {
-          const stored = localStorage.getItem("registered_users")
-          const parsed = stored ? JSON.parse(stored) : []
-          parsed.push({ ...newU })
-          localStorage.setItem("registered_users", JSON.stringify(parsed))
-        } catch { }
       }
     }
     showToast(isEdit ? t.toastUserEdited : t.toastUserAdded)
@@ -556,14 +551,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       await api.deleteUser(id)
     } catch {
       // Offline fallback
-      try {
-        const stored = localStorage.getItem("registered_users")
-        if (stored) {
-          let parsed = JSON.parse(stored)
-          parsed = parsed.filter((u: any) => u.id !== id)
-          localStorage.setItem("registered_users", JSON.stringify(parsed))
-        }
-      } catch { }
     }
     setUsers((prev) => prev.filter((u) => u.id !== id))
     showToast(t.toastUserDeleted)
@@ -580,34 +567,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         })
       }
     } catch (err: any) {
-      // If duplicate, rethrow so LoginView can show error
-      if (err.message?.includes("already exists")) throw err
-      // Offline fallback — do NOT push here; LoginView already wrote to registered_users
-      // and AppContext init will pick it up on next load. Just keep state in sync.
-      setUsers((prev) => {
-        if (prev.find((x) => x.email === u.email || (x.username && x.username === u.username))) return prev
-        const newU: User = {
-          id: "u" + Date.now(),
-          name: u.name,
-          department: "รอการตรวจสอบ",
-          role: "user",
-          username: u.username || u.email.split("@")[0],
-          email: u.email,
-        }
-        // Also update the localStorage entry to use the same id
-        try {
-          const stored = localStorage.getItem("registered_users")
-          if (stored) {
-            const parsed: any[] = JSON.parse(stored)
-            const idx = parsed.findIndex((x) => x.email === u.email || (x.username && x.username === u.username))
-            if (idx >= 0) {
-              parsed[idx].id = newU.id
-              localStorage.setItem("registered_users", JSON.stringify(parsed))
-            }
-          }
-        } catch { }
-        return [...prev, newU]
-      })
+      // No offline fallback — the account only exists if the backend created it.
+      // Rethrow so RegisterView can show the real error.
+      throw err
     }
   }
 
@@ -630,17 +592,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     } catch {
       // Offline fallback
     }
-
-    try {
-      const stored = localStorage.getItem("registered_users")
-      if (stored) {
-        let parsed = JSON.parse(stored)
-        parsed = parsed.map((u: any) =>
-          u.id === userData.id ? { ...u, ...userData } : u,
-        )
-        localStorage.setItem("registered_users", JSON.stringify(parsed))
-      }
-    } catch { }
 
     showToast(language === "th" ? "บันทึกข้อมูลส่วนตัวเรียบร้อยแล้ว" : "Profile updated successfully")
   }

@@ -10,7 +10,7 @@ router.get("/", authMiddleware, async (req, res) => {
     return res.status(403).json({ error: "Admin only" })
   try {
     const result = await pool.query(
-      "SELECT id, name, department, role, username, email, email_verified, created_at FROM users ORDER BY name",
+      "SELECT id, member_id, name, department, role, username, email, email_verified, created_at FROM users ORDER BY name",
     )
     res.json(result.rows)
   } catch (err) {
@@ -48,15 +48,22 @@ router.post("/", authMiddleware, validateUserCreate, async (req, res) => {
 router.put("/:id", authMiddleware, async (req, res) => {
   if (req.user.role !== "admin" && req.user.id !== req.params.id)
     return res.status(403).json({ error: "Forbidden" })
-  const { name, department, role, username, email, password } = req.body
-  if (!name || !role)
+  const { name, role: reqRole, username, email, password } = req.body
+  let { department } = req.body
+  if (!name || !reqRole)
     return res.status(400).json({ error: "Missing fields" })
 
   try {
-    const userRes = await pool.query("SELECT username, email, department FROM users WHERE id = $1", [req.params.id])
+    const userRes = await pool.query("SELECT username, email, department, role FROM users WHERE id = $1", [req.params.id])
     if (userRes.rows.length === 0) return res.status(404).json({ error: "User not found" })
 
     const prevDepartment = userRes.rows[0].department
+    const isAdmin = req.user.role === "admin"
+    // Non-admins cannot change their own role
+    const role = isAdmin ? reqRole : userRes.rows[0].role
+    // Non-admins cannot change department while pending admin approval
+    const prevIsPending = !prevDepartment || prevDepartment === "รอการตรวจสอบ" || prevDepartment === "-"
+    if (!isAdmin && prevIsPending) department = prevDepartment
     const newEmail = email ? email.toLowerCase().trim() : userRes.rows[0].email
     const newUsername = username || userRes.rows[0].username
     // email_verified: reset to false only when email actually changes
@@ -285,7 +292,7 @@ router.post("/:id/send-verify-email", authMiddleware, async (req, res) => {
   }
 
   try {
-    const result = await pool.query("SELECT id, name, username, email, email_verified FROM users WHERE id = $1", [req.params.id])
+    const result = await pool.query("SELECT id, member_id, name, username, email, email_verified FROM users WHERE id = $1", [req.params.id])
     if (result.rows.length === 0) return res.status(404).json({ error: "User not found" })
     
     const user = result.rows[0]

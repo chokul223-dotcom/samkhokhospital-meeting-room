@@ -12,6 +12,7 @@ export interface User {
   role: "admin" | "user"
   username: string
   email?: string
+  member_id?: string
   emailVerified?: boolean
   password?: string
   createdAt?: string

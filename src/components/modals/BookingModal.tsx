@@ -238,7 +238,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const [date, setDate] = useState(initialDate || todayStr)
   const [startTime, setStartTime] = useState('09:00')
   const [endTime, setEndTime] = useState('11:00')
-  const [attendees, setAttendees] = useState(10)
+  const [attendees, setAttendees] = useState<number | ''>(10)
   const [purpose, setPurpose] = useState('')
   const [chairman, setChairman] = useState('')
   const [onlineMeeting, setOnlineMeeting] = useState('none')
@@ -312,7 +312,11 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       setError(language === 'th' ? 'กรุณาระบุชื่อระบบออนไลน์ที่ต้องการใช้' : 'Please specify the online meeting system')
       return
     }
-    if (selectedRoom && attendees > selectedRoom.capacity) {
+    if (!attendees || attendees < 1) {
+      setError(language === 'th' ? 'กรุณาระบุจำนวนผู้เข้าร่วมการประชุม' : 'Please specify the number of attendees')
+      return
+    }
+    if (selectedRoom && (attendees as number) > selectedRoom.capacity) {
       setError(`${t.errCapacity} (${selectedRoom.capacity} ${t.people})`)
       return
     }
@@ -325,7 +329,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         startTime,
         endTime,
         purpose: purpose.trim(),
-        attendees,
+        attendees: attendees as number,
         chairman: chairman.trim(),
         onlineMeeting: onlineMeeting === 'other'
           ? onlineMeetingOther.trim()
@@ -490,7 +494,19 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 min={1}
                 max={selectedRoom ? selectedRoom.capacity : 200}
                 value={attendees}
-                onChange={e => setAttendees(Number(e.target.value))}
+                onChange={e => {
+                  if (e.target.value === '') {
+                    setAttendees('')
+                    return
+                  }
+                  const val = Number(e.target.value)
+                  const maxCap = selectedRoom ? selectedRoom.capacity : 200
+                  if (val > maxCap) {
+                    setAttendees(maxCap)
+                  } else {
+                    setAttendees(val)
+                  }
+                }}
                 className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
               />
             </div>

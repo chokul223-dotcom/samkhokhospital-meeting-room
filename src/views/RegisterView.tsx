@@ -113,12 +113,6 @@ export const RegisterView: React.FC = () => {
     setRegLoading(true)
     try {
       await handleRegisterUser({ email: regUsername, username: regUsername.split("@")[0], password: regPassword, name: regFullName })
-      try {
-        const registeredRaw = localStorage.getItem("registered_users")
-        const existing: Array<{email?: string; username: string; password: string; name: string; id: string; department: string}> = registeredRaw ? JSON.parse(registeredRaw) : []
-        const newEntry = { id: "u" + Date.now(), email: regUsername, username: regUsername.split("@")[0], password: regPassword, name: regFullName, department: "" }
-        localStorage.setItem("registered_users", JSON.stringify([...existing, newEntry]))
-      } catch {}
       setRegSuccess("สมัครสมาชิกสำเร็จ! กรุณารอการอนุมัติจากผู้ดูแลระบบก่อนเข้าสู่ระบบ")
       setTimeout(() => {
         navigate("/login", { state: { prefillEmail: regUsername } })
@@ -127,16 +121,7 @@ export const RegisterView: React.FC = () => {
       if (err.message?.includes("already exists")) {
         setRegError("อีเมลหรือชื่อผู้ใช้นี้มีในระบบแล้ว กรุณาใช้อีเมลอื่น")
       } else {
-        try {
-          const registeredRaw = localStorage.getItem("registered_users")
-          const existing: Array<{email?: string; username: string; password: string; name: string; id: string; department: string}> = registeredRaw ? JSON.parse(registeredRaw) : []
-          const newEntry = { id: "u" + Date.now(), email: regUsername, username: regUsername.split("@")[0], password: regPassword, name: regFullName, department: "" }
-          localStorage.setItem("registered_users", JSON.stringify([...existing, newEntry]))
-        } catch {}
-        setRegSuccess("สมัครสมาชิกสำเร็จ! กรุณารอการอนุมัติจากผู้ดูแลระบบก่อนเข้าสู่ระบบ")
-        setTimeout(() => {
-          navigate("/login", { state: { prefillEmail: regUsername } })
-        }, 2000)
+        setRegError("ไม่สามารถสมัครสมาชิกได้ในขณะนี้ กรุณาตรวจสอบการเชื่อมต่อแล้วลองใหม่อีกครั้ง")
       }
     } finally {
       setRegLoading(false)

@@ -25,28 +25,11 @@ import {
 import { useApp } from "../context/AppContext"
 import { User } from "../types"
 import * as api from "../services/api"
+import { DEPARTMENTS } from "../constants/departments"
 
 interface ProfileViewProps {
   onBack?: () => void
 }
-
-const DEPARTMENTS = [
-  "กลุ่มงานการพยาบาล",
-  "ศูนย์คอมพิวเตอร์และสารสนเทศ",
-  "กลุ่มงานเภสัชกรรม",
-  "กลุ่มงานศัลยศาสตร์",
-  "กลุ่มงานอายุรกรรม",
-  "กลุ่มงานทันตกรรม",
-  "กลุ่มงานเวชศาสตร์ฉุกเฉิน",
-  "กลุ่มงานเทคนิคการแพทย์",
-  "กลุ่มงานรังสีวิทยา",
-  "กลุ่มงานบริหารทั่วไป",
-  "กลุ่มกฎหมาย",
-  "กลุ่มงานยุทธศาสตร์และแผนงาน",
-  "กลุ่มงานประกันสุขภาพ",
-  "กลุ่มงานพัฒนาคุณภาพบริการ",
-  "ทั่วไป",
-]
 
 const PROVINCES = [
   "ปทุมธานี",
@@ -69,6 +52,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
 
   // Form state
   const [username, setUsername] = useState("")
+  const [email, setEmail] = useState("")
   const [oldPassword, setOldPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
   const [showOldPassword, setShowOldPassword] = useState(false)
@@ -102,10 +86,19 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
   const [showUnlockPassword, setShowUnlockPassword] = useState(false)
   const [unlockError, setUnlockError] = useState("")
 
+  // ผู้ใช้ที่ยังรอแอดมินอนุมัติ — ห้ามแก้ไขแผนกเอง (แอดมินเป็นผู้กำหนดเมื่ออนุมัติ)
+  const PENDING_DEPARTMENT = "รอการตรวจสอบ"
+  const isPendingDepartment =
+    !currentUser?.department ||
+    currentUser.department === PENDING_DEPARTMENT ||
+    currentUser.department === "-"
+  const isDepartmentLocked = isPendingDepartment && currentUser?.role !== "admin"
+
   // Load current user data
   useEffect(() => {
     if (currentUser) {
       setUsername(currentUser.username || "")
+      setEmail(currentUser.email || currentUser.username || "")
       setName(currentUser.name || "")
       setRole(currentUser.role || "user")
       setGender(currentUser.gender || "ไม่ระบุ")
@@ -206,8 +199,11 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
       return
     }
 
-    const finalDepartment =
-      department === "อื่นๆ" ? customDepartment.trim() || "ทั่วไป" : department
+    const finalDepartment = isDepartmentLocked
+      ? currentUser?.department || PENDING_DEPARTMENT
+      : department === "อื่นๆ"
+        ? customDepartment.trim() || "ทั่วไป"
+        : department
 
     setIsSubmitting(true)
     try {
@@ -217,6 +213,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
         id: currentUser.id,
         name: name.trim(),
         username: username.trim(),
+        email: email.trim().toLowerCase(),
+        ...(email.trim().toLowerCase() !== (currentUser.email || "").toLowerCase()
+          ? { emailVerified: false }
+          : {}),
         department: finalDepartment,
         gender,
         citizenId: citizenId.trim(),
@@ -320,8 +320,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
                   <Mail className="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
                   <input
                     type="email"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     required
                     readOnly={!isEmailUnlocked}
                     className={`w-full rounded-xl border pl-10 pr-4 py-2.5 text-xs sm:text-sm font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${!isEmailUnlocked
@@ -343,7 +343,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
                     <Lock className="h-3.5 w-3.5 mr-1.5" />
                     {language === "th" ? "เปลี่ยนอีเมล" : "Change Email"}
                   </button>
-                ) : !emailVerified && username === currentUser?.username && (
+                ) : !emailVerified && email === currentUser?.email && (
                   <button
                     type="button"
                     onClick={handleSendVerifyEmail}
@@ -454,8 +454,23 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
               {language === "th" ? "รายละเอียดของ สมาชิก" : "Member Details"}
             </h4>
 
-            {/* Name and Gender */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* ID, Name and Gender */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  {language === "th" ? "รหัสสมาชิก" : "Member ID"}
+                </label>
+                <div className="relative">
+                  <Hash className="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
+                  <input
+                    type="text"
+                    readOnly
+                    value={currentUser?.member_id || (language === "th" ? "ไม่ระบุ" : "N/A")}
+                    className="w-full rounded-xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 pl-10 pr-4 py-2.5 text-xs sm:text-sm font-bold tracking-wider text-slate-500 dark:text-slate-400 cursor-not-allowed"
+                  />
+                </div>
+              </div>
+
               <div className="md:col-span-2">
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                   {language === "th" ? "ชื่อ นามสกุล" : "Full Name"}{" "}
@@ -502,6 +517,27 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                 {language === "th" ? "แผนก / หน่วยงาน" : "Department"}
               </label>
+              {isDepartmentLocked ? (
+                <div>
+                  <div className="relative">
+                    <Building2 className="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
+                    <input
+                      type="text"
+                      value={language === "th" ? PENDING_DEPARTMENT : "Pending Approval"}
+                      readOnly
+                      disabled
+                      className="w-full rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/60 pl-10 pr-4 py-2.5 text-xs sm:text-sm font-semibold text-amber-700 dark:text-amber-300 cursor-not-allowed"
+                    />
+                    <Lock className="pointer-events-none absolute right-3.5 top-3 h-4 w-4 text-amber-500" />
+                  </div>
+                  <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mt-1">
+                    {language === "th"
+                      ? "แผนกจะถูกกำหนดโดยผู้ดูแลระบบเมื่อบัญชีของคุณได้รับการอนุมัติ"
+                      : "Your department will be assigned by an administrator once your account is approved"}
+                  </p>
+                </div>
+              ) : (
+              <>
               <div className="relative">
                 <Building2 className="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
                 <select
@@ -532,6 +568,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
                     className="w-full rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-xs sm:text-sm text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none"
                   />
                 </div>
+              )}
+              </>
               )}
             </div>
 

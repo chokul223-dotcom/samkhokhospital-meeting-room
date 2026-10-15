@@ -104,46 +104,12 @@ export const LoginView: React.FC = () => {
         return
       }
 
-      // Check hardcoded mock admins ONLY if backend is down (network error)
-      if (
-        (username === "admin@example.com" && password === "Admin123456") ||
-        (username === "test@example.com" && password === "Test123456")
-      ) {
-        const isAdmin = username === "admin@example.com"
-        const mockUser = {
-          id: isAdmin ? "u1" : "u2",
-          name: isAdmin ? "ผู้ดูแลระบบ (Admin)" : "พว. สมศรี ใจดี (บุคลากร)",
-          department: isAdmin ? "ศูนย์คอมพิวเตอร์และสารสนเทศ" : "กลุ่มงานการพยาบาล",
-          role: (isAdmin ? "admin" : "user") as any,
-          username: username.split("@")[0],
-          email: username,
-        }
-        localStorage.setItem("user", JSON.stringify(mockUser))
-        localStorage.setItem("token", "offline-mock")
-        setCurrentUser(mockUser)
-        navigate("/dashboard")
-      } else {
-        // Check registered users stored in localStorage
-        const registeredRaw = localStorage.getItem("registered_users")
-        const registeredUsers: Array<{email?: string; username: string; password: string; name: string; id: string; department: string}> = registeredRaw ? JSON.parse(registeredRaw) : []
-        const found = registeredUsers.find(u => (u.email === username || u.username === username) && u.password === password)
-        if (found) {
-          const userObj = {
-            id: found.id,
-            name: found.name,
-            department: found.department,
-            role: "user" as any,
-            username: found.username,
-            email: found.email || username,
-          }
-          localStorage.setItem("user", JSON.stringify(userObj))
-          localStorage.setItem("token", "offline-mock")
-          setCurrentUser(userObj)
-          navigate("/dashboard")
-        } else {
-          setError(t.invalidLogin || "Network error. Please try again.")
-        }
-      }
+      // Backend unreachable — do NOT fall back to any offline/mock login
+      setError(
+        language === "th"
+          ? "ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ กรุณาลองใหม่อีกครั้ง"
+          : "Unable to connect to the server. Please try again.",
+      )
     } finally {
       setLoading(false)
     }
@@ -242,12 +208,12 @@ export const LoginView: React.FC = () => {
               <>
                 <div className="relative">
                   <Mail className="pointer-events-none absolute left-4 top-3.5 h-4 w-4 text-slate-400" />
-                  <input type="email" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="อีเมล" required className={inputClass} />
+                  <input type="email" id="login-email" name="email" autoComplete="username" autoFocus value={username} onChange={(e) => setUsername(e.target.value)} placeholder="อีเมล" required className={inputClass} />
                 </div>
 
                 <div className="relative">
                   <Lock className="pointer-events-none absolute left-4 top-3.5 h-4 w-4 text-slate-400" />
-                  <input type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t.passwordPlaceholder} required className={`${inputClass} pr-12`} />
+                  <input type={showPassword ? "text" : "password"} id="login-password" name="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t.passwordPlaceholder} required className={`${inputClass} pr-12`} />
                   <button type="button" onClick={() => setShowPassword((v) => !v)} className="absolute right-4 top-3.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer">
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
