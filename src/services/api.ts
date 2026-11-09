@@ -21,6 +21,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     ...options,
     headers: {
       "Content-Type": "application/json",
+      "ngrok-skip-browser-warning": "true",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options.headers,
     },
@@ -121,7 +122,9 @@ export async function fetchRooms(): Promise<Room[]> {
 }
 
 export async function fetchPublicRooms(): Promise<Room[]> {
-  const res = await fetch(`${BASE_URL}/api/rooms/public`)
+  const res = await fetch(`${BASE_URL}/api/rooms/public`, {
+    headers: { "ngrok-skip-browser-warning": "true" },
+  })
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   const data = await res.json()
   return data.map((r: any) => ({
@@ -173,7 +176,9 @@ export async function fetchBookings(): Promise<Booking[]> {
 }
 
 export async function fetchPublicBookings(): Promise<Booking[]> {
-  const res = await fetch(`${BASE_URL}/api/bookings/public`)
+  const res = await fetch(`${BASE_URL}/api/bookings/public`, {
+    headers: { "ngrok-skip-browser-warning": "true" },
+  })
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return res.json()
 }

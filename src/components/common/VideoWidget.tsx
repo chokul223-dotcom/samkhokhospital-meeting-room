@@ -5,10 +5,12 @@ import { useApp } from "../../context/AppContext"
 export const VideoWidget: React.FC = () => {
   const { t } = useApp()
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false)
-  const [isVideoOpen, setIsVideoOpen] = useState(true)
+  const [isVideoOpen, setIsVideoOpen] = useState<boolean>(() =>
+    typeof window !== "undefined" ? window.innerWidth >= 768 : true,
+  )
   const [videoSide, setVideoSide] = useState<"left" | "right">("left")
   const [videoPosY, setVideoPosY] = useState<number>(() =>
-    typeof window !== "undefined" ? Math.max(0, window.innerHeight - 240) : 500,
+    typeof window !== "undefined" ? Math.max(80, window.innerHeight - 240) : 500,
   )
   const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null)
   const dragRef = useRef<{
@@ -21,7 +23,8 @@ export const VideoWidget: React.FC = () => {
 
   const isDragging = dragPos !== null
   const TOGGLE_W = 36
-  const VID_W = 280
+  const VID_W =
+    typeof window !== "undefined" && window.innerWidth < 640 ? 220 : 280
   const totalW = isVideoOpen ? VID_W + TOGGLE_W : TOGGLE_W
   const snappedX = isDragging
     ? dragPos.x

@@ -261,7 +261,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
       {/* ─── Main Profile Form Card ─── */}
       <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xl overflow-hidden">
         {/* Breadcrumb Bar */}
-        <div className="flex items-center justify-between px-6 py-3 bg-slate-100/80 dark:bg-slate-800/80 border-b border-slate-200/80 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300">
+        <div className="flex items-center justify-between gap-2 px-4 sm:px-6 py-3 bg-slate-100/80 dark:bg-slate-800/80 border-b border-slate-200/80 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300">
           <div className="flex items-center gap-1.5 flex-wrap">
             <UserIcon className="h-3.5 w-3.5 text-slate-500" />
             <span>{language === "th" ? "สมาชิก" : "Members"}</span>
@@ -277,7 +277,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
             <button
               type="button"
               onClick={onBack}
-              className="flex items-center gap-1 text-slate-500 hover:text-slate-800 dark:hover:text-white transition-colors cursor-pointer"
+              className="flex-none flex items-center gap-1 text-slate-500 hover:text-slate-800 dark:hover:text-white transition-colors cursor-pointer"
             >
               <ArrowLeft className="h-3.5 w-3.5" />
               <span>{language === "th" ? "ย้อนกลับ" : "Back"}</span>
@@ -286,7 +286,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
         </div>
 
         {/* Card Header Title */}
-        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2.5">
+        <div className="px-4 sm:px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2.5">
           <span className="text-lg">📋</span>
           <h3 className="text-base font-bold text-slate-900 dark:text-white">
             {language === "th" ? "แก้ไขข้อมูลส่วนตัว" : "Edit Personal Information"}
@@ -294,13 +294,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
         </div>
 
         {/* ─── Form Body ─── */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-6">
           {/* ── Section 1: Account / Email & Password ── */}
           <div className="space-y-4">
             {/* Email / Username */}
             <div>
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
                   <span>{language === "th" ? "อีเมล / ชื่อผู้ใช้" : "Email / Username"}</span>
                   {emailVerified ? (
                     <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-0.5 rounded-full">
@@ -315,7 +315,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
                   )}
                 </div>
               </label>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <div className="relative flex-1">
                   <Mail className="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
                   <input
@@ -814,7 +814,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="flex items-center gap-2 rounded-xl bg-[#2e7d32] hover:bg-[#256629] text-white px-6 py-2.5 text-sm font-bold shadow-md shadow-green-900/20 active:scale-[0.98] transition-all disabled:opacity-50 cursor-pointer"
+              className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl bg-[#2e7d32] hover:bg-[#256629] text-white px-6 py-2.5 text-sm font-bold shadow-md shadow-green-900/20 active:scale-[0.98] transition-all disabled:opacity-50 cursor-pointer"
             >
               <Save className="h-4 w-4" />
               <span>

@@ -15,6 +15,9 @@ if (!process.env.JWT_SECRET) {
 const app = express()
 const PORT = process.env.PORT || 3001
 
+// Backend รันหลัง ngrok tunnel — เชื่อ proxy ชั้นแรกเพื่อให้ rate limit เห็น IP จริงของผู้ใช้
+app.set("trust proxy", 1)
+
 // ── Security Headers ──────────────────────────────────────────────────────
 app.use(helmet())
 

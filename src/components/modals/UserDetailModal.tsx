@@ -68,7 +68,7 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200 select-none"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200 select-none"
       onClick={onClose}
     >
       <div
@@ -76,32 +76,32 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/20 text-white shadow-xs">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="flex h-9 w-9 flex-none items-center justify-center rounded-xl bg-white/20 text-white shadow-xs">
               <UserIcon className="h-5 w-5" />
             </div>
-            <div>
-              <h3 className="text-sm sm:text-base font-bold text-white leading-tight">
+            <div className="min-w-0">
+              <h3 className="text-sm sm:text-base font-bold text-white leading-tight truncate">
                 {language === "th"
                   ? "ข้อมูลสมาชิกและประวัติผู้ใช้งาน"
                   : "Member Profile & Details"}
               </h3>
-              <p className="text-[11px] text-blue-100">
+              <p className="text-[11px] text-blue-100 truncate">
                 {user.username}
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-xl text-white/80 hover:bg-white/20 hover:text-white transition-colors cursor-pointer"
+            className="flex h-8 w-8 flex-none items-center justify-center rounded-xl text-white/80 hover:bg-white/20 hover:text-white transition-colors cursor-pointer"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
         {/* Modal Content */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-5">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
           {/* Pending Approval Banner */}
           {isPending && (
             <div className="rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 p-4 space-y-3 animate-in fade-in">
@@ -123,7 +123,7 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
 
               {onApproveUser && (
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1 border-t border-amber-200/60 dark:border-amber-900/40">
-                  <div className="flex-1 flex gap-2">
+                  <div className="flex-1 flex flex-col sm:flex-row gap-2">
                     <select
                       value={selectedDept}
                       onChange={(e) => setSelectedDept(e.target.value)}
@@ -217,15 +217,15 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {/* Username / Email */}
                 <tr>
-                  <td className="px-4 py-2.5 font-bold text-slate-600 dark:text-slate-400 bg-slate-50/70 dark:bg-slate-800/40 w-36 whitespace-nowrap">
+                  <td className="px-3 sm:px-4 py-2.5 font-bold text-slate-600 dark:text-slate-400 bg-slate-50/70 dark:bg-slate-800/40 w-28 sm:w-36 whitespace-nowrap">
                     <span className="flex items-center gap-1.5">
                       <Mail className="h-3.5 w-3.5 text-slate-400" />
                       <span>{language === "th" ? "อีเมล / ชื่อผู้ใช้" : "Username"}</span>
                     </span>
                   </td>
-                  <td className="px-4 py-2.5 text-slate-800 dark:text-slate-200 font-mono font-bold">
-                    <div className="flex items-center gap-2">
-                      {user.username}
+                  <td className="px-3 sm:px-4 py-2.5 text-slate-800 dark:text-slate-200 font-mono font-bold break-all">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span>{user.username}</span>
                       {user.emailVerified ? (
                         <span title={language === "th" ? "ยืนยันแล้ว" : "Verified"}>
                           <CheckCircle className="h-3.5 w-3.5 text-emerald-500" />
@@ -333,11 +333,11 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
         </div>
 
         {/* Footer Actions */}
-        <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900 flex items-center justify-between gap-3">
+        <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900 flex flex-wrap items-center justify-between gap-2">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 px-4 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
+            className="rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 px-3.5 sm:px-4 py-2 sm:py-2.5 text-xs font-bold text-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
           >
             {language === "th" ? "ปิด" : "Close"}
           </button>
@@ -347,7 +347,7 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
               type="button"
               disabled={resetting}
               onClick={handleResetPassword}
-              className="flex items-center gap-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 px-4 py-2.5 text-xs font-bold transition-colors cursor-pointer disabled:opacity-50"
+              className="flex items-center gap-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 px-3 sm:px-4 py-2 sm:py-2.5 text-xs font-bold transition-colors cursor-pointer disabled:opacity-50"
             >
               {resetting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <KeyRound className="h-3.5 w-3.5" />}
               <span>{language === "th" ? "รีเซ็ตรหัสผ่าน" : "Reset Pass"}</span>
@@ -360,7 +360,7 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
                   onClose()
                   onEditUser(user)
                 }}
-                className="flex items-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 text-xs font-bold shadow-xs active:scale-95 transition-all cursor-pointer"
+                className="flex items-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-2 sm:py-2.5 text-xs font-bold shadow-xs active:scale-95 transition-all cursor-pointer"
               >
                 <Edit2 className="h-3.5 w-3.5" />
                 <span>{language === "th" ? "แก้ไขข้อมูลผู้ใช้" : "Edit User"}</span>

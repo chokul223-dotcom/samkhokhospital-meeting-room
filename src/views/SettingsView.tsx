@@ -33,14 +33,14 @@ export const SettingsView: React.FC = () => {
         
         {/* Language Section */}
         <div>
-          <div className="px-6 py-4 flex items-center gap-2.5 mt-2">
+          <div className="px-4 sm:px-6 py-4 flex items-center gap-2.5 mt-2">
             <Globe className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             <h3 className="text-sm font-bold text-slate-900 dark:text-white">
               {t.language}
             </h3>
           </div>
 
-          <div className="px-6 pb-6 pt-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="px-4 sm:px-6 pb-6 pt-2 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             {langOptions.map((opt) => {
               const isSelected = language === opt.value
               return (
@@ -78,14 +78,14 @@ export const SettingsView: React.FC = () => {
 
         {/* Theme Section */}
         <div>
-          <div className="px-6 py-4 flex items-center gap-2.5">
+          <div className="px-4 sm:px-6 py-4 flex items-center gap-2.5">
             <Moon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             <h3 className="text-sm font-bold text-slate-900 dark:text-white">
               {t.theme}
             </h3>
           </div>
 
-          <div className="px-6 pb-6 pt-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="px-4 sm:px-6 pb-6 pt-2 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             {themeOptions.map((opt) => {
               const isSelected = theme === opt.value
               const Icon = opt.icon
@@ -134,19 +134,19 @@ export const SettingsView: React.FC = () => {
 
         {/* Hospital System Info Section */}
         <div>
-          <div className="px-6 py-4 flex items-center gap-2.5">
+          <div className="px-4 sm:px-6 py-4 flex items-center gap-2.5">
             <Info className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             <h3 className="text-sm font-bold text-slate-900 dark:text-white">
               {t.hospitalInfo}
             </h3>
           </div>
 
-          <div className="px-6 pb-8 pt-2 space-y-4 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+          <div className="px-4 sm:px-6 pb-8 pt-2 space-y-4 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
             <div className="flex items-center gap-3 rounded-2xl bg-blue-50/60 dark:bg-blue-950/30 p-4 border border-blue-100 dark:border-blue-900/40">
               <img
                 src="/logo.png"
                 alt="Hospital Logo"
-                className="h-10 w-10 object-contain"
+                className="h-10 w-10 object-contain flex-none"
               />
               <div>
                 <p className="font-bold text-slate-900 dark:text-white text-sm">
@@ -158,7 +158,7 @@ export const SettingsView: React.FC = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 pt-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 pt-2">
               <div className="rounded-xl bg-slate-50 dark:bg-slate-800/50 p-3 border border-slate-100 dark:border-slate-800">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
                   {t.systemVersion}

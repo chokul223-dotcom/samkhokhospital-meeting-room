@@ -61,7 +61,7 @@ export const ResetPasswordView: React.FC<ResetPasswordViewProps> = ({ token, onD
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 p-4">
-      <div className="w-full max-w-md rounded-3xl bg-white dark:bg-slate-900 shadow-2xl border border-white/20 dark:border-slate-800 p-8 animate-in fade-in zoom-in-95 duration-300">
+      <div className="w-full max-w-md rounded-3xl bg-white dark:bg-slate-900 shadow-2xl border border-white/20 dark:border-slate-800 p-5 sm:p-8 animate-in fade-in zoom-in-95 duration-300">
         {/* Logo */}
         <div className="text-center mb-6">
           <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-tr from-blue-600 to-cyan-500 p-1 shadow-lg shadow-blue-600/25">

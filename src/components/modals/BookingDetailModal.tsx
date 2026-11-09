@@ -156,40 +156,40 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
   )
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="relative w-full max-w-3xl max-h-[92vh] flex flex-col rounded-2xl bg-white dark:bg-slate-900 shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
 
         {/* ── Header ── */}
-        <div className="flex items-center justify-between px-5 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 flex-none">
-          <div className="flex items-center gap-2">
-            <span className={`w-3 h-3 rounded-full ${roomColor.dotClass} shadow-sm`} />
-            <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+        <div className="flex items-center justify-between gap-2 px-4 sm:px-5 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 flex-none">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className={`w-3 h-3 rounded-full flex-none ${roomColor.dotClass} shadow-sm`} />
+            <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate">
               {language === "th" ? "จองห้องประชุม" : "Meeting Room Booking"}
               {booking.status === "approved" && (
-                <span className="ml-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                <span className="ml-1.5 sm:ml-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
                   ({language === "th" ? "อนุมัติ" : "Approved"})
                 </span>
               )}
               {booking.status === "pending" && (
-                <span className="ml-2 text-xs font-semibold text-amber-600 dark:text-amber-400">
+                <span className="ml-1.5 sm:ml-2 text-xs font-semibold text-amber-600 dark:text-amber-400">
                   ({language === "th" ? "รออนุมัติ" : "Pending"})
                 </span>
               )}
               {booking.status === "rejected" && (
-                <span className="ml-2 text-xs font-semibold text-rose-600 dark:text-rose-400">
+                <span className="ml-1.5 sm:ml-2 text-xs font-semibold text-rose-600 dark:text-rose-400">
                   ({language === "th" ? "ปฏิเสธ" : "Rejected"})
                 </span>
               )}
             </h3>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-none">
             {isAdmin && !isEditing && (
               <button
                 onClick={handleStartEdit}
-                className="flex items-center gap-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 px-3 py-1.5 text-xs font-bold text-white transition-colors cursor-pointer"
+                className="flex items-center gap-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 px-2.5 sm:px-3 py-1.5 text-xs font-bold text-white transition-colors cursor-pointer"
               >
                 <Pencil className="h-3.5 w-3.5" />
-                {language === "th" ? "แก้ไขข้อมูล" : "Edit"}
+                <span>{language === "th" ? "แก้ไขข้อมูล" : "Edit"}</span>
               </button>
             )}
             <button
@@ -202,32 +202,34 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
         </div>
 
         {/* ── Main content: Left sidebar + Right panel ── */}
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-col md:flex-row flex-1 overflow-y-auto md:overflow-hidden">
 
           {/* ── LEFT SIDEBAR ── */}
-          <div className="w-52 flex-none border-r border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/30 flex flex-col overflow-y-auto">
+          <div className="w-full md:w-56 flex-none border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/30 flex flex-col md:overflow-y-auto">
 
-            {/* Room photo */}
-            <div className="w-full h-36 flex-none overflow-hidden bg-slate-200 dark:bg-slate-700">
-              <img
-                src={roomImgSrc}
-                alt={formatRoomName(room, language) || ""}
-                className="w-full h-full object-cover"
-                onError={(e) => { e.currentTarget.style.display = "none" }}
-              />
-            </div>
+            {/* Room photo & info (side-by-side on mobile, stacked on md+) */}
+            <div className="flex sm:flex-row md:flex-col items-center md:items-stretch gap-3 md:gap-0 p-3 md:p-0 border-b border-slate-200 dark:border-slate-700">
+              <div className="w-24 h-20 md:w-full md:h-36 flex-none rounded-xl md:rounded-none overflow-hidden bg-slate-200 dark:bg-slate-700">
+                <img
+                  src={roomImgSrc}
+                  alt={formatRoomName(room, language) || ""}
+                  className="w-full h-full object-cover"
+                  onError={(e) => { e.currentTarget.style.display = "none" }}
+                />
+              </div>
 
-            {/* Room info */}
-            <div className="p-3 space-y-1.5 border-b border-slate-200 dark:border-slate-700">
-              <p className="text-sm font-bold text-slate-800 dark:text-white leading-snug">
-                {formatRoomName(room, language)}
-              </p>
-              <p className="text-xs text-slate-600 dark:text-slate-400">
-                {language === "th" ? "ความจุ" : "Capacity"}: {room?.capacity || "-"} {t.people}
-              </p>
-              <div className="flex items-start gap-1 text-xs text-slate-500 dark:text-slate-400">
-                <MapPin className="h-3 w-3 mt-0.5 flex-none text-rose-400" />
-                <span>{formatRoomLocation(room?.location, language)}</span>
+              {/* Room info */}
+              <div className="flex-1 min-w-0 md:p-3 space-y-1 md:space-y-1.5">
+                <p className="text-sm font-bold text-slate-800 dark:text-white leading-snug">
+                  {formatRoomName(room, language)}
+                </p>
+                <p className="text-xs text-slate-600 dark:text-slate-400">
+                  {language === "th" ? "ความจุ" : "Capacity"}: {room?.capacity || "-"} {t.people}
+                </p>
+                <div className="flex items-start gap-1 text-xs text-slate-500 dark:text-slate-400">
+                  <MapPin className="h-3 w-3 mt-0.5 flex-none text-rose-400" />
+                  <span>{formatRoomLocation(room?.location, language)}</span>
+                </div>
               </div>
             </div>
 
@@ -237,14 +239,14 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
                 <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
                   {language === "th" ? "สิ่งอำนวยความสะดวก" : "Equipment"}
                 </p>
-                <ul className="space-y-1">
+                <ul className="grid grid-cols-2 md:grid-cols-1 gap-1.5 md:gap-1">
                   {room.equipment.map((eq, i) => (
                     <li key={i} className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
                       <span className="flex h-5 w-5 items-center justify-center rounded-md bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex-none">
                         <EquipmentIcon name={eq} />
                       </span>
-                      <span className="flex-1">{eq}</span>
-                      <span className="text-slate-400 text-[11px]">1 หน่วย</span>
+                      <span className="flex-1 truncate">{eq}</span>
+                      <span className="hidden md:inline text-slate-400 text-[11px]">1 หน่วย</span>
                     </li>
                   ))}
                 </ul>
@@ -253,7 +255,7 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
           </div>
 
           {/* ── RIGHT PANEL ── */}
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 md:overflow-y-auto">
             <div className="p-4 space-y-3">
 
               {/* Meeting title (centered, prominent) */}
@@ -284,8 +286,8 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
                 </div>
               </div>
 
-              {/* 2-column details */}
-              <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+              {/* 1-column on mobile, 2-column on sm+ */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
 
                 {/* LEFT col */}
                 <div className="space-y-3">

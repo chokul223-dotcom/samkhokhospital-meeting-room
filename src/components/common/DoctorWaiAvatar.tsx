@@ -4,7 +4,9 @@ import { useApp } from "../../context/AppContext"
 
 export const DoctorWaiAvatar: React.FC = () => {
   const { language } = useApp()
-  const [isMinimized, setIsMinimized] = useState(false)
+  const [isMinimized, setIsMinimized] = useState<boolean>(() =>
+    typeof window !== "undefined" ? window.innerWidth < 768 : false,
+  )
   const [showHeart, setShowHeart] = useState(false)
 
   // Handle avatar click: just show the heart reaction
@@ -74,8 +76,8 @@ export const DoctorWaiAvatar: React.FC = () => {
           {/* Soft Dynamic Ground Shadow */}
           <div className="w-20 sm:w-24 md:w-28 h-3 rounded-full bg-slate-900/40 dark:bg-black/60 blur-[3px] animate-doctor-shadow -mt-1 pointer-events-none" />
 
-          {/* Minimize / Info Tooltip on hover */}
-          <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute bottom-1 right-0 translate-y-full pt-1">
+          {/* Minimize / Info Tooltip on hover (always visible on mobile) */}
+          <div className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity absolute bottom-1 right-0 translate-y-full pt-1">
             <button
               type="button"
               onClick={(e) => {

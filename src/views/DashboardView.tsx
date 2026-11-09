@@ -223,90 +223,92 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div className="pointer-events-none absolute -top-16 -right-10 h-56 w-56 rounded-full bg-fuchsia-400/25 blur-3xl" />
           <div className="pointer-events-none absolute -bottom-20 left-10 h-48 w-48 rounded-full bg-indigo-400/25 blur-3xl" />
           
-          <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="relative z-10 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3.5 sm:gap-4">
             {/* Calendar Section Header */}
-            <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 flex-none items-center justify-center rounded-2xl bg-white/15 ring-1 ring-white/25 backdrop-blur shadow-inner animate-float-subtle">
-                <CalendarIcon className="h-6 w-6 text-white" />
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className="flex h-10 w-10 sm:h-12 sm:w-12 flex-none items-center justify-center rounded-2xl bg-white/15 ring-1 ring-white/25 backdrop-blur shadow-inner animate-float-subtle">
+                <CalendarIcon className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
               </div>
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-widest text-purple-200/90 mb-0.5">
+              <div className="min-w-0">
+                <p className="text-[11px] sm:text-xs font-semibold uppercase tracking-widest text-purple-200/90 mb-0.5">
                   {language === "th" ? "ตารางการใช้งาน" : "Schedule"}
                 </p>
-                <h3 className="text-lg sm:text-xl font-bold leading-tight">
+                <h3 className="text-base sm:text-xl font-bold leading-tight truncate">
                   {t.calendarTitle || "ปฏิทินการจอง ห้องประชุม"}
                 </h3>
               </div>
             </div>
 
             {/* Month & Year Navigator */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center justify-between sm:justify-center gap-1.5 sm:gap-2 flex-wrap">
               {/* Prev button */}
               <button
                 type="button"
                 onClick={handlePrevMonth}
-                className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 ring-1 ring-white/20 text-white hover:bg-white/20 transition-colors cursor-pointer shadow-xs backdrop-blur"
+                className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-xl bg-white/10 ring-1 ring-white/20 text-white hover:bg-white/20 transition-colors cursor-pointer shadow-xs backdrop-blur flex-none"
                 title="เดือนก่อนหน้า"
               >
-                <ChevronLeft className="h-5 w-5" />
+                <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5" />
               </button>
 
-              {/* Month Selector */}
-              <select
-                value={currentMonth}
-                onChange={(e) => setCurrentMonth(Number(e.target.value))}
-                className="rounded-xl bg-white/10 ring-1 ring-white/20 px-3 py-2 text-xs sm:text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-white/40 cursor-pointer shadow-xs backdrop-blur appearance-none [&>option]:text-slate-800"
-              >
-                {monthNames.map((m, idx) => (
-                  <option key={idx} value={idx} className="text-slate-800">
-                    {m}
-                  </option>
-                ))}
-              </select>
-
-              {/* Year Selector */}
-              <select
-                value={currentYear}
-                onChange={(e) => setCurrentYear(Number(e.target.value))}
-                className="rounded-xl bg-white/10 ring-1 ring-white/20 px-3 py-2 text-xs sm:text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-white/40 cursor-pointer shadow-xs backdrop-blur appearance-none [&>option]:text-slate-800"
-              >
-                {[2024, 2025, 2026, 2027, 2028, 2029].map((y) => (
-                  <option key={y} value={y} className="text-slate-800">
-                    {language === "th" ? y + 543 : y}
-                  </option>
-                ))}
-              </select>
-
-              {/* Jump to Today */}
-              {(currentYear !== todayYear || currentMonth !== todayMonth) && (
-                <button
-                  type="button"
-                  onClick={handleJumpToday}
-                  className="flex h-10 items-center justify-center rounded-xl bg-fuchsia-500/80 hover:bg-fuchsia-500 text-white text-xs font-bold px-4 transition-colors cursor-pointer shadow-xs ring-1 ring-fuchsia-400/50 backdrop-blur"
-                  title={language === "th" ? "เดือนปัจจุบัน" : "This Month"}
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-1 sm:flex-initial justify-center">
+                {/* Month Selector */}
+                <select
+                  value={currentMonth}
+                  onChange={(e) => setCurrentMonth(Number(e.target.value))}
+                  className="flex-1 sm:flex-initial rounded-xl bg-white/10 ring-1 ring-white/20 px-2.5 sm:px-3 py-2 text-xs sm:text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-white/40 cursor-pointer shadow-xs backdrop-blur appearance-none text-center [&>option]:text-slate-800"
                 >
-                  {language === "th" ? "วันนี้" : "Today"}
-                </button>
-              )}
+                  {monthNames.map((m, idx) => (
+                    <option key={idx} value={idx} className="text-slate-800">
+                      {m}
+                    </option>
+                  ))}
+                </select>
+
+                {/* Year Selector */}
+                <select
+                  value={currentYear}
+                  onChange={(e) => setCurrentYear(Number(e.target.value))}
+                  className="rounded-xl bg-white/10 ring-1 ring-white/20 px-2.5 sm:px-3 py-2 text-xs sm:text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-white/40 cursor-pointer shadow-xs backdrop-blur appearance-none text-center [&>option]:text-slate-800"
+                >
+                  {[2024, 2025, 2026, 2027, 2028, 2029].map((y) => (
+                    <option key={y} value={y} className="text-slate-800">
+                      {language === "th" ? y + 543 : y}
+                    </option>
+                  ))}
+                </select>
+
+                {/* Jump to Today */}
+                {(currentYear !== todayYear || currentMonth !== todayMonth) && (
+                  <button
+                    type="button"
+                    onClick={handleJumpToday}
+                    className="flex h-9 sm:h-10 items-center justify-center rounded-xl bg-fuchsia-500/80 hover:bg-fuchsia-500 text-white text-xs font-bold px-3 sm:px-4 transition-colors cursor-pointer shadow-xs ring-1 ring-fuchsia-400/50 backdrop-blur"
+                    title={language === "th" ? "เดือนปัจจุบัน" : "This Month"}
+                  >
+                    {language === "th" ? "วันนี้" : "Today"}
+                  </button>
+                )}
+              </div>
 
               {/* Next button */}
               <button
                 type="button"
                 onClick={handleNextMonth}
-                className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 ring-1 ring-white/20 text-white hover:bg-white/20 transition-colors cursor-pointer shadow-xs backdrop-blur"
+                className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-xl bg-white/10 ring-1 ring-white/20 text-white hover:bg-white/20 transition-colors cursor-pointer shadow-xs backdrop-blur flex-none"
                 title="เดือนถัดไป"
               >
-                <ChevronRight className="h-5 w-5" />
+                <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5" />
               </button>
             </div>
           </div>
         </div>
 
         {/* ─── 7-Column Calendar Grid ─── */}
-        <div className="w-full overflow-x-auto">
-          <div className="min-w-[760px]">
+        <div className="w-full">
+          <div className="w-full">
             {/* Day Name Header Row */}
-            <div className="grid grid-cols-7 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 text-center text-xs font-bold text-purple-700 dark:text-purple-400 py-3">
+            <div className="grid grid-cols-7 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 text-center text-[11px] sm:text-xs font-bold text-purple-700 dark:text-purple-400 py-2.5 sm:py-3">
               {dayNames.map((dName, idx) => (
                 <div
                   key={idx}
@@ -337,7 +339,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         document.getElementById("schedule-section")?.scrollIntoView({ behavior: "smooth" })
                       }, 50)
                     }}
-                    className={`min-h-[110px] p-1.5 flex flex-col justify-between transition-colors group relative cursor-pointer ${
+                    className={`min-h-[70px] sm:min-h-[96px] md:min-h-[110px] p-1 sm:p-1.5 flex flex-col justify-between transition-colors group relative cursor-pointer min-w-0 ${
                       cell.isCurrentMonth
                         ? "bg-white dark:bg-slate-900 hover:bg-slate-50/80 dark:hover:bg-slate-800/40"
                         : "bg-slate-50/50 dark:bg-slate-950/40 text-slate-400 opacity-60"
@@ -346,7 +348,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     {/* Date Number Header inside cell */}
                     <div className="flex items-center justify-between">
                       <span
-                        className={`text-xs font-bold px-1.5 py-0.5 rounded-full ${
+                        className={`text-[11px] sm:text-xs font-bold px-1 sm:px-1.5 py-0.5 rounded-full leading-none sm:leading-normal ${
                           cell.isToday
                             ? "bg-rose-500 text-white font-extrabold shadow-xs"
                             : cell.isCurrentMonth
@@ -357,13 +359,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         {cell.dayNum}
                       </span>
 
-                      {/* Quick add booking button on cell hover */}
+                      {/* Quick add booking button on cell hover (desktop/tablet) */}
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
                           onOpenBookingModal(undefined, cell.dateStr)
                         }}
-                        className="opacity-0 group-hover:opacity-100 p-0.5 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/60 text-blue-600 dark:text-blue-400 transition-opacity cursor-pointer"
+                        className="hidden sm:inline-flex opacity-0 group-hover:opacity-100 p-0.5 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/60 text-blue-600 dark:text-blue-400 transition-opacity cursor-pointer"
                         title={`จองห้องสำหรับวันที่ ${cell.dateStr}`}
                       >
                         <Plus className="h-3.5 w-3.5" />
@@ -371,7 +373,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     </div>
 
                     {/* Booking Pills List */}
-                    <div className="flex-1 space-y-1 mt-1 overflow-hidden relative">
+                    <div className="flex-1 space-y-0.5 sm:space-y-1 mt-1 overflow-hidden relative">
                       {cellBookings.slice(0, 1).map((b) => {
                         const roomCol = getRoomColor(b.roomId)
                         const startHour = parseInt(b.startTime.split(":")[0], 10)
@@ -388,12 +390,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation()
-                              setInspectingBooking(b)
+                              if (cellBookings.length > 1 && window.innerWidth < 640) {
+                                setPopoverDate(cell.dateStr)
+                                setPopoverBookings(cellBookings)
+                              } else {
+                                setInspectingBooking(b)
+                              }
                             }}
-                            className={`w-full text-left rounded-md px-1.5 py-1 text-[10px] sm:text-[11px] font-semibold ${roomCol.bgClass} ${roomCol.textClass} shadow-xs hover:opacity-90 hover:scale-[1.01] transition-all truncate block cursor-pointer`}
+                            className={`w-full text-left rounded sm:rounded-md px-1 sm:px-1.5 py-0.5 sm:py-1 text-[9px] sm:text-[11px] font-semibold ${roomCol.bgClass} ${roomCol.textClass} shadow-2xs hover:opacity-90 sm:hover:scale-[1.01] transition-all truncate block cursor-pointer leading-tight`}
                             title={`เวลา ${b.startTime} - ${b.endTime} น.: ${b.purpose}`}
                           >
-                            <span className="flex items-center gap-1 truncate">
+                            <span className="sm:hidden truncate block">
+                              {timeLabel}
+                            </span>
+                            <span className="hidden sm:flex items-center gap-1 truncate">
                               <span className="truncate">
                                 {timeLabel} ({b.purpose})
                               </span>
@@ -409,9 +419,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                             setPopoverDate(cell.dateStr)
                             setPopoverBookings(cellBookings)
                           }}
-                          className="text-[11px] font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors w-full text-left px-1 py-0.5 rounded-sm hover:bg-blue-50 dark:hover:bg-blue-900/40 cursor-pointer"
+                          className="text-[9px] sm:text-[11px] font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors w-full text-left px-0.5 sm:px-1 py-0.5 rounded-sm hover:bg-blue-50 dark:hover:bg-blue-900/40 cursor-pointer truncate leading-tight"
                         >
-                          +{cellBookings.length - 1} {t.more || "เพิ่มเติม"}
+                          +{cellBookings.length - 1} <span className="hidden sm:inline">{t.more || "เพิ่มเติม"}</span>
                         </button>
                       )}
 
@@ -424,8 +434,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         {/* ─── 4. Room Color Legend Bar at Bottom ─── */}
-        <div className="p-4 sm:p-6 bg-slate-50/70 dark:bg-slate-800/40 border-t border-slate-100 dark:border-slate-800">
-          <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 text-xs font-semibold text-slate-700 dark:text-slate-300">
+        <div className="p-3.5 sm:p-6 bg-slate-50/70 dark:bg-slate-800/40 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 md:gap-6 text-[11px] sm:text-xs font-semibold text-slate-700 dark:text-slate-300">
             {/* Filter Reset */}
             <button
               onClick={() => setSelectedRoomFilter(null)}

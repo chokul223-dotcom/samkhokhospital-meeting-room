@@ -248,25 +248,25 @@ const CookieSettingsModal: React.FC<CookieSettingsModalProps> = ({
         </div>
 
         {/* Footer Actions */}
-        <div className="px-5 py-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900 flex items-center gap-3">
+        <div className="px-4 sm:px-5 py-3.5 sm:py-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900 flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-3">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 px-4 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
+            className="rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 px-3.5 sm:px-4 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
           >
             {language === "th" ? "ยกเลิก" : "Cancel"}
           </button>
           <button
             type="button"
             onClick={handleSave}
-            className="flex-1 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 py-2.5 text-xs font-bold text-white shadow-lg shadow-blue-600/20 hover:from-blue-700 hover:to-indigo-700 transition-all cursor-pointer"
+            className="flex-1 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 py-2.5 px-3 text-xs font-bold text-white shadow-lg shadow-blue-600/20 hover:from-blue-700 hover:to-indigo-700 transition-all cursor-pointer"
           >
             {language === "th" ? "บันทึกการตั้งค่า" : "Save Preferences"}
           </button>
           <button
             type="button"
             onClick={handleAcceptAll}
-            className="rounded-xl bg-emerald-600 hover:bg-emerald-700 py-2.5 px-4 text-xs font-bold text-white shadow-lg shadow-emerald-600/20 transition-all cursor-pointer"
+            className="w-full sm:w-auto rounded-xl bg-emerald-600 hover:bg-emerald-700 py-2.5 px-4 text-xs font-bold text-white shadow-lg shadow-emerald-600/20 transition-all cursor-pointer"
           >
             {language === "th" ? "ยอมรับทั้งหมด" : "Accept All"}
           </button>

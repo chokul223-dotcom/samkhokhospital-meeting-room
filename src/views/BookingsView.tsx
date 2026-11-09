@@ -160,9 +160,9 @@ export const BookingsView: React.FC<BookingsViewProps> = ({
 
         {/* New Booking Notification Banner — admin only */}
         {isAdmin && hasPendingUpdate && (
-          <div className="flex items-center justify-between gap-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700/60 px-5 py-3.5 shadow-sm animate-in slide-in-from-top-2 duration-300">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700/60 px-4 sm:px-5 py-3.5 shadow-sm animate-in slide-in-from-top-2 duration-300">
             <div className="flex items-center gap-3">
-              <span className="relative flex h-8 w-8 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/50">
+              <span className="relative flex h-8 w-8 flex-none items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/50">
                 <Bell className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                 <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-white dark:border-slate-900" />
               </span>
@@ -175,7 +175,7 @@ export const BookingsView: React.FC<BookingsViewProps> = ({
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2 flex-none">
+            <div className="flex items-center gap-2 flex-none self-end sm:self-center">
               <button
                 onClick={handleRefresh}
                 disabled={isRefreshing}
@@ -197,7 +197,7 @@ export const BookingsView: React.FC<BookingsViewProps> = ({
           </div>
         )}
         {/* Search & Filter Toolbar */}
-        <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-5 shadow-xs space-y-4">
+        <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 shadow-xs space-y-4">
           {/* Search & Date Filter Row */}
           <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
             <div className="relative flex-1">
@@ -211,13 +211,13 @@ export const BookingsView: React.FC<BookingsViewProps> = ({
               <Search className="pointer-events-none absolute left-4 top-3 h-4 w-4 text-slate-400" />
             </div>
 
-          <div className="flex items-center gap-2">
-            <div className="relative">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative flex-1 sm:flex-initial">
               <input
                 type="date"
                 value={dateFilter}
                 onChange={(e) => setDateFilter(e.target.value)}
-                className="rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-2 text-xs font-semibold text-slate-800 dark:text-white focus:border-blue-500 focus:outline-none"
+                className="w-full rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-2 text-xs font-semibold text-slate-800 dark:text-white focus:border-blue-500 focus:outline-none"
               />
             </div>
 
@@ -295,10 +295,10 @@ export const BookingsView: React.FC<BookingsViewProps> = ({
                 return (
                   <div
                     key={b.id}
-                    className="p-5 transition-colors hover:bg-slate-50/70 dark:hover:bg-slate-800/40 cursor-pointer"
+                    className="p-4 sm:p-5 transition-colors hover:bg-slate-50/70 dark:hover:bg-slate-800/40 cursor-pointer"
                     onClick={() => setSelectedBooking(b)}
                   >
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-3.5 sm:gap-4">
                       {/* Left: Info Details */}
                       <div className="space-y-2 min-w-0 flex-1">
                         <div className="flex items-center gap-2.5 flex-wrap">
@@ -347,7 +347,7 @@ export const BookingsView: React.FC<BookingsViewProps> = ({
                       </div>
 
                       {/* Right: Actions */}
-                      <div className="flex items-center gap-2 flex-none pt-2 md:pt-0">
+                      <div className="flex items-center justify-end gap-2 flex-none pt-2 md:pt-0">
                         {isAdmin && b.status === "pending" && (
                           <>
                             <button

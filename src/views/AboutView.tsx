@@ -8,25 +8,25 @@ export const AboutView: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto pb-10 animate-in fade-in duration-300">
       <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xl overflow-hidden">
-        <div className="relative overflow-hidden bg-gradient-to-br from-[#1b0738] via-[#3b1170] to-[#6d28d9] p-8 text-white shadow-xl shadow-purple-900/20">
+        <div className="relative overflow-hidden bg-gradient-to-br from-[#1b0738] via-[#3b1170] to-[#6d28d9] p-5 sm:p-8 text-white shadow-xl shadow-purple-900/20">
           <div className="pointer-events-none absolute -top-16 -right-10 h-56 w-56 rounded-full bg-fuchsia-400/25 blur-3xl" />
           <div className="pointer-events-none absolute -bottom-20 left-10 h-48 w-48 rounded-full bg-indigo-400/25 blur-3xl" />
-          <div className="relative z-10 flex items-center gap-5">
-            <div className="flex h-16 w-16 flex-none items-center justify-center rounded-2xl bg-white/15 ring-1 ring-white/25 backdrop-blur shadow-inner">
-              <Building2 className="h-8 w-8 text-white" />
+          <div className="relative z-10 flex items-center gap-4 sm:gap-5">
+            <div className="flex h-12 w-12 sm:h-16 sm:w-16 flex-none items-center justify-center rounded-2xl bg-white/15 ring-1 ring-white/25 backdrop-blur shadow-inner">
+              <Building2 className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
             </div>
             <div>
-              <p className="text-sm font-semibold uppercase tracking-widest text-purple-200/90 mb-1">
+              <p className="text-xs sm:text-sm font-semibold uppercase tracking-widest text-purple-200/90 mb-0.5 sm:mb-1">
                 {language === "th" ? "เกี่ยวกับโรงพยาบาล" : "About Hospital"}
               </p>
-              <h1 className="text-2xl sm:text-3xl font-bold leading-tight">
+              <h1 className="text-xl sm:text-3xl font-bold leading-tight">
                 {language === "th" ? "โรงพยาบาลสามโคก" : "Samkhok Hospital"}
               </h1>
             </div>
           </div>
         </div>
 
-        <div className="p-6 sm:p-10 space-y-10 text-slate-700 dark:text-slate-300 leading-relaxed text-sm sm:text-base">
+        <div className="p-5 sm:p-10 space-y-8 sm:space-y-10 text-slate-700 dark:text-slate-300 leading-relaxed text-sm sm:text-base">
           {/* History */}
           <section className="space-y-4">
             <div className="flex items-center gap-2 text-purple-700 dark:text-purple-400 font-bold text-lg border-b border-purple-100 dark:border-purple-900/50 pb-2">

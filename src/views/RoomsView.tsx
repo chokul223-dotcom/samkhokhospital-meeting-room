@@ -131,7 +131,7 @@ export const RoomsView: React.FC<RoomsViewProps> = ({
 
         <div className="flex items-center gap-2">
           {/* Search Input */}
-          <div className="relative">
+          <div className="relative flex-1 sm:flex-initial">
             <input
               type="text"
               placeholder={
@@ -150,7 +150,7 @@ export const RoomsView: React.FC<RoomsViewProps> = ({
           {isAdmin && (
             <button
               onClick={() => onOpenRoomModal()}
-              className="flex items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-blue-700 active:scale-95 transition-all cursor-pointer"
+              className="flex-none flex items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-blue-700 active:scale-95 transition-all cursor-pointer"
             >
               <Plus className="h-4 w-4" />
               <span>{t.addRoom}</span>
@@ -181,12 +181,12 @@ export const RoomsView: React.FC<RoomsViewProps> = ({
             return (
               <div
                 key={room.id}
-                className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-4 hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors"
+                className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3.5 sm:gap-4 p-3.5 sm:p-4 hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors"
               >
                 {/* Left: Thumbnail & Info */}
-                <div className="flex items-start gap-4 min-w-0 flex-1">
+                <div className="flex items-start gap-3 sm:gap-4 min-w-0 flex-1 w-full">
                   {/* Photo */}
-                  <div className="w-28 h-20 sm:w-32 sm:h-20 flex-none rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xs">
+                  <div className="w-24 h-20 sm:w-32 sm:h-20 flex-none rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xs">
                     <img
                       src={room.imageUrl || getRoomImage(room.id, idx)}
                       alt={formatRoomName(room, language)}
@@ -203,7 +203,7 @@ export const RoomsView: React.FC<RoomsViewProps> = ({
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span
-                        className={`inline-block px-3 py-1 rounded-md text-xs font-bold ${
+                        className={`inline-block px-2.5 sm:px-3 py-1 rounded-md text-xs font-bold ${
                           idx === 0
                             ? "bg-pink-500 dark:bg-pink-600 text-white"
                             : "bg-purple-600 dark:bg-purple-600 text-white"
@@ -225,11 +225,11 @@ export const RoomsView: React.FC<RoomsViewProps> = ({
                 </div>
 
                 {/* Right: Blue 'จองห้องประชุม' & Orange 'รายละเอียด' Buttons */}
-                <div className="flex items-center gap-2 flex-none self-end md:self-center">
+                <div className="flex items-center gap-2 flex-wrap w-full md:w-auto justify-end pt-2 md:pt-0 border-t md:border-t-0 border-slate-100 dark:border-slate-800/60">
                   {/* Blue Book Button */}
                   <button
                     onClick={() => handleBookClick(room.id)}
-                    className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-bold shadow-xs transition-all cursor-pointer ${
+                    className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 rounded-lg px-3.5 sm:px-4 py-2 text-xs font-bold shadow-xs transition-all cursor-pointer ${
                       isAvailable
                         ? "bg-[#0070e0] hover:bg-[#005fb8] text-white"
                         : "bg-slate-300 dark:bg-slate-700 text-slate-500 dark:text-slate-400 cursor-not-allowed"
@@ -243,7 +243,7 @@ export const RoomsView: React.FC<RoomsViewProps> = ({
                   {/* Orange Detail Button */}
                   <button
                     onClick={() => setDetailRoom(room)}
-                    className="flex items-center gap-1.5 rounded-lg bg-[#f26522] hover:bg-[#d9531e] text-white px-4 py-2 text-xs font-bold shadow-xs transition-all cursor-pointer"
+                    className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 rounded-lg bg-[#f26522] hover:bg-[#d9531e] text-white px-3.5 sm:px-4 py-2 text-xs font-bold shadow-xs transition-all cursor-pointer"
                   >
                     <Info className="h-3.5 w-3.5" />
                     <span>{t.roomDetails || "รายละเอียด"}</span>
@@ -251,7 +251,7 @@ export const RoomsView: React.FC<RoomsViewProps> = ({
 
                   {/* Admin Edit/Delete */}
                   {isAdmin && (
-                    <div className="flex items-center gap-1 ml-1">
+                    <div className="flex items-center gap-1 ml-0.5">
                       <button
                         onClick={() => onOpenRoomModal(room)}
                         title={t.edit}
