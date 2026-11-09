@@ -449,6 +449,16 @@ export function getTranslation(lang: Language) {
 }
 
 /**
+ * Formats a Date object as YYYY-MM-DD in local timezone (avoids UTC -1 day shift in UTC+7)
+ */
+export function toLocalDateStr(d: Date = new Date()): string {
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, "0")
+  const day = String(d.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
+}
+
+/**
  * Translates standard user names across Thai and English
  */
 export function formatUserName(user: Partial<User> | null | undefined, lang: Language): string {

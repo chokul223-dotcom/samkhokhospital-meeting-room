@@ -880,13 +880,28 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    if (unlockPassword.length < 4) {
+                  onClick={async () => {
+                    if (!unlockPassword || unlockPassword.length < 4) {
                       setUnlockError(language === "th" ? "รหัสผ่านไม่ถูกต้อง" : "Invalid password")
                       return
                     }
-                    setIsEmailUnlocked(true)
-                    setShowEmailUnlockModal(false)
+                    try {
+                      if (currentUser?.id) {
+                        await api.verifyPassword(currentUser.id, unlockPassword)
+                      }
+                      setUnlockError("")
+                      setIsEmailUnlocked(true)
+                      setShowEmailUnlockModal(false)
+                    } catch (err: any) {
+                      if (err.message?.includes("Failed to fetch") || err.message?.includes("NetworkError")) {
+                        // Offline fallback
+                        setUnlockError("")
+                        setIsEmailUnlocked(true)
+                        setShowEmailUnlockModal(false)
+                        return
+                      }
+                      setUnlockError(err.message || (language === "th" ? "รหัสผ่านไม่ถูกต้อง" : "Invalid password"))
+                    }
                   }}
                   className="flex-1 rounded-xl bg-blue-600 hover:bg-blue-700 text-white py-2.5 text-sm font-bold transition-colors cursor-pointer"
                 >

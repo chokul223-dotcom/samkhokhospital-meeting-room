@@ -21,6 +21,7 @@ import {
   formatRoomName,
   formatRoomLocation,
   formatUserName,
+  toLocalDateStr,
 } from "../constants/translations"
 import { CalendarDayPopover } from "../components/calendar/CalendarDayPopover"
 import { ScheduleView } from "./ScheduleView"
@@ -73,7 +74,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const today = new Date()
   const todayYear = today.getFullYear()
   const todayMonth = today.getMonth() // 0-11
-  const todayDateStr = today.toISOString().split("T")[0]
+  const todayDateStr = toLocalDateStr(today)
 
   const [currentYear, setCurrentYear] = useState(todayYear)
   const [currentMonth, setCurrentMonth] = useState(todayMonth)
@@ -152,7 +153,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     for (let i = firstDayIndex - 1; i >= 0; i--) {
       const dayNum = totalDaysInPrevMonth - i
       const prevDate = new Date(currentYear, currentMonth - 1, dayNum)
-      const prevDateStr = prevDate.toISOString().split("T")[0]
+      const prevDateStr = toLocalDateStr(prevDate)
       cells.push({
         dateStr: prevDateStr,
         dayNum,
@@ -178,7 +179,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     const remaining = (7 - (cells.length % 7)) % 7
     for (let d = 1; d <= remaining; d++) {
       const nextDate = new Date(currentYear, currentMonth + 1, d)
-      const nextDateStr = nextDate.toISOString().split("T")[0]
+      const nextDateStr = toLocalDateStr(nextDate)
       cells.push({
         dateStr: nextDateStr,
         dayNum: d,
@@ -376,13 +377,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <div className="flex-1 space-y-0.5 sm:space-y-1 mt-1 overflow-hidden relative">
                       {cellBookings.slice(0, 1).map((b) => {
                         const roomCol = getRoomColor(b.roomId)
-                        const startHour = parseInt(b.startTime.split(":")[0], 10)
-                        const endHour = parseInt(b.endTime.split(":")[0], 10)
                         
-                        let timeLabel = "ช่วงเวลา"
-                        if (startHour < 12 && endHour <= 12) timeLabel = "เช้า"
-                        else if (startHour >= 12) timeLabel = "บ่าย"
-                        else if (startHour < 12 && endHour > 12) timeLabel = "ทั้งวัน"
+                        let timeLabel = t.timeSlot || "ช่วงเวลา"
+                        if (b.startTime < "12:00" && b.endTime <= "12:00") timeLabel = t.morning || "เช้า"
+                        else if (b.startTime >= "12:00") timeLabel = t.afternoon || "บ่าย"
+                        else if (b.startTime < "12:00" && b.endTime > "12:00") timeLabel = t.fullDay || "ทั้งวัน"
 
                         return (
                           <button

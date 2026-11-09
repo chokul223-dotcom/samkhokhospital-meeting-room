@@ -51,10 +51,12 @@ const EquipmentIcon: React.FC<{ name: string }> = ({ name }) => {
 }
 
 export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
-  booking,
+  booking: initialBooking,
   onClose,
 }) => {
-  const { t, language, rooms, users, currentUser, handleUpdateBooking } = useApp()
+  const { t, language, rooms, bookings, users, currentUser, handleUpdateBooking } = useApp()
+
+  const booking = bookings.find((b) => b.id === initialBooking?.id) || initialBooking
 
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
@@ -83,7 +85,17 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
 
   const isAdmin = currentUser?.role === "admin"
   const room = rooms.find((r) => r.id === booking.roomId)
-  const user = users.find((u) => u.id === booking.userId)
+  const user =
+    users.find((u) => u.id === booking.userId) ||
+    (booking.userName
+      ? {
+          name: booking.userName,
+          department: booking.userDepartment || undefined,
+          role: booking.userRole || undefined,
+        }
+      : currentUser?.id === booking.userId
+        ? currentUser
+        : undefined)
   const roomColor = getRoomColor(booking.roomId)
   const roomIndex = rooms.findIndex((r) => r.id === booking.roomId)
   const roomImgSrc = room?.imageUrl || getRoomImage(booking.roomId, roomIndex)
@@ -105,7 +117,7 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
     setEditPurpose(booking.purpose || "")
     setEditChairman(booking.chairman || "")
     setEditAttendees(booking.attendees || 0)
-    setEditOnlineMeeting(booking.onlineMeeting || "ไม่ใช้ระบบออนไลน์")
+    setEditOnlineMeeting(booking.onlineMeeting && booking.onlineMeeting !== "" ? booking.onlineMeeting : "none")
     setEditContactPerson(booking.contactPerson || "")
     setEditLinks(booking.relatedLinks || [])
   }

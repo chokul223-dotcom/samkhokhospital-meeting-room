@@ -16,6 +16,7 @@ import {
   formatRoomLocation,
   formatUserName,
   formatDepartment,
+  toLocalDateStr,
 } from "../constants/translations"
 
 interface CalendarViewProps {
@@ -27,7 +28,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
 }) => {
   const { t, rooms, bookings, users, language } = useApp()
 
-  const todayStr = new Date().toISOString().split("T")[0]
+  const todayStr = toLocalDateStr(new Date())
   const [selectedDate, setSelectedDate] = useState(todayStr)
 
   const activeRooms = useMemo(
@@ -45,9 +46,9 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   }, [bookings, selectedDate])
 
   const shiftDate = (days: number) => {
-    const current = new Date(selectedDate)
+    const current = new Date(selectedDate + "T00:00:00")
     current.setDate(current.getDate() + days)
-    setSelectedDate(current.toISOString().split("T")[0])
+    setSelectedDate(toLocalDateStr(current))
   }
 
   const formatHeaderDate = (dStr: string) => {

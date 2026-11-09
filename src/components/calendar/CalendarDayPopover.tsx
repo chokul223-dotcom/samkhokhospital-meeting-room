@@ -65,13 +65,11 @@ export const CalendarDayPopover: React.FC<CalendarDayPopoverProps> = ({
           </p>
           {bookings.map((b) => {
             const roomCol = getRoomColor(b.roomId)
-            const startHour = parseInt(b.startTime.split(":")[0], 10)
-            const endHour = parseInt(b.endTime.split(":")[0], 10)
 
             let timeLabel = "ช่วงเวลา"
-            if (startHour < 12 && endHour <= 12) timeLabel = "เช้า"
-            else if (startHour >= 12) timeLabel = "บ่าย"
-            else if (startHour < 12 && endHour > 12) timeLabel = "ทั้งวัน"
+            if (b.startTime < "12:00" && b.endTime <= "12:00") timeLabel = "เช้า"
+            else if (b.startTime >= "12:00") timeLabel = "บ่าย"
+            else if (b.startTime < "12:00" && b.endTime > "12:00") timeLabel = "ทั้งวัน"
 
             return (
               <button

@@ -6,6 +6,7 @@ import {
   formatRoomName,
   formatRoomLocation,
   formatEquipment,
+  toLocalDateStr,
 } from '../../constants/translations'
 import { getRoomImage } from '../../constants/roomColors'
 
@@ -230,7 +231,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const { t, language, rooms, bookings, handleBookingSubmit, currentUser } = useApp()
 
   const availableRooms = useMemo(() => rooms.filter(r => r.status === 'available'), [rooms])
-  const todayStr = new Date().toISOString().split('T')[0]
+  const todayStr = toLocalDateStr(new Date())
 
   const [roomId, setRoomId] = useState(
     initialRoomId || (availableRooms.length > 0 ? availableRooms[0].id : '')
@@ -377,7 +378,9 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         {/* Modal Body */}
         {(() => {
           const dept = currentUser?.department
-          const isPendingUser = !dept || dept === "" || dept === "-" || dept === "รอการตรวจสอบ"
+          const isPendingUser =
+            currentUser?.role !== 'admin' &&
+            (!dept || dept === '' || dept === '-' || dept === 'รอการตรวจสอบ')
           return isPendingUser
         })() ? (
           <div className="flex-1 p-8 flex flex-col items-center justify-center min-h-[300px]">

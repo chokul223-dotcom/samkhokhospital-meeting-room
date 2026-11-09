@@ -54,6 +54,9 @@ export interface Booking {
   onlineMeeting?: string
   contactPerson?: string
   relatedLinks?: { title: string; url: string }[]
+  userName?: string | null
+  userDepartment?: string | null
+  userRole?: Role | null
 }
 
 export interface LoginResponse {

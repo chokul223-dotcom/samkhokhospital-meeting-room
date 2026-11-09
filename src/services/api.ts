@@ -35,8 +35,10 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
       localStorage.removeItem("user")
       _onUnauthorized?.()
     }
-    // token จริงที่หมดอายุหรือไม่ถูกต้อง
-    if (res.status === 401 && token && token !== "offline-mock") {
+    // token จริงที่หมดอายุหรือไม่ถูกต้อง (เฉพาะเมื่อ authMiddleware ปฏิเสธ token)
+    const isTokenRejected =
+      err.error === "Invalid token" || err.error === "No token provided"
+    if (res.status === 401 && token && token !== "offline-mock" && isTokenRejected) {
       localStorage.removeItem("token")
       localStorage.removeItem("user")
       _onUnauthorized?.()
@@ -235,6 +237,10 @@ export async function deleteAllBookings(): Promise<{ success: boolean }> {
 
 // ─── Users ────────────────────────────────────────────────────────────────────
 
+export async function fetchCurrentUser(): Promise<User> {
+  return request<User>("/api/users/me")
+}
+
 export async function fetchUsers(): Promise<User[]> {
   return request<User[]>("/api/users")
 }
@@ -273,6 +279,13 @@ export async function updateUser(
 export async function deleteUser(id: string): Promise<{ success: boolean }> {
   return request<{ success: boolean }>(`/api/users/${id}`, {
     method: "DELETE",
+  })
+}
+
+export async function verifyPassword(id: string, password: string): Promise<{ success: boolean }> {
+  return request<{ success: boolean }>(`/api/users/${id}/verify-password`, {
+    method: "POST",
+    body: JSON.stringify({ password }),
   })
 }
 

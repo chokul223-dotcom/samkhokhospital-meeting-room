@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react"
+import React, { useState, useMemo, useEffect } from "react"
 import {
   Search,
   Filter,
@@ -23,6 +23,7 @@ import {
   formatRoomName,
   formatUserName,
   formatDepartment,
+  toLocalDateStr,
 } from "../constants/translations"
 
 interface BookingsViewProps {
@@ -58,9 +59,12 @@ export const BookingsView: React.FC<BookingsViewProps> = ({
   } = useApp()
 
   const isAdmin = currentUser?.role === "admin"
-  const todayStr = new Date().toISOString().split("T")[0]
+  const todayStr = toLocalDateStr(new Date())
 
   const [statusFilter, setStatusFilter] = useState<string>(initialStatusFilter)
+  useEffect(() => {
+    setStatusFilter(initialStatusFilter)
+  }, [initialStatusFilter])
   const [dateFilter, setDateFilter] = useState("")
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
@@ -97,7 +101,9 @@ export const BookingsView: React.FC<BookingsViewProps> = ({
         if (searchQuery.trim()) {
           const query = searchQuery.toLowerCase()
           const room = rooms.find((r) => r.id === b.roomId)
-          const user = users.find((u) => u.id === b.userId)
+          const user =
+            users.find((u) => u.id === b.userId) ||
+            (b.userName ? { name: b.userName, department: b.userDepartment || "" } : undefined)
           const matchPurpose = b.purpose.toLowerCase().includes(query)
           const matchRoom = room?.name.toLowerCase().includes(query)
           const matchUser = user?.name.toLowerCase().includes(query)

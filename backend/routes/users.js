@@ -4,6 +4,25 @@ const { pool } = require("../database")
 const { authMiddleware } = require("../middleware/auth")
 const { validateUserCreate } = require("../middleware/validate")
 
+// GET /api/users/me — current authenticated user profile
+router.get("/me", authMiddleware, async (req, res) => {
+  try {
+    const result = await pool.query(
+      "SELECT id, member_id, name, department, role, username, email, email_verified, created_at FROM users WHERE id = $1",
+      [req.user.id],
+    )
+    if (result.rows.length === 0) return res.status(404).json({ error: "User not found" })
+    const u = result.rows[0]
+    res.json({
+      ...u,
+      emailVerified: Boolean(u.email_verified),
+      createdAt: u.created_at,
+    })
+  } catch (err) {
+    res.status(500).json({ error: "Server error" })
+  }
+})
+
 // GET /api/users — admin only
 router.get("/", authMiddleware, async (req, res) => {
   if (req.user.role !== "admin")
@@ -12,7 +31,13 @@ router.get("/", authMiddleware, async (req, res) => {
     const result = await pool.query(
       "SELECT id, member_id, name, department, role, username, email, email_verified, created_at FROM users ORDER BY name",
     )
-    res.json(result.rows)
+    res.json(
+      result.rows.map((u) => ({
+        ...u,
+        emailVerified: Boolean(u.email_verified),
+        createdAt: u.created_at,
+      })),
+    )
   } catch (err) {
     res.status(500).json({ error: "Server error" })
   }
@@ -31,12 +56,21 @@ router.post("/", authMiddleware, validateUserCreate, async (req, res) => {
     const id = "u" + Date.now()
     // Use email as username if username not provided
     const uname = username || email.split("@")[0]
+
+    let memberId
+    let isUnique = false
+    while (!isUnique) {
+      memberId = Math.floor(10000000 + Math.random() * 90000000).toString()
+      const check = await pool.query("SELECT id FROM users WHERE member_id = $1", [memberId])
+      if (check.rows.length === 0) isUnique = true
+    }
+
     await pool.query(
-      "INSERT INTO users (id, name, department, role, username, email, password) VALUES ($1,$2,$3,$4,$5,$6,$7)",
-      [id, name, department || "-", role || "user", uname, email.toLowerCase().trim(), hash],
+      "INSERT INTO users (id, name, department, role, username, email, password, member_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)",
+      [id, name, department || "-", role || "user", uname, email.toLowerCase().trim(), hash, memberId],
     )
     if (req.notifyClients) req.notifyClients()
-    res.status(201).json({ id, name, department, role, username: uname, email })
+    res.status(201).json({ id, member_id: memberId, name, department: department || "-", role: role || "user", username: uname, email: email.toLowerCase().trim(), emailVerified: false })
   } catch (err) {
     if (err.code === "23505")
       return res.status(409).json({ error: "Email or username already exists" })
@@ -54,7 +88,7 @@ router.put("/:id", authMiddleware, async (req, res) => {
     return res.status(400).json({ error: "Missing fields" })
 
   try {
-    const userRes = await pool.query("SELECT username, email, department, role FROM users WHERE id = $1", [req.params.id])
+    const userRes = await pool.query("SELECT username, email, department, role, email_verified, member_id FROM users WHERE id = $1", [req.params.id])
     if (userRes.rows.length === 0) return res.status(404).json({ error: "User not found" })
 
     const prevDepartment = userRes.rows[0].department
@@ -67,7 +101,8 @@ router.put("/:id", authMiddleware, async (req, res) => {
     const newEmail = email ? email.toLowerCase().trim() : userRes.rows[0].email
     const newUsername = username || userRes.rows[0].username
     // email_verified: reset to false only when email actually changes
-    const isEmailChanged = email && userRes.rows[0].email !== newEmail
+    const isEmailChanged = Boolean(email && userRes.rows[0].email !== newEmail)
+    const nextEmailVerified = isEmailChanged ? false : Boolean(userRes.rows[0].email_verified)
 
     if (password) {
       const hash = await bcrypt.hash(password, 10)
@@ -107,7 +142,17 @@ router.put("/:id", authMiddleware, async (req, res) => {
       req.notifyUser(req.params.id, "user_approved")
     }
 
-    res.json({ id: req.params.id, name, department, role, username: newUsername, email: newEmail, emailVerified: !isEmailChanged })
+    res.json({
+      id: req.params.id,
+      member_id: userRes.rows[0].member_id,
+      name,
+      department: department || "-",
+      role,
+      username: newUsername,
+      email: newEmail,
+      emailVerified: nextEmailVerified,
+      email_verified: nextEmailVerified,
+    })
   } catch (err) {
     if (err.code === "23505")
       return res.status(409).json({ error: "Email or username already exists" })
@@ -122,8 +167,28 @@ router.delete("/:id", authMiddleware, async (req, res) => {
   if (req.params.id === req.user.id)
     return res.status(400).json({ error: "Cannot delete yourself" })
   try {
+    // Delete associated bookings first to avoid foreign key violation
+    await pool.query("DELETE FROM bookings WHERE user_id = $1", [req.params.id])
     await pool.query("DELETE FROM users WHERE id = $1", [req.params.id])
     if (req.notifyClients) req.notifyClients()
+    res.json({ success: true })
+  } catch (err) {
+    res.status(500).json({ error: "Server error" })
+  }
+})
+
+// POST /api/users/:id/verify-password — verify own password (e.g. before unlocking email)
+router.post("/:id/verify-password", authMiddleware, async (req, res) => {
+  if (req.params.id !== req.user.id && req.user.role !== "admin") {
+    return res.status(403).json({ error: "Forbidden" })
+  }
+  const { password } = req.body
+  if (!password) return res.status(400).json({ error: "Missing password" })
+  try {
+    const userRes = await pool.query("SELECT password FROM users WHERE id = $1", [req.params.id])
+    if (userRes.rows.length === 0) return res.status(404).json({ error: "User not found" })
+    const match = await bcrypt.compare(password, userRes.rows[0].password)
+    if (!match) return res.status(400).json({ error: "รหัสผ่านไม่ถูกต้อง" })
     res.json({ success: true })
   } catch (err) {
     res.status(500).json({ error: "Server error" })
@@ -145,7 +210,7 @@ router.patch("/:id/password", authMiddleware, async (req, res) => {
       const userRes = await pool.query("SELECT password FROM users WHERE id = $1", [req.params.id])
       if (userRes.rows.length === 0) return res.status(404).json({ error: "User not found" })
       const match = await bcrypt.compare(oldPassword, userRes.rows[0].password)
-      if (!match) return res.status(401).json({ error: "รหัสผ่านเดิมไม่ถูกต้อง" })
+      if (!match) return res.status(400).json({ error: "รหัสผ่านเดิมไม่ถูกต้อง" })
     }
 
     const hash = await bcrypt.hash(password, 10)

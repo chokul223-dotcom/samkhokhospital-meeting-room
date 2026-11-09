@@ -8,14 +8,14 @@ import React, {
   useCallback,
 } from "react"
 import { Language, ThemeOption, User, Room, Booking } from "../types"
-import { getTranslation, translations } from "../constants/translations"
+import { getTranslation, translations, toLocalDateStr } from "../constants/translations"
 import * as api from "../services/api"
 import { API_URL, setUnauthorizedHandler } from "../services/api"
 
 // ─── Default Fallback Seed Data ────────────────────────────────────────────────
 
-const TODAY = new Date().toISOString().split("T")[0]
-const TOMORROW = new Date(Date.now() + 86400000).toISOString().split("T")[0]
+const TODAY = toLocalDateStr(new Date())
+const TOMORROW = toLocalDateStr(new Date(Date.now() + 86400000))
 
 const DEFAULT_ROOMS: Room[] = [
   {
@@ -274,10 +274,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     if (!currentUser) return
     setLoading(true)
     try {
-      const [b, r, u] = await Promise.allSettled([
+      const [b, r, u, me] = await Promise.allSettled([
         api.fetchBookings(),
         api.fetchRooms(),
         currentUser.role === "admin" ? api.fetchUsers() : Promise.resolve([]),
+        api.fetchCurrentUser(),
       ])
 
       if (b.status === "fulfilled" && Array.isArray(b.value)) {
@@ -288,6 +289,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       }
       if (u.status === "fulfilled" && Array.isArray(u.value)) {
         setUsers(u.value)
+      }
+      if (me.status === "fulfilled" && me.value && me.value.id) {
+        setCurrentUserState((prev) => {
+          if (!prev) return prev
+          const fresh = me.value
+          const changed =
+            prev.department !== fresh.department ||
+            prev.role !== fresh.role ||
+            prev.name !== fresh.name ||
+            prev.email !== fresh.email ||
+            prev.username !== fresh.username ||
+            Boolean(prev.emailVerified) !== Boolean(fresh.emailVerified) ||
+            prev.member_id !== fresh.member_id
+          if (!changed) return prev
+          const merged = { ...prev, ...fresh }
+          localStorage.setItem("user", JSON.stringify(merged))
+          return merged
+        })
       }
     } catch (err) {
       console.warn("API fetch warning, using existing cache:", err)
@@ -553,6 +572,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       // Offline fallback
     }
     setUsers((prev) => prev.filter((u) => u.id !== id))
+    setBookings((prev) => prev.filter((b) => b.userId !== id))
     showToast(t.toastUserDeleted)
   }
 

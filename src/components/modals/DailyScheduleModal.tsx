@@ -51,12 +51,10 @@ export const DailyScheduleModal: React.FC<DailyScheduleModalProps> = ({
   const getRoomStatus = (roomId: string, period: "morning" | "afternoon") => {
     const rBookings = dateBookings.filter((b) => b.roomId === roomId)
     const hasBooking = rBookings.some((b) => {
-      const startHour = parseInt(b.startTime.split(":")[0], 10)
-      const endHour = parseInt(b.endTime.split(":")[0], 10)
       if (period === "morning") {
-        return startHour < 12 // Starts in morning
+        return b.startTime < "12:00"
       } else {
-        return endHour > 12 // Ends in afternoon (or starts in afternoon)
+        return b.endTime > "12:00" || b.startTime >= "12:00"
       }
     })
     return hasBooking ? "approved" : "available"
@@ -184,7 +182,7 @@ export const DailyScheduleModal: React.FC<DailyScheduleModalProps> = ({
                       {t.morning || "เช้า"}
                     </td>
                     {availableRooms.map(room => {
-                      const mBookings = dateBookings.filter(b => b.roomId === room.id && parseInt(b.startTime.split(":")[0], 10) < 12)
+                      const mBookings = dateBookings.filter(b => b.roomId === room.id && b.startTime < "12:00")
                       return (
                         <td key={room.id} className="p-4 border-r border-slate-200 dark:border-slate-700 align-top bg-slate-50/30 dark:bg-slate-800/30">
                           {mBookings.length > 0 ? mBookings.map(b => {
@@ -193,7 +191,7 @@ export const DailyScheduleModal: React.FC<DailyScheduleModalProps> = ({
                               <div key={b.id} className="text-center space-y-1 mb-4 last:mb-0">
                                 <p className="font-bold text-slate-800 dark:text-slate-100">{b.purpose}</p>
                                 <p className="text-xs text-slate-600 dark:text-slate-400">
-                                  {t.chairman || "ประธาน"}: {formatUserName(u, language)} {formatDepartment(u?.department, u?.role, language)}
+                                  {t.chairman || "ประธาน"}: {b.chairman || `${formatUserName(u, language)} ${formatDepartment(u?.department, u?.role, language)}`}
                                 </p>
                                 <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                                   {t.time || "เวลา"} {b.startTime} - {b.endTime} น.
@@ -219,7 +217,7 @@ export const DailyScheduleModal: React.FC<DailyScheduleModalProps> = ({
                       {t.afternoon || "บ่าย"}
                     </td>
                     {availableRooms.map(room => {
-                      const aBookings = dateBookings.filter(b => b.roomId === room.id && parseInt(b.endTime.split(":")[0], 10) > 12)
+                      const aBookings = dateBookings.filter(b => b.roomId === room.id && (b.endTime > "12:00" || b.startTime >= "12:00"))
                       return (
                         <td key={room.id} className="p-4 border-r border-slate-200 dark:border-slate-700 align-top bg-slate-50/30 dark:bg-slate-800/30">
                           {aBookings.length > 0 ? aBookings.map(b => {
@@ -228,7 +226,7 @@ export const DailyScheduleModal: React.FC<DailyScheduleModalProps> = ({
                               <div key={b.id} className="text-center space-y-1 mb-4 last:mb-0">
                                 <p className="font-bold text-slate-800 dark:text-slate-100">{b.purpose}</p>
                                 <p className="text-xs text-slate-600 dark:text-slate-400">
-                                  {t.chairman || "ประธาน"}: {formatUserName(u, language)} {formatDepartment(u?.department, u?.role, language)}
+                                  {t.chairman || "ประธาน"}: {b.chairman || `${formatUserName(u, language)} ${formatDepartment(u?.department, u?.role, language)}`}
                                 </p>
                                 <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                                   {t.time || "เวลา"} {b.startTime} - {b.endTime} น.

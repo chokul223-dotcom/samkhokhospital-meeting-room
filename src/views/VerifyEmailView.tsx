@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react"
-import { CheckCircle, XCircle, Loader2, MailCheck } from "lucide-react"
+import React, { useState, useEffect, useRef } from "react"
+import { CheckCircle, XCircle, Loader2 } from "lucide-react"
 import * as api from "../services/api"
 
 interface VerifyEmailViewProps {
@@ -10,21 +10,36 @@ interface VerifyEmailViewProps {
 export const VerifyEmailView: React.FC<VerifyEmailViewProps> = ({ token, onDone }) => {
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading")
   const [message, setMessage] = useState("กำลังตรวจสอบลิงก์...")
+  const calledRef = useRef(false)
+  const onDoneRef = useRef(onDone)
+  useEffect(() => {
+    onDoneRef.current = onDone
+  }, [onDone])
 
   useEffect(() => {
+    if (calledRef.current) return
+    calledRef.current = true
+
     const verify = async () => {
       try {
         const res = await api.verifyEmail(token)
+        try {
+          const saved = localStorage.getItem("user")
+          if (saved) {
+            const parsed = JSON.parse(saved)
+            localStorage.setItem("user", JSON.stringify({ ...parsed, emailVerified: true }))
+          }
+        } catch {}
         setStatus("success")
         setMessage(res.message || "ยืนยันอีเมลสำเร็จ")
-        setTimeout(() => onDone(), 3000)
+        setTimeout(() => onDoneRef.current(), 3000)
       } catch (err: any) {
         setStatus("error")
         setMessage(err.message || "ลิงก์ยืนยันอีเมลไม่ถูกต้องหรือหมดอายุแล้ว")
       }
     }
     verify()
-  }, [token, onDone])
+  }, [token])
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4 animate-in fade-in">

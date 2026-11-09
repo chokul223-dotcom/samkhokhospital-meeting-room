@@ -25,7 +25,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ dateStr, onOpenBooki
     onOpenBookingModal?.(roomId, dateStr)
   }
 
-  const currentDate = new Date(dateStr)
+  const currentDate = new Date(dateStr + "T00:00:00")
 
   const availableRooms = rooms.filter((r) => r.status === "available")
   const dateBookings = bookings.filter((b) => b.date === dateStr && b.status === "approved")
@@ -42,12 +42,10 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ dateStr, onOpenBooki
   const getRoomStatus = (roomId: string, period: "morning" | "afternoon") => {
     const rBookings = dateBookings.filter((b) => b.roomId === roomId)
     const hasBooking = rBookings.some((b) => {
-      const startHour = parseInt(b.startTime.split(":")[0], 10)
-      const endHour = parseInt(b.endTime.split(":")[0], 10)
       if (period === "morning") {
-        return startHour < 12
+        return b.startTime < "12:00"
       } else {
-        return endHour > 12 || (startHour >= 12)
+        return b.endTime > "12:00" || b.startTime >= "12:00"
       }
     })
     return hasBooking ? "approved" : "available"
@@ -55,7 +53,16 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ dateStr, onOpenBooki
 
   // Booking card — clickable
   const BookingCard = ({ b }: { b: Booking }) => {
-    const u = users.find((u) => u.id === b.userId)
+    const u =
+      users.find((u) => u.id === b.userId) ||
+      (b.userName
+        ? { name: b.userName, department: b.userDepartment || undefined, role: b.userRole || undefined }
+        : undefined)
+    const chairmanText =
+      b.chairman ||
+      (u
+        ? `${formatUserName(u, language)} ${formatDepartment(u.department, u.role, language)}`
+        : b.contactPerson || (language === "th" ? "ไม่ระบุ" : "-"))
     return (
       <button
         type="button"
@@ -66,7 +73,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ dateStr, onOpenBooki
           {b.purpose}
         </p>
         <p className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-400">
-          {t.chairman || "ประธาน"}: {formatUserName(u, language)} {formatDepartment(u?.department, u?.role, language)}
+          {t.chairman || "ประธาน"}: {chairmanText}
         </p>
         <p className="text-[11px] sm:text-xs font-semibold text-slate-700 dark:text-slate-300">
           {t.time || "เวลา"} {b.startTime} - {b.endTime} น.
@@ -110,8 +117,8 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ dateStr, onOpenBooki
                   {availableRooms.map((room) => {
                     const morningStatus = getRoomStatus(room.id, "morning")
                     const afternoonStatus = getRoomStatus(room.id, "afternoon")
-                    const morningBookings = dateBookings.filter(b => b.roomId === room.id && parseInt(b.startTime.split(":")[0], 10) < 12)
-                    const afternoonBookings = dateBookings.filter(b => b.roomId === room.id && (parseInt(b.endTime.split(":")[0], 10) >= 12 || (parseInt(b.startTime.split(":")[0], 10) < 12 && parseInt(b.endTime.split(":")[0], 10) > 12)))
+                    const morningBookings = dateBookings.filter(b => b.roomId === room.id && b.startTime < "12:00")
+                    const afternoonBookings = dateBookings.filter(b => b.roomId === room.id && (b.endTime > "12:00" || b.startTime >= "12:00"))
 
                     return (
                       <tr key={room.id} className="hover:bg-slate-50 dark:hover:bg-[#1e293b] transition-colors">
@@ -213,7 +220,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ dateStr, onOpenBooki
                 <div className="space-y-3">
                   {availableRooms.map((room) => {
                     const mBookings = dateBookings.filter(
-                      (b) => b.roomId === room.id && parseInt(b.startTime.split(":")[0], 10) < 12,
+                      (b) => b.roomId === room.id && b.startTime < "12:00",
                     )
                     return (
                       <div key={room.id} className="rounded-xl border border-slate-200/80 dark:border-slate-700/60 p-3 space-y-2">
@@ -248,9 +255,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ dateStr, onOpenBooki
                     const aBookings = dateBookings.filter(
                       (b) =>
                         b.roomId === room.id &&
-                        (parseInt(b.endTime.split(":")[0], 10) >= 12 ||
-                          (parseInt(b.startTime.split(":")[0], 10) < 12 &&
-                            parseInt(b.endTime.split(":")[0], 10) > 12)),
+                        (b.endTime > "12:00" || b.startTime >= "12:00"),
                     )
                     return (
                       <div key={room.id} className="rounded-xl border border-slate-200/80 dark:border-slate-700/60 p-3 space-y-2">
@@ -290,7 +295,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ dateStr, onOpenBooki
                       {t.morning || "เช้า"}
                     </td>
                     {availableRooms.map(room => {
-                      const mBookings = dateBookings.filter(b => b.roomId === room.id && parseInt(b.startTime.split(":")[0], 10) < 12)
+                      const mBookings = dateBookings.filter(b => b.roomId === room.id && b.startTime < "12:00")
                       return (
                         <td key={room.id} className="p-4 border-r border-slate-200 dark:border-slate-700/50 align-top">
                           {mBookings.length > 0 ? mBookings.map(b => (
@@ -312,7 +317,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ dateStr, onOpenBooki
                       {t.afternoon || "บ่าย"}
                     </td>
                     {availableRooms.map(room => {
-                      const aBookings = dateBookings.filter(b => b.roomId === room.id && (parseInt(b.endTime.split(":")[0], 10) >= 12 || (parseInt(b.startTime.split(":")[0], 10) < 12 && parseInt(b.endTime.split(":")[0], 10) > 12)))
+                      const aBookings = dateBookings.filter(b => b.roomId === room.id && (b.endTime > "12:00" || b.startTime >= "12:00"))
 
                       return (
                         <td key={room.id} className="p-4 border-r border-slate-200 dark:border-slate-700/50 align-top">

@@ -6,13 +6,20 @@ const { authMiddleware } = require("../middleware/auth")
 router.get("/public", async (req, res) => {
   try {
     const result = await pool.query(
-      "SELECT * FROM bookings WHERE status = 'approved' ORDER BY date DESC, start_time",
+      `SELECT b.*, u.name AS user_name, u.department AS user_department, u.role AS user_role
+       FROM bookings b
+       LEFT JOIN users u ON u.id = b.user_id
+       WHERE b.status = 'approved'
+       ORDER BY b.date DESC, b.start_time`,
     )
     res.json(
       result.rows.map((b) => ({
         id: b.id,
         roomId: b.room_id,
         userId: b.user_id,
+        userName: b.user_name || null,
+        userDepartment: b.user_department || null,
+        userRole: b.user_role || null,
         date: b.date,
         startTime: b.start_time,
         endTime: b.end_time,
@@ -39,14 +46,19 @@ router.get("/", authMiddleware, async (req, res) => {
     let result
     if (req.user.role === "admin") {
       result = await pool.query(
-        "SELECT * FROM bookings ORDER BY date DESC, start_time",
+        `SELECT b.*, u.name AS user_name, u.department AS user_department, u.role AS user_role
+         FROM bookings b
+         LEFT JOIN users u ON u.id = b.user_id
+         ORDER BY b.date DESC, b.start_time`,
       )
     } else {
       result = await pool.query(
-        `SELECT * FROM bookings
-         WHERE user_id = $1
-            OR status = 'approved'
-         ORDER BY date DESC, start_time`,
+        `SELECT b.*, u.name AS user_name, u.department AS user_department, u.role AS user_role
+         FROM bookings b
+         LEFT JOIN users u ON u.id = b.user_id
+         WHERE b.user_id = $1
+            OR b.status = 'approved'
+         ORDER BY b.date DESC, b.start_time`,
         [req.user.id],
       )
     }
@@ -55,6 +67,9 @@ router.get("/", authMiddleware, async (req, res) => {
         id: b.id,
         roomId: b.room_id,
         userId: b.user_id,
+        userName: b.user_name || null,
+        userDepartment: b.user_department || null,
+        userRole: b.user_role || null,
         date: b.date,
         startTime: b.start_time,
         endTime: b.end_time,
@@ -140,7 +155,8 @@ router.post("/", authMiddleware, async (req, res) => {
     }
 
     const id = "b" + Date.now()
-    const today = new Date().toISOString().split("T")[0]
+    const now = new Date()
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`
 
     await pool.query(
       `INSERT INTO bookings (id, room_id, user_id, date, start_time, end_time, purpose, attendees, status, created_at, chairman, online_meeting, contact_person)
@@ -166,6 +182,9 @@ router.post("/", authMiddleware, async (req, res) => {
       id,
       roomId,
       userId: req.user.id,
+      userName: req.user.name || null,
+      userDepartment: req.user.department || null,
+      userRole: req.user.role || "user",
       date,
       startTime,
       endTime,

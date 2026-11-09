@@ -550,8 +550,8 @@ export const KcmhNavbar: React.FC<KcmhNavbarProps> = ({
               <button
                 onClick={() => {
                   setCurrentUser(null)
-                  setActiveTab("dashboard")
                   setMobileMenuOpen(false)
+                  navigate("/")
                 }}
                 className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-bold text-rose-300 hover:bg-rose-500/20"
               >

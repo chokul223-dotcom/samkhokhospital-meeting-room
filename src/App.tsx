@@ -318,11 +318,9 @@ function AppRoutes() {
           <VerifyEmailView
             token={new URLSearchParams(location.search).get("verify_email_token") ?? ""}
             onDone={() => {
-              window.history.replaceState({}, document.title, window.location.pathname)
               // If a user token exists in storage they were already logged in
               const hasSession = !!localStorage.getItem("token")
-              if (hasSession) window.location.reload()
-              else window.location.replace("/login")
+              window.location.replace(hasSession ? "/profile" : "/login")
             }}
           />
         }
