@@ -446,7 +446,29 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
     confirmNewPassword.length > 0 && newPassword !== confirmNewPassword
 
   const previewAvatar = deleteAvatar ? "" : avatarUrl
-  const initials = (name || currentUser?.name || "U").trim().slice(0, 2).toUpperCase()
+  const initials = (() => {
+    const cleaned = (name || currentUser?.name || "U").trim()
+    if (!cleaned) return "U"
+    try {
+      const SegmenterCtor = (Intl as any).Segmenter
+      if (SegmenterCtor) {
+        const seg = new SegmenterCtor("th", { granularity: "grapheme" })
+        const words = cleaned.split(/\s+/).filter(Boolean)
+        // For Latin multi-word names, use first letter of first two words
+        if (words.length >= 2 && /^[A-Za-z]/.test(words[0]) && /^[A-Za-z]/.test(words[1])) {
+          return (words[0][0] + words[1][0]).toUpperCase()
+        }
+        const graphemes = Array.from(seg.segment(cleaned), (s: any) => s.segment as string)
+        if (graphemes.length === 0) return "U"
+        // If first grapheme contains Thai vowels/tone marks (e.g. "ผู้"), show 1 complete cluster
+        if (graphemes[0].length > 1) return graphemes[0]
+        return graphemes.slice(0, 2).join("").toUpperCase()
+      }
+    } catch {
+      // Fallback below
+    }
+    return cleaned.slice(0, 1).toUpperCase()
+  })()
 
   return (
     <div className="max-w-4xl mx-auto space-y-5 pb-12 animate-in fade-in duration-200">
@@ -475,107 +497,152 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
           )}
         </div>
 
-        {/* Profile Overview Hero */}
-        <div className="p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center gap-4">
-          <div className="relative h-16 w-16 sm:h-[72px] sm:w-[72px] flex-none rounded-2xl overflow-hidden bg-gradient-to-br from-purple-600 to-indigo-600 border-2 border-slate-200 dark:border-slate-700 shadow-md flex items-center justify-center">
-            {previewAvatar ? (
-              <img
-                src={previewAvatar}
-                alt={name || "Avatar"}
-                className="h-full w-full object-cover"
-                onError={() => setAvatarUrl("")}
-              />
-            ) : (
-              <span className="text-lg font-black text-white tracking-wider">
-                {initials}
-              </span>
+        {/* Profile Overview Hero — Responsive Mobile & Desktop */}
+        <div className="relative p-4 sm:p-6 bg-gradient-to-br from-purple-600/[0.05] via-transparent to-indigo-600/[0.05] dark:from-purple-500/[0.12] dark:via-slate-900/40 dark:to-indigo-500/[0.08]">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            {/* Row 1 (Mobile) / Left (Desktop): Avatar + Name, Role Badge & Department side-by-side */}
+            <div className="flex items-center gap-3.5 sm:gap-4 min-w-0 flex-1">
+              <div className="relative flex-none">
+                <div className="h-16 w-16 sm:h-[72px] sm:w-[72px] rounded-2xl overflow-hidden bg-gradient-to-br from-violet-500 via-purple-600 to-indigo-600 ring-2 ring-purple-500/25 dark:ring-purple-400/35 shadow-lg shadow-purple-900/25 flex items-center justify-center">
+                  {previewAvatar ? (
+                    <img
+                      src={previewAvatar}
+                      alt={name || "Avatar"}
+                      className="h-full w-full object-cover"
+                      onError={() => setAvatarUrl("")}
+                    />
+                  ) : (
+                    <span className="text-xl sm:text-2xl font-black text-white leading-none select-none">
+                      {initials}
+                    </span>
+                  )}
+                </div>
+                <span
+                  title={
+                    currentUser?.role === "admin"
+                      ? th
+                        ? "ผู้ดูแลระบบ"
+                        : "Admin"
+                      : isPendingDepartment
+                        ? th
+                          ? "รอการตรวจสอบสิทธิ์"
+                          : "Pending Approval"
+                        : th
+                          ? "บัญชีอนุมัติแล้ว"
+                          : "Approved"
+                  }
+                  className={`absolute -bottom-1 -right-1 h-4 w-4 rounded-full ring-2 ring-white dark:ring-slate-900 ${
+                    currentUser?.role === "admin"
+                      ? "bg-purple-500"
+                      : isPendingDepartment
+                        ? "bg-amber-400"
+                        : "bg-emerald-500"
+                  }`}
+                />
+              </div>
+
+              <div className="min-w-0 flex-1 space-y-1.5">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="text-base sm:text-xl font-black text-slate-900 dark:text-white leading-tight truncate max-w-full">
+                    {name || currentUser?.name || (th ? "ผู้ใช้งาน" : "User")}
+                  </h2>
+                  <span
+                    className={`inline-flex items-center gap-1 flex-none rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
+                      currentUser?.role === "admin"
+                        ? "bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-200 border border-purple-200 dark:border-purple-700/80"
+                        : isPendingDepartment
+                          ? "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
+                          : "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
+                    }`}
+                  >
+                    {currentUser?.role === "admin" ? (
+                      <ShieldCheck className="h-3 w-3 flex-none" />
+                    ) : isPendingDepartment ? (
+                      <Clock className="h-3 w-3 flex-none" />
+                    ) : (
+                      <CheckCircle2 className="h-3 w-3 flex-none" />
+                    )}
+                    <span>
+                      {currentUser?.role === "admin"
+                        ? th
+                          ? "ผู้ดูแลระบบ"
+                          : "Admin"
+                        : isPendingDepartment
+                          ? th
+                            ? "รอการตรวจสอบสิทธิ์"
+                            : "Pending Approval"
+                          : th
+                            ? "บัญชีอนุมัติแล้ว"
+                            : "Approved Staff"}
+                    </span>
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+                  {position.trim() && (
+                    <span className="inline-flex items-center gap-1 font-medium text-slate-700 dark:text-slate-300 min-w-0">
+                      <Briefcase className="h-3.5 w-3.5 flex-none text-purple-500/75 dark:text-purple-400/80" />
+                      <span className="truncate">{position.trim()}</span>
+                    </span>
+                  )}
+                  <span className="inline-flex items-center gap-1 min-w-0">
+                    <Building2 className="h-3.5 w-3.5 flex-none text-slate-400" />
+                    <span className="truncate">
+                      {isPendingDepartment
+                        ? th
+                          ? PENDING_DEPARTMENT
+                          : "Pending Approval"
+                        : department === "อื่นๆ"
+                          ? customDepartment || "ทั่วไป"
+                          : department}
+                    </span>
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Row 2 (Mobile: full-width sleek bar) / Right (Desktop: compact pill) */}
+            {currentUser?.member_id && (
+              <div className="w-full sm:w-auto flex-none flex items-center justify-between sm:justify-start gap-3 rounded-2xl bg-slate-100/90 dark:bg-slate-800/75 border border-slate-200/90 dark:border-slate-700/80 px-3.5 py-2.5 shadow-xs">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className="flex h-9 w-9 flex-none items-center justify-center rounded-xl bg-purple-500/10 dark:bg-purple-500/20 text-purple-600 dark:text-purple-300">
+                    <Hash className="h-4 w-4" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 leading-none">
+                      {th ? "รหัสสมาชิก" : "Member ID"}
+                    </p>
+                    <p className="mt-1 text-sm font-mono font-extrabold tracking-wider text-slate-800 dark:text-slate-100 leading-none">
+                      {currentUser.member_id}
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleCopyMemberId}
+                  title={th ? "คัดลอกรหัสสมาชิก" : "Copy Member ID"}
+                  className={`flex-none inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold border transition-all active:scale-95 cursor-pointer ${
+                    copiedId
+                      ? "bg-emerald-50 dark:bg-emerald-950/60 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300"
+                      : "bg-white dark:bg-slate-700/90 border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-100 hover:text-purple-600 dark:hover:text-purple-300 hover:border-purple-300 dark:hover:border-purple-500/60"
+                  }`}
+                >
+                  {copiedId ? (
+                    <>
+                      <Check className="h-3.5 w-3.5" />
+                      <span>{th ? "คัดลอกแล้ว" : "Copied"}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-3.5 w-3.5" />
+                      <span>{th ? "คัดลอก" : "Copy"}</span>
+                    </>
+                  )}
+                </button>
+              </div>
             )}
           </div>
-
-          <div className="min-w-0 flex-1 space-y-1.5">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white truncate">
-                {name || currentUser?.name || (th ? "ผู้ใช้งาน" : "User")}
-              </h2>
-              <span
-                className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
-                  currentUser?.role === "admin"
-                    ? "bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800"
-                    : isPendingDepartment
-                      ? "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
-                      : "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
-                }`}
-              >
-                {currentUser?.role === "admin" ? (
-                  <ShieldCheck className="h-3 w-3" />
-                ) : isPendingDepartment ? (
-                  <Clock className="h-3 w-3" />
-                ) : (
-                  <CheckCircle2 className="h-3 w-3" />
-                )}
-                <span>
-                  {currentUser?.role === "admin"
-                    ? th
-                      ? "ผู้ดูแลระบบ"
-                      : "Admin"
-                    : isPendingDepartment
-                      ? th
-                        ? "รอการตรวจสอบสิทธิ์"
-                        : "Pending Approval"
-                      : th
-                        ? "บัญชีอนุมัติแล้ว"
-                        : "Approved Staff"}
-                </span>
-              </span>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
-              {position.trim() && (
-                <span className="inline-flex items-center gap-1 font-medium text-slate-700 dark:text-slate-300">
-                  <Briefcase className="h-3.5 w-3.5 text-slate-400" />
-                  <span>{position.trim()}</span>
-                </span>
-              )}
-              <span className="inline-flex items-center gap-1">
-                <Building2 className="h-3.5 w-3.5 text-slate-400" />
-                <span>
-                  {isPendingDepartment
-                    ? th
-                      ? PENDING_DEPARTMENT
-                      : "Pending Approval"
-                    : department === "อื่นๆ"
-                      ? customDepartment || "ทั่วไป"
-                      : department}
-                </span>
-              </span>
-            </div>
-          </div>
-
-          {/* Copyable Member ID Pill */}
-          {currentUser?.member_id && (
-            <div className="flex-none flex items-center gap-2 rounded-2xl bg-slate-100/90 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-3.5 py-2 self-start sm:self-center">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  {th ? "รหัสสมาชิก" : "Member ID"}
-                </p>
-                <p className="text-xs sm:text-sm font-mono font-bold tracking-wider text-slate-800 dark:text-slate-100">
-                  #{currentUser.member_id}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={handleCopyMemberId}
-                title={th ? "คัดลอกรหัสสมาชิก" : "Copy Member ID"}
-                className="flex h-8 w-8 items-center justify-center rounded-xl bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-200 hover:text-purple-600 dark:hover:text-purple-300 hover:border-purple-300 transition-colors cursor-pointer"
-              >
-                {copiedId ? (
-                  <Check className="h-3.5 w-3.5 text-emerald-500" />
-                ) : (
-                  <Copy className="h-3.5 w-3.5" />
-                )}
-              </button>
-            </div>
-          )}
         </div>
       </div>
 
