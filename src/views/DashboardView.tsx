@@ -1,8 +1,10 @@
-import React, { useState, useMemo } from "react"
+import React, { useState, useMemo, useRef, useEffect } from "react"
 import {
   Calendar as CalendarIcon,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
+  X,
   Home,
   LayoutDashboard,
   Clock,
@@ -88,6 +90,34 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [popoverDate, setPopoverDate] = useState<string | null>(null)
   const [popoverBookings, setPopoverBookings] = useState<Booking[]>([])
   const [scheduleDate, setScheduleDate] = useState<string>(todayDateStr)
+  const [openPicker, setOpenPicker] = useState<"month" | "year" | null>(null)
+  const pickerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!openPicker) return
+    const handleOutsideClick = (e: MouseEvent | TouchEvent) => {
+      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
+        setOpenPicker(null)
+      }
+    }
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpenPicker(null)
+    }
+    document.addEventListener("mousedown", handleOutsideClick)
+    document.addEventListener("touchstart", handleOutsideClick)
+    document.addEventListener("keydown", handleEsc)
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick)
+      document.removeEventListener("touchstart", handleOutsideClick)
+      document.removeEventListener("keydown", handleEsc)
+    }
+  }, [openPicker])
+
+  const yearOptions = useMemo(() => {
+    const startYear = Math.min(2024, todayYear - 2)
+    const endYear = Math.max(2029, todayYear + 3)
+    return Array.from({ length: endYear - startYear + 1 }, (_, i) => startYear + i)
+  }, [todayYear])
 
   // Quick stats calculations
   const availableRoomsCount = useMemo(
@@ -217,13 +247,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       {/* ─── 3. Main Monthly Booking Calendar Container ─── */}
-      <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xl overflow-hidden">
+      <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xl">
         {/* Calendar Title & Month Toolbar (Purple Theme) */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-[#1b0738] via-[#3b1170] to-[#6d28d9] p-4 sm:p-6 text-white border-b border-purple-900/50">
-          {/* Decorative blurs */}
-          <div className="pointer-events-none absolute -top-16 -right-10 h-56 w-56 rounded-full bg-fuchsia-400/25 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-20 left-10 h-48 w-48 rounded-full bg-indigo-400/25 blur-3xl" />
-          
+        <div
+          ref={pickerRef}
+          className="relative z-20 rounded-t-3xl bg-gradient-to-br from-[#1b0738] via-[#3b1170] to-[#6d28d9] p-4 sm:p-6 text-white border-b border-purple-900/50"
+        >
+          {/* Decorative blurs clipped cleanly inside header */}
+          <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-t-3xl">
+            <div className="absolute -top-16 -right-10 h-56 w-56 rounded-full bg-fuchsia-400/25 blur-3xl" />
+            <div className="absolute -bottom-20 left-10 h-48 w-48 rounded-full bg-indigo-400/25 blur-3xl" />
+          </div>
+
           <div className="relative z-10 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3.5 sm:gap-4">
             {/* Calendar Section Header */}
             <div className="flex items-center gap-3 sm:gap-4">
@@ -245,46 +280,68 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               {/* Prev button */}
               <button
                 type="button"
-                onClick={handlePrevMonth}
+                onClick={() => {
+                  setOpenPicker(null)
+                  handlePrevMonth()
+                }}
                 className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-xl bg-white/10 ring-1 ring-white/20 text-white hover:bg-white/20 transition-colors cursor-pointer shadow-xs backdrop-blur flex-none"
-                title="เดือนก่อนหน้า"
+                title={language === "th" ? "เดือนก่อนหน้า" : "Previous month"}
               >
                 <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5" />
               </button>
 
-              <div className="flex items-center gap-1.5 sm:gap-2 flex-1 sm:flex-initial justify-center">
-                {/* Month Selector */}
-                <select
-                  value={currentMonth}
-                  onChange={(e) => setCurrentMonth(Number(e.target.value))}
-                  className="flex-1 sm:flex-initial rounded-xl bg-white/10 ring-1 ring-white/20 px-2.5 sm:px-3 py-2 text-xs sm:text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-white/40 cursor-pointer shadow-xs backdrop-blur appearance-none text-center [&>option]:text-slate-800"
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-1 sm:flex-initial justify-center min-w-0">
+                {/* Custom Month Selector Trigger */}
+                <button
+                  type="button"
+                  onClick={() =>
+                    setOpenPicker((prev) => (prev === "month" ? null : "month"))
+                  }
+                  aria-expanded={openPicker === "month"}
+                  className={`flex-1 sm:flex-initial min-w-0 inline-flex items-center justify-center gap-1.5 rounded-xl px-2.5 sm:px-3.5 py-2 text-xs sm:text-sm font-bold text-white transition-all cursor-pointer shadow-xs backdrop-blur ${
+                    openPicker === "month"
+                      ? "bg-white/25 ring-2 ring-white/60"
+                      : "bg-white/10 hover:bg-white/20 ring-1 ring-white/20"
+                  }`}
                 >
-                  {monthNames.map((m, idx) => (
-                    <option key={idx} value={idx} className="text-slate-800">
-                      {m}
-                    </option>
-                  ))}
-                </select>
+                  <span className="truncate">{monthNames[currentMonth]}</span>
+                  <ChevronDown
+                    className={`h-3.5 w-3.5 flex-none text-purple-200 transition-transform duration-200 ${
+                      openPicker === "month" ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
 
-                {/* Year Selector */}
-                <select
-                  value={currentYear}
-                  onChange={(e) => setCurrentYear(Number(e.target.value))}
-                  className="rounded-xl bg-white/10 ring-1 ring-white/20 px-2.5 sm:px-3 py-2 text-xs sm:text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-white/40 cursor-pointer shadow-xs backdrop-blur appearance-none text-center [&>option]:text-slate-800"
+                {/* Custom Year Selector Trigger */}
+                <button
+                  type="button"
+                  onClick={() =>
+                    setOpenPicker((prev) => (prev === "year" ? null : "year"))
+                  }
+                  aria-expanded={openPicker === "year"}
+                  className={`flex-none inline-flex items-center justify-center gap-1 rounded-xl px-2.5 sm:px-3.5 py-2 text-xs sm:text-sm font-bold text-white transition-all cursor-pointer shadow-xs backdrop-blur ${
+                    openPicker === "year"
+                      ? "bg-white/25 ring-2 ring-white/60"
+                      : "bg-white/10 hover:bg-white/20 ring-1 ring-white/20"
+                  }`}
                 >
-                  {[2024, 2025, 2026, 2027, 2028, 2029].map((y) => (
-                    <option key={y} value={y} className="text-slate-800">
-                      {language === "th" ? y + 543 : y}
-                    </option>
-                  ))}
-                </select>
+                  <span>{displayYear}</span>
+                  <ChevronDown
+                    className={`h-3.5 w-3.5 flex-none text-purple-200 transition-transform duration-200 ${
+                      openPicker === "year" ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
 
                 {/* Jump to Today */}
                 {(currentYear !== todayYear || currentMonth !== todayMonth) && (
                   <button
                     type="button"
-                    onClick={handleJumpToday}
-                    className="flex h-9 sm:h-10 items-center justify-center rounded-xl bg-fuchsia-500/80 hover:bg-fuchsia-500 text-white text-xs font-bold px-3 sm:px-4 transition-colors cursor-pointer shadow-xs ring-1 ring-fuchsia-400/50 backdrop-blur"
+                    onClick={() => {
+                      setOpenPicker(null)
+                      handleJumpToday()
+                    }}
+                    className="flex-none flex h-9 sm:h-10 items-center justify-center rounded-xl bg-fuchsia-500/85 hover:bg-fuchsia-500 text-white text-xs font-bold px-2.5 sm:px-4 transition-colors cursor-pointer shadow-xs ring-1 ring-fuchsia-300/50 backdrop-blur"
                     title={language === "th" ? "เดือนปัจจุบัน" : "This Month"}
                   >
                     {language === "th" ? "วันนี้" : "Today"}
@@ -295,14 +352,134 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               {/* Next button */}
               <button
                 type="button"
-                onClick={handleNextMonth}
+                onClick={() => {
+                  setOpenPicker(null)
+                  handleNextMonth()
+                }}
                 className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-xl bg-white/10 ring-1 ring-white/20 text-white hover:bg-white/20 transition-colors cursor-pointer shadow-xs backdrop-blur flex-none"
-                title="เดือนถัดไป"
+                title={language === "th" ? "เดือนถัดไป" : "Next month"}
               >
                 <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5" />
               </button>
             </div>
           </div>
+
+          {/* ── Custom Bounded Month / Year Popover (Never overflows mobile viewport) ── */}
+          {openPicker && (
+            <div className="absolute left-3 right-3 sm:left-auto sm:right-6 top-full mt-2 z-40 sm:w-80 rounded-2xl bg-white dark:bg-[#141a2e] text-slate-900 dark:text-white border border-slate-200/90 dark:border-purple-500/30 shadow-2xl shadow-purple-950/40 p-3.5 animate-in fade-in zoom-in-95 duration-150">
+              {/* Popover Header: Month / Year Mode Tabs + Close */}
+              <div className="flex items-center justify-between gap-2 pb-2.5 mb-2.5 border-b border-slate-100 dark:border-slate-800">
+                <div className="flex items-center gap-1 rounded-xl bg-slate-100 dark:bg-slate-800/90 p-1">
+                  <button
+                    type="button"
+                    onClick={() => setOpenPicker("month")}
+                    className={`rounded-lg px-3 py-1 text-xs font-bold transition-all cursor-pointer ${
+                      openPicker === "month"
+                        ? "bg-purple-600 text-white shadow-xs"
+                        : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
+                    }`}
+                  >
+                    {language === "th" ? "เลือกเดือน" : "Month"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setOpenPicker("year")}
+                    className={`rounded-lg px-3 py-1 text-xs font-bold transition-all cursor-pointer ${
+                      openPicker === "year"
+                        ? "bg-purple-600 text-white shadow-xs"
+                        : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
+                    }`}
+                  >
+                    {language === "th" ? "เลือกปี" : "Year"}
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setOpenPicker(null)}
+                  className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-white transition-colors cursor-pointer"
+                  title={language === "th" ? "ปิด" : "Close"}
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              {/* Month Grid (3 x 4) */}
+              {openPicker === "month" ? (
+                <div className="grid grid-cols-3 gap-1.5">
+                  {monthNames.map((mName, idx) => {
+                    const isSelected = idx === currentMonth
+                    const isRealTodayMonth =
+                      idx === todayMonth && currentYear === todayYear
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => {
+                          setCurrentMonth(idx)
+                          setOpenPicker(null)
+                        }}
+                        className={`relative rounded-xl px-2 py-2.5 text-xs font-bold text-center transition-all cursor-pointer ${
+                          isSelected
+                            ? "bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-md shadow-purple-600/30"
+                            : isRealTodayMonth
+                              ? "bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 ring-1 ring-purple-400/60 hover:bg-purple-100 dark:hover:bg-purple-900/50"
+                              : "text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                        }`}
+                      >
+                        <span className="block truncate">{mName}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              ) : (
+                /* Year Grid (3 columns) */
+                <div className="grid grid-cols-3 gap-2">
+                  {yearOptions.map((y) => {
+                    const isSelected = y === currentYear
+                    const isRealTodayYear = y === todayYear
+                    return (
+                      <button
+                        key={y}
+                        type="button"
+                        onClick={() => {
+                          setCurrentYear(y)
+                          setOpenPicker(null)
+                        }}
+                        className={`rounded-xl px-2 py-2.5 text-sm font-bold text-center transition-all cursor-pointer ${
+                          isSelected
+                            ? "bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-md shadow-purple-600/30"
+                            : isRealTodayYear
+                              ? "bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 ring-1 ring-purple-400/60 hover:bg-purple-100 dark:hover:bg-purple-900/50"
+                              : "text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                        }`}
+                      >
+                        {language === "th" ? y + 543 : y}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+
+              {/* Quick Jump to Today Footer */}
+              {(currentYear !== todayYear || currentMonth !== todayMonth) && (
+                <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800 flex justify-center">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleJumpToday()
+                      setOpenPicker(null)
+                    }}
+                    className="w-full rounded-xl bg-purple-50 dark:bg-purple-950/50 hover:bg-purple-100 dark:hover:bg-purple-900/60 text-purple-700 dark:text-purple-300 py-2 text-xs font-bold transition-colors cursor-pointer"
+                  >
+                    {language === "th"
+                      ? `กลับไปเดือนปัจจุบัน (${monthNames[todayMonth]} ${todayYear + 543})`
+                      : `Back to Today (${monthNames[todayMonth]} ${todayYear})`}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* ─── 7-Column Calendar Grid ─── */}
@@ -433,7 +610,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         {/* ─── 4. Room Color Legend Bar at Bottom ─── */}
-        <div className="p-3.5 sm:p-6 bg-slate-50/70 dark:bg-slate-800/40 border-t border-slate-100 dark:border-slate-800">
+        <div className="rounded-b-3xl p-3.5 sm:p-6 bg-slate-50/70 dark:bg-slate-800/40 border-t border-slate-100 dark:border-slate-800">
           <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 md:gap-6 text-[11px] sm:text-xs font-semibold text-slate-700 dark:text-slate-300">
             {/* Filter Reset */}
             <button
