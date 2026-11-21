@@ -51,6 +51,57 @@ function getFileExtension(name) {
   return idx >= 0 ? String(name).slice(idx).toLowerCase() : ""
 }
 
+function getBangkokNowParts(now = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Bangkok",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(now)
+  const map = Object.fromEntries(parts.map((p) => [p.type, p.value]))
+  const hour = map.hour === "24" ? "00" : map.hour
+  return {
+    dateStr: `${map.year}-${map.month}-${map.day}`,
+    timeStr: `${hour}:${map.minute}`,
+  }
+}
+
+function isBookingPastBangkok(dateStr, startTime, endTime) {
+  if (!dateStr) return false
+  const { dateStr: todayStr, timeStr: nowTimeStr } = getBangkokNowParts()
+  if (dateStr < todayStr) return true
+  if (dateStr > todayStr) return false
+  const start = String(startTime || "").slice(0, 5)
+  const end = String(endTime || "").slice(0, 5)
+  // For same-day bookings (non-overnight), consider past once end time is reached
+  if (end && (!start || end > start) && nowTimeStr >= end) {
+    return true
+  }
+  return false
+}
+
+const TIME_RE = /^([01]\d|2[0-3]):([0-5]\d)$/
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
+const ALLOWED_BOOKING_STATUSES = new Set(["pending", "approved", "rejected", "cancelled"])
+
+function toMinutes(t) {
+  const [h, m] = String(t || "").slice(0, 5).split(":").map(Number)
+  return h * 60 + m
+}
+
+function timesOverlap(startA, endA, startB, endB) {
+  const aS = toMinutes(startA)
+  let aE = toMinutes(endA)
+  const bS = toMinutes(startB)
+  let bE = toMinutes(endB)
+  if (aE <= aS) aE += 24 * 60
+  if (bE <= bS) bE += 24 * 60
+  return aS < bE && bS < aE
+}
+
 async function isUserApproved(userId, role) {
   if (role === "admin") return true
   if (!userId) return false
@@ -339,9 +390,13 @@ router.post("/", authMiddleware, async (req, res) => {
     return res.status(400).json({ error: "Missing required fields" })
   }
 
-  const toMinutes = (t) => {
-    const [h, m] = t.split(":").map(Number)
-    return h * 60 + m
+  const startNorm = String(startTime).slice(0, 5)
+  const endNorm = String(endTime).slice(0, 5)
+  if (!DATE_RE.test(String(date)) || !TIME_RE.test(startNorm) || !TIME_RE.test(endNorm)) {
+    return res.status(400).json({ error: "รูปแบบวันที่หรือเวลาไม่ถูกต้อง" })
+  }
+  if (toMinutes(startNorm) >= toMinutes(endNorm)) {
+    return res.status(400).json({ error: "เวลาสิ้นสุดต้องมากกว่าเวลาเริ่มต้น" })
   }
 
   let validatedAttachments = []
@@ -378,17 +433,9 @@ router.post("/", authMiddleware, async (req, res) => {
       [roomId, date],
     )
 
-    const isConflict = allBookings.rows.some((b) => {
-      let bStart = toMinutes(b.start_time)
-      let bEnd = toMinutes(b.end_time)
-      let newStart = toMinutes(startTime)
-      let newEnd = toMinutes(endTime)
-
-      if (bEnd <= bStart) bEnd += 24 * 60
-      if (newEnd <= newStart) newEnd += 24 * 60
-
-      return newStart < bEnd && bStart < newEnd
-    })
+    const isConflict = allBookings.rows.some((b) =>
+      timesOverlap(b.start_time, b.end_time, startNorm, endNorm),
+    )
 
     if (isConflict) {
       return res.status(409).json({ error: "Time slot conflict" })
@@ -490,6 +537,19 @@ router.put("/:id", authMiddleware, async (req, res) => {
   try {
     const booking = await client.query("SELECT * FROM bookings WHERE id = $1", [req.params.id])
     if (!booking.rows[0]) return res.status(404).json({ error: "Booking not found" })
+    const existing = booking.rows[0]
+
+    const nextDate = date || existing.date
+    const nextStart = startTime ? String(startTime).slice(0, 5) : String(existing.start_time).slice(0, 5)
+    const nextEnd = endTime ? String(endTime).slice(0, 5) : String(existing.end_time).slice(0, 5)
+    if (date !== undefined && !DATE_RE.test(String(nextDate))) {
+      return res.status(400).json({ error: "รูปแบบวันที่ไม่ถูกต้อง" })
+    }
+    if ((startTime !== undefined || endTime !== undefined)) {
+      if (!TIME_RE.test(nextStart) || !TIME_RE.test(nextEnd) || toMinutes(nextStart) >= toMinutes(nextEnd)) {
+        return res.status(400).json({ error: "เวลาสิ้นสุดต้องมากกว่าเวลาเริ่มต้น" })
+      }
+    }
 
     const cleanLinks = relatedLinks ? sanitizeRelatedLinks(relatedLinks) : null
     const toRemove = Array.isArray(removeAttachmentIds) ? removeAttachmentIds.filter((x) => typeof x === "string") : []
@@ -508,6 +568,25 @@ router.put("/:id", authMiddleware, async (req, res) => {
     }
 
     await client.query("BEGIN")
+
+    // Prevent editing an approved booking into a slot that conflicts with another approved booking
+    if (existing.status === "approved" && (date || startTime || endTime)) {
+      const sameDayApproved = await client.query(
+        `SELECT id, start_time, end_time FROM bookings
+         WHERE room_id = $1 AND date = $2 AND status = 'approved' AND id != $3
+         FOR UPDATE`,
+        [existing.room_id, nextDate, req.params.id],
+      )
+      const hasApprovedConflict = sameDayApproved.rows.some((other) =>
+        timesOverlap(other.start_time, other.end_time, nextStart, nextEnd),
+      )
+      if (hasApprovedConflict) {
+        await client.query("ROLLBACK")
+        return res.status(409).json({
+          error: "ช่วงเวลาที่แก้ไขซ้อนทับกับการจองอื่นที่ได้รับอนุมัติแล้ว",
+        })
+      }
+    }
 
     await client.query(
       `UPDATE bookings SET
@@ -567,19 +646,36 @@ router.put("/:id", authMiddleware, async (req, res) => {
 // PATCH /api/bookings/:id — update status (admin approve/reject, user cancel)
 router.patch("/:id", authMiddleware, async (req, res) => {
   const { status, rejectReason } = req.body
+  if (!status || !ALLOWED_BOOKING_STATUSES.has(status)) {
+    return res.status(400).json({ error: "สถานะการจองไม่ถูกต้อง" })
+  }
+
   const client = await pool.connect()
   try {
     await client.query("BEGIN")
 
-    const booking = await client.query("SELECT * FROM bookings WHERE id = $1 FOR UPDATE", [
+    const initialRes = await client.query("SELECT id, room_id, date FROM bookings WHERE id = $1", [
       req.params.id,
     ])
-    if (!booking.rows[0]) {
+    if (!initialRes.rows[0]) {
       await client.query("ROLLBACK")
       return res.status(404).json({ error: "Booking not found" })
     }
 
-    const b = booking.rows[0]
+    // Lock all bookings for the same room & date in deterministic ID order to eliminate double-approve race conditions
+    const slotRowsRes = await client.query(
+      `SELECT * FROM bookings
+       WHERE room_id = $1 AND date = $2
+       ORDER BY id ASC
+       FOR UPDATE`,
+      [initialRes.rows[0].room_id, initialRes.rows[0].date],
+    )
+    const b = slotRowsRes.rows.find((row) => row.id === req.params.id)
+    if (!b) {
+      await client.query("ROLLBACK")
+      return res.status(404).json({ error: "Booking not found" })
+    }
+
     // User can only cancel their own bookings
     if (
       req.user.role !== "admin" &&
@@ -589,11 +685,87 @@ router.patch("/:id", authMiddleware, async (req, res) => {
       return res.status(403).json({ error: "Forbidden" })
     }
 
-    // Update the target booking status
-    if (status === "rejected" && rejectReason) {
+    // Disallow cancelling bookings whose date/time has already passed
+    if (status === "cancelled" && isBookingPastBangkok(b.date, b.start_time, b.end_time)) {
+      await client.query("ROLLBACK")
+      return res.status(400).json({
+        error: "ไม่สามารถยกเลิกการจองที่เลยวันและเวลาที่กำหนดแล้วได้",
+      })
+    }
+
+    let autoRejectedRows = []
+
+    if (status === "approved") {
+      // Guard 1: Only pending bookings may be approved (prevents stale tab re-approving an auto-rejected/cancelled booking)
+      if (b.status !== "pending") {
+        await client.query("ROLLBACK")
+        const statusMsg =
+          b.status === "approved"
+            ? "รายการจองนี้ได้รับการอนุมัติไปแล้ว"
+            : b.status === "rejected"
+              ? "ไม่สามารถอนุมัติได้ เนื่องจากรายการจองนี้ถูกปฏิเสธไปแล้ว (อาจมีผู้จองเวลาซ้อนทับได้รับการอนุมัติแล้ว)"
+              : "ไม่สามารถอนุมัติได้ เนื่องจากผู้จองได้ยกเลิกรายการนี้แล้ว"
+        return res.status(409).json({ error: statusMsg })
+      }
+
+      // Guard 2: Verify no other already-approved booking overlaps this room/date/time
+      const alreadyApprovedConflict = slotRowsRes.rows.some(
+        (other) =>
+          other.id !== b.id &&
+          other.status === "approved" &&
+          timesOverlap(other.start_time, other.end_time, b.start_time, b.end_time),
+      )
+      if (alreadyApprovedConflict) {
+        await client.query("ROLLBACK")
+        return res.status(409).json({
+          error: "ไม่สามารถอนุมัติได้ เนื่องจากช่วงเวลานี้มีรายการจองอื่นที่ได้รับการอนุมัติแล้ว",
+        })
+      }
+
+      // Approve target booking and clear any stale reject_reason
       await client.query(
-        "UPDATE bookings SET status = $1, reject_reason = $2 WHERE id = $3",
-        [status, rejectReason, req.params.id],
+        "UPDATE bookings SET status = 'approved', reject_reason = NULL WHERE id = $1",
+        [req.params.id],
+      )
+
+      // Auto-reject ALL remaining overlapping pending bookings for the same room & date
+      const overlappingPendingIds = slotRowsRes.rows
+        .filter(
+          (other) =>
+            other.id !== b.id &&
+            other.status === "pending" &&
+            timesOverlap(other.start_time, other.end_time, b.start_time, b.end_time),
+        )
+        .map((other) => other.id)
+
+      if (overlappingPendingIds.length > 0) {
+        const autoRejectReason =
+          "ระบบยกเลิกอัตโนมัติ เนื่องจากผู้ดูแลระบบได้อนุมัติการจองในช่วงเวลาดังกล่าวให้ผู้จองท่านอื่นแล้ว"
+
+        const autoRejectResult = await client.query(
+          `UPDATE bookings
+           SET status = 'rejected', reject_reason = $1
+           WHERE id = ANY($2::text[]) AND status = 'pending'
+           RETURNING id, user_id`,
+          [autoRejectReason, overlappingPendingIds],
+        )
+        autoRejectedRows = autoRejectResult.rows
+
+        if (autoRejectedRows.length > 0) {
+          console.log(
+            `[AUTO-REJECT] ✅ Rejected ${autoRejectedRows.length} conflicting bookings:`,
+            autoRejectedRows.map((r) => r.id),
+          )
+        }
+      }
+    } else if (status === "rejected") {
+      if (b.status === "cancelled") {
+        await client.query("ROLLBACK")
+        return res.status(409).json({ error: "รายการจองนี้ถูกยกเลิกไปแล้ว" })
+      }
+      await client.query(
+        "UPDATE bookings SET status = 'rejected', reject_reason = $1 WHERE id = $2",
+        [rejectReason || null, req.params.id],
       )
     } else {
       await client.query("UPDATE bookings SET status = $1 WHERE id = $2", [
@@ -602,43 +774,24 @@ router.patch("/:id", authMiddleware, async (req, res) => {
       ])
     }
 
-    // Auto-reject ALL overlapping pending bookings when an approval is made
-    if (status === "approved") {
-      const autoRejectReason = "ระบบยกเลิกอัตโนมัติเนื่องจากมีผู้จองเวลาซ้อนทับได้รับการอนุมัติแล้ว"
-
-      const autoRejectResult = await client.query(
-        `UPDATE bookings
-         SET status = 'rejected', reject_reason = $1
-         WHERE room_id = $2
-           AND date = $3
-           AND status = 'pending'
-           AND id != $4
-           AND start_time::time < $5::time
-           AND end_time::time   > $6::time
-         RETURNING id`,
-        [
-          autoRejectReason,
-          b.room_id,
-          b.date,
-          b.id,
-          b.end_time,
-          b.start_time,
-        ],
-      )
-
-      if (autoRejectResult.rows.length > 0) {
-        console.log(
-          `[AUTO-REJECT] ✅ Rejected ${autoRejectResult.rows.length} conflicting bookings:`,
-          autoRejectResult.rows.map((r) => r.id),
-        )
-      }
-    }
-
     await client.query("COMMIT")
     if (req.notifyClients) req.notifyClients()
-    res.json({ success: true })
+
+    // Send targeted real-time notification to each user whose pending booking was auto-rejected
+    if (autoRejectedRows.length > 0 && req.notifyUser) {
+      const affectedUserIds = new Set(autoRejectedRows.map((r) => r.user_id).filter(Boolean))
+      affectedUserIds.forEach((uid) => {
+        req.notifyUser(uid, "booking_auto_rejected")
+      })
+    }
+
+    res.json({
+      success: true,
+      autoRejectedCount: autoRejectedRows.length,
+      autoRejectedIds: autoRejectedRows.map((r) => r.id),
+    })
   } catch (err) {
-    await client.query("ROLLBACK")
+    await client.query("ROLLBACK").catch(() => {})
     console.error(err)
     res.status(500).json({ error: "Server error" })
   } finally {

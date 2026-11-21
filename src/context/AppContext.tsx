@@ -376,6 +376,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
             )
             // Refresh ข้อมูลเพื่ออัปเดต department และสถานะล่าสุด
             refreshData()
+          } else if (e.data === "booking_auto_rejected") {
+            showToastRef.current(
+              languageRef.current === "th"
+                ? "⚠️ คำขอจองของคุณถูกยกเลิกอัตโนมัติ เนื่องจากผู้ดูแลระบบได้อนุมัติการจองในช่วงเวลาดังกล่าวให้ผู้จองท่านอื่นแล้ว"
+                : "⚠️ Your booking request was automatically rejected because an admin approved another overlapping booking.",
+            )
+            refreshData()
           }
         }
 
@@ -457,16 +464,60 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const handleApprove = async (id: string) => {
     try {
-      await api.updateBookingStatus(id, "approved")
+      const res = await api.updateBookingStatus(id, "approved")
       // Refresh จาก backend เพื่อให้เห็น auto-reject ของรายการที่ซ้อนทับ
       await refreshData()
-    } catch {
-      // Offline fallback — optimistic update
-      setBookings((prev) =>
-        prev.map((b) => (b.id === id ? { ...b, status: "approved" } : b)),
-      )
+      if (res.autoRejectedCount && res.autoRejectedCount > 0) {
+        showToast(
+          language === "th"
+            ? `อนุมัติการจองเรียบร้อยแล้ว (ระบบยกเลิกคำขอที่ซ้อนทับอัตโนมัติ ${res.autoRejectedCount} รายการ)`
+            : `Booking approved (${res.autoRejectedCount} overlapping request(s) auto-rejected)`,
+        )
+      } else {
+        showToast(t.toastApproveSuccess)
+      }
+    } catch (err: any) {
+      const isNetworkOffline =
+        err?.message?.includes("Failed to fetch") ||
+        err?.message?.includes("NetworkError")
+      if (!isNetworkOffline) {
+        showToast(
+          err?.message ||
+            (language === "th"
+              ? "ไม่สามารถอนุมัติการจองนี้ได้"
+              : "Failed to approve booking"),
+        )
+        await refreshData()
+        return
+      }
+      // Offline fallback — optimistic update + local auto-reject of overlapping pending bookings
+      const autoReason =
+        "ระบบยกเลิกอัตโนมัติ เนื่องจากผู้ดูแลระบบได้อนุมัติการจองในช่วงเวลาดังกล่าวให้ผู้จองท่านอื่นแล้ว"
+      setBookings((prev) => {
+        const target = prev.find((b) => b.id === id)
+        if (!target) return prev
+        const toMin = (tm: string) => {
+          const [h, m] = (tm || "00:00").slice(0, 5).split(":").map(Number)
+          return h * 60 + m
+        }
+        const tS = toMin(target.startTime)
+        const tE = toMin(target.endTime)
+        return prev.map((b) => {
+          if (b.id === id) return { ...b, status: "approved", rejectReason: null }
+          if (
+            b.status === "pending" &&
+            b.roomId === target.roomId &&
+            b.date === target.date &&
+            toMin(b.startTime) < tE &&
+            toMin(b.endTime) > tS
+          ) {
+            return { ...b, status: "rejected", rejectReason: autoReason }
+          }
+          return b
+        })
+      })
+      showToast(t.toastApproveSuccess)
     }
-    showToast(t.toastApproveSuccess)
   }
 
   const handleReject = async (id: string, reason?: string) => {
@@ -474,7 +525,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       await api.updateBookingStatus(id, "rejected", reason)
       // Refresh เพื่อ sync สถานะล่าสุดจาก backend
       await refreshData()
-    } catch {
+      showToast(t.toastRejectSuccess)
+    } catch (err: any) {
+      const isNetworkOffline =
+        err?.message?.includes("Failed to fetch") ||
+        err?.message?.includes("NetworkError")
+      if (!isNetworkOffline) {
+        showToast(
+          err?.message ||
+            (language === "th"
+              ? "ไม่สามารถปฏิเสธการจองนี้ได้"
+              : "Failed to reject booking"),
+        )
+        await refreshData()
+        return
+      }
       // Offline fallback — optimistic update
       setBookings((prev) =>
         prev.map((b) =>
@@ -483,15 +548,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
             : b,
         ),
       )
+      showToast(t.toastRejectSuccess)
     }
-    showToast(t.toastRejectSuccess)
   }
 
   const handleCancel = async (id: string) => {
     try {
       await api.updateBookingStatus(id, "cancelled")
-    } catch {
-      // Offline fallback
+    } catch (err: any) {
+      const isNetworkOffline =
+        err?.message?.includes("Failed to fetch") ||
+        err?.message?.includes("NetworkError")
+      if (!isNetworkOffline) {
+        showToast(
+          err?.message ||
+            (language === "th"
+              ? "ไม่สามารถยกเลิกการจองนี้ได้"
+              : "Cannot cancel this booking"),
+        )
+        return
+      }
     }
     setBookings((prev) =>
       prev.map((b) => (b.id === id ? { ...b, status: "cancelled" } : b)),

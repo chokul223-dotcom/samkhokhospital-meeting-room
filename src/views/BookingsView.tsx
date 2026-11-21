@@ -7,6 +7,7 @@ import {
   DoorOpen,
   Users,
   Check,
+  CheckCircle2,
   X,
   Trash2,
   AlertCircle,
@@ -59,7 +60,52 @@ export const BookingsView: React.FC<BookingsViewProps> = ({
   } = useApp()
 
   const isAdmin = currentUser?.role === "admin"
-  const todayStr = toLocalDateStr(new Date())
+  const [now, setNow] = useState(() => new Date())
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 60_000)
+    return () => clearInterval(timer)
+  }, [])
+
+  const todayStr = toLocalDateStr(now)
+  const nowTimeStr = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`
+
+  const isBookingPast = (b: Booking): boolean => {
+    if (!b.date) return false
+    if (b.date < todayStr) return true
+    if (b.date > todayStr) return false
+    const start = (b.startTime || "").slice(0, 5)
+    const end = (b.endTime || "").slice(0, 5)
+    return Boolean(end && (!start || end > start) && nowTimeStr >= end)
+  }
+
+  // Detect competing pending bookings on the same room, date & overlapping time slot (for Admin warning)
+  const overlappingPendingMap = useMemo(() => {
+    const map = new Map<string, Booking[]>()
+    if (!isAdmin) return map
+    const toMins = (tm: string) => {
+      const [h, m] = (tm || "00:00").slice(0, 5).split(":").map(Number)
+      return h * 60 + m
+    }
+    const pendingList = bookings.filter((b) => b.status === "pending")
+    for (const a of pendingList) {
+      const aS = toMins(a.startTime)
+      let aE = toMins(a.endTime)
+      if (aE <= aS) aE += 24 * 60
+      const conflicts = pendingList.filter((other) => {
+        if (other.id === a.id || other.roomId !== a.roomId || other.date !== a.date) {
+          return false
+        }
+        const bS = toMins(other.startTime)
+        let bE = toMins(other.endTime)
+        if (bE <= bS) bE += 24 * 60
+        return aS < bE && bS < aE
+      })
+      if (conflicts.length > 0) {
+        map.set(a.id, conflicts)
+      }
+    }
+    return map
+  }, [bookings, isAdmin])
 
   const [statusFilter, setStatusFilter] = useState<string>(initialStatusFilter)
   useEffect(() => {
@@ -297,6 +343,8 @@ export const BookingsView: React.FC<BookingsViewProps> = ({
                 const room = rooms.find((r) => r.id === b.roomId)
                 const user = users.find((u) => u.id === b.userId)
                 const isOwn = b.userId === currentUser?.id
+                const isPast = isBookingPast(b)
+                const overlappingPending = overlappingPendingMap.get(b.id) || []
 
                 return (
                   <div
@@ -312,6 +360,16 @@ export const BookingsView: React.FC<BookingsViewProps> = ({
                             {b.purpose}
                           </h4>
                           <Badge status={b.status} />
+                          {isAdmin && overlappingPending.length > 0 && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-950/70 border border-amber-300 dark:border-amber-700/70 px-2.5 py-0.5 text-[11px] font-bold text-amber-800 dark:text-amber-300">
+                              <AlertCircle className="h-3 w-3 flex-none" />
+                              <span>
+                                {language === "th"
+                                  ? `ซ้อนทับกับคำขออื่น ${overlappingPending.length} รายการ`
+                                  : `${overlappingPending.length} overlapping pending`}
+                              </span>
+                            </span>
+                          )}
                         </div>
 
                         <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-slate-500 dark:text-slate-400">
@@ -338,6 +396,18 @@ export const BookingsView: React.FC<BookingsViewProps> = ({
                           )}
                         </div>
 
+                        {/* Overlap Warning for Admin */}
+                        {isAdmin && b.status === "pending" && overlappingPending.length > 0 && (
+                          <div className="mt-2 rounded-2xl bg-amber-50 dark:bg-amber-950/35 border border-amber-200 dark:border-amber-800/60 px-3 py-2 text-xs text-amber-800 dark:text-amber-300 flex items-start gap-2">
+                            <AlertCircle className="h-4 w-4 flex-none mt-0.5 text-amber-500" />
+                            <span>
+                              {language === "th"
+                                ? `มีคำขอจองห้องเดียวกันในช่วงเวลาซ้อนทับอีก ${overlappingPending.length} รายการ — หากอนุมัติรายการนี้ ระบบจะยกเลิกคำขอที่ซ้อนทับทั้งหมดอัตโนมัติพร้อมแจ้งเหตุผลให้ผู้จองทราบ`
+                                : `${overlappingPending.length} other pending request(s) overlap this room and time — approving this one will automatically reject them.`}
+                            </span>
+                          </div>
+                        )}
+
                         {/* Rejection Reason Notice */}
                         {b.status === "rejected" && b.rejectReason && (
                           <div className="mt-2 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 p-3 text-xs text-rose-700 dark:text-rose-300 flex items-start gap-2">
@@ -357,15 +427,32 @@ export const BookingsView: React.FC<BookingsViewProps> = ({
                         {isAdmin && b.status === "pending" && (
                           <>
                             <button
-                              onClick={(e) => { e.stopPropagation(); handleApprove(b.id) }}
-                              className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 active:scale-95 transition-all"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                if (overlappingPending.length > 0) {
+                                  onOpenConfirmModal({
+                                    title:
+                                      language === "th"
+                                        ? "ยืนยันการอนุมัติ (มีรายการซ้อนทับ)"
+                                        : "Confirm Approval (Overlapping Requests)",
+                                    message:
+                                      language === "th"
+                                        ? `มีคำขอจองห้องนี้ในช่วงเวลาที่ซ้อนทับอีก ${overlappingPending.length} รายการ หากอนุมัติรายการนี้ ระบบจะยกเลิกรายการที่ซ้อนทับทั้งหมดอัตโนมัติและแจ้งให้ผู้จองท่านอื่นทราบ ต้องการดำเนินการต่อหรือไม่?`
+                                        : `There are ${overlappingPending.length} overlapping pending request(s). Approving this booking will automatically reject them and notify those users. Continue?`,
+                                    onConfirm: () => handleApprove(b.id),
+                                  })
+                                } else {
+                                  handleApprove(b.id)
+                                }
+                              }}
+                              className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 active:scale-95 transition-all cursor-pointer"
                             >
                               <Check className="h-3.5 w-3.5" />
                               <span>{t.approve}</span>
                             </button>
                             <button
                               onClick={(e) => { e.stopPropagation(); onOpenRejectModal(b.id) }}
-                              className="flex items-center gap-1.5 rounded-xl bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 hover:bg-rose-600 hover:text-white border border-rose-200 dark:border-rose-900/60 px-3.5 py-2 text-xs font-bold transition-all"
+                              className="flex items-center gap-1.5 rounded-xl bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 hover:bg-rose-600 hover:text-white border border-rose-200 dark:border-rose-900/60 px-3.5 py-2 text-xs font-bold transition-all cursor-pointer"
                             >
                               <X className="h-3.5 w-3.5" />
                               <span>{t.reject}</span>
@@ -374,7 +461,8 @@ export const BookingsView: React.FC<BookingsViewProps> = ({
                         )}
 
                         {isOwn &&
-                          (b.status === "pending" || b.status === "approved") && (
+                          (b.status === "pending" || b.status === "approved") &&
+                          !isPast && (
                             <button
                               onClick={(e) => {
                                 e.stopPropagation()
@@ -384,12 +472,45 @@ export const BookingsView: React.FC<BookingsViewProps> = ({
                                   onConfirm: () => handleCancel(b.id),
                                 })
                               }}
-                              className="flex items-center gap-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-rose-50 dark:hover:bg-rose-950/50 hover:text-rose-600 border border-slate-200 dark:border-slate-700 px-3.5 py-2 text-xs font-bold transition-colors"
+                              className="flex items-center gap-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-rose-50 dark:hover:bg-rose-950/50 hover:text-rose-600 border border-slate-200 dark:border-slate-700 px-3.5 py-2 text-xs font-bold transition-colors cursor-pointer"
                             >
                               <X className="h-3.5 w-3.5" />
                               <span>{t.cancel}</span>
                             </button>
                           )}
+
+                        {/* Past booking read-only indicator (cannot be cancelled after date/time passed) */}
+                        {isPast && b.status === "approved" && (
+                          <span
+                            title={
+                              language === "th"
+                                ? "เลยวันและเวลาการใช้งานแล้ว ไม่สามารถยกเลิกได้"
+                                : "This booking has passed and can no longer be cancelled"
+                            }
+                            className="inline-flex items-center gap-1.5 rounded-xl bg-slate-100/90 dark:bg-slate-800/70 text-slate-500 dark:text-slate-400 border border-slate-200/80 dark:border-slate-700/70 px-3 py-2 text-xs font-semibold select-none"
+                          >
+                            <CheckCircle2 className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
+                            <span>
+                              {language === "th" ? "เสร็จสิ้นแล้ว" : "Completed"}
+                            </span>
+                          </span>
+                        )}
+
+                        {isPast && b.status === "pending" && !isAdmin && (
+                          <span
+                            title={
+                              language === "th"
+                                ? "เลยวันและเวลาที่ขอจองแล้ว"
+                                : "Booking date/time has already passed"
+                            }
+                            className="inline-flex items-center gap-1.5 rounded-xl bg-slate-100/90 dark:bg-slate-800/70 text-slate-500 dark:text-slate-400 border border-slate-200/80 dark:border-slate-700/70 px-3 py-2 text-xs font-semibold select-none"
+                          >
+                            <Clock className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
+                            <span>
+                              {language === "th" ? "เลยกำหนดแล้ว" : "Expired"}
+                            </span>
+                          </span>
+                        )}
 
                         {/* Delete button — only for cancelled bookings (own or admin) */}
                         {(isOwn || isAdmin) && b.status === "cancelled" && (
@@ -397,17 +518,17 @@ export const BookingsView: React.FC<BookingsViewProps> = ({
                             onClick={(e) => {
                               e.stopPropagation()
                               onOpenConfirmModal({
-                                title: language === 'th' ? 'ลบการจอง' : 'Delete Booking',
-                                message: language === 'th'
-                                  ? 'ต้องการลบการจองนี้ออกจากประวัติถาวรส์? ไม่สามารถย้อนกลับได้'
-                                  : 'Permanently delete this cancelled booking? This cannot be undone.',
+                                title: language === "th" ? "ลบการจอง" : "Delete Booking",
+                                message: language === "th"
+                                  ? "ต้องการลบการจองนี้ออกจากประวัติถาวรหรือไม่? ไม่สามารถย้อนกลับได้"
+                                  : "Permanently delete this cancelled booking? This cannot be undone.",
                                 onConfirm: () => handleDeleteBooking(b.id),
                               })
                             }}
-                            className="flex items-center gap-1.5 rounded-xl bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 hover:bg-rose-600 hover:text-white border border-rose-200 dark:border-rose-900/60 px-3.5 py-2 text-xs font-bold transition-all"
+                            className="flex items-center gap-1.5 rounded-xl bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 hover:bg-rose-600 hover:text-white border border-rose-200 dark:border-rose-900/60 px-3.5 py-2 text-xs font-bold transition-all cursor-pointer"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
-                            <span>{language === 'th' ? 'ลบออก' : 'Delete'}</span>
+                            <span>{language === "th" ? "ลบออก" : "Delete"}</span>
                           </button>
                         )}
                       </div>

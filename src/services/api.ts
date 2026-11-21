@@ -216,8 +216,16 @@ export async function updateBookingStatus(
   id: string,
   status: Booking["status"],
   rejectReason?: string,
-): Promise<{ success: boolean }> {
-  return request<{ success: boolean }>(`/api/bookings/${id}`, {
+): Promise<{
+  success: boolean
+  autoRejectedCount?: number
+  autoRejectedIds?: string[]
+}> {
+  return request<{
+    success: boolean
+    autoRejectedCount?: number
+    autoRejectedIds?: string[]
+  }>(`/api/bookings/${id}`, {
     method: "PATCH",
     body: JSON.stringify({ status, ...(rejectReason ? { rejectReason } : {}) }),
   })
