@@ -16,6 +16,7 @@ export interface User {
   emailVerified?: boolean
   password?: string
   createdAt?: string
+  position?: string
   gender?: string
   citizenId?: string
   phone?: string
@@ -37,6 +38,23 @@ export interface Room {
   description?: string
 }
 
+export interface BookingAttachment {
+  id: string
+  name: string
+  mimeType: string
+  size: number
+  createdAt?: string
+  /** Base64 payload used only when uploading or in offline fallback */
+  data?: string
+}
+
+export interface BookingAttachmentUpload {
+  name: string
+  mimeType: string
+  size: number
+  data: string
+}
+
 export interface Booking {
   id: string
   roomId: string
@@ -54,6 +72,7 @@ export interface Booking {
   onlineMeeting?: string
   contactPerson?: string
   relatedLinks?: { title: string; url: string }[]
+  attachments?: BookingAttachment[]
   userName?: string | null
   userDepartment?: string | null
   userRole?: Role | null
@@ -69,6 +88,11 @@ export interface LoginResponse {
     username: string
     email: string
     emailVerified: boolean
+    member_id?: string
+    position?: string
+    gender?: string
+    phone?: string
+    avatarUrl?: string
   }
   require2FA?: boolean
   userId?: string

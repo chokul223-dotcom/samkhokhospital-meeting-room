@@ -68,6 +68,24 @@ async function initDB() {
         ADD COLUMN IF NOT EXISTS related_links JSONB DEFAULT '[]'::jsonb
     `)
 
+    // Booking document attachments table (stored safely in PostgreSQL BYTEA)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS booking_attachments (
+        id TEXT PRIMARY KEY,
+        booking_id TEXT NOT NULL REFERENCES bookings(id) ON DELETE CASCADE,
+        file_name TEXT NOT NULL,
+        mime_type TEXT NOT NULL,
+        file_size INTEGER NOT NULL,
+        file_data BYTEA NOT NULL,
+        uploaded_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `)
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_booking_attachments_booking_id
+      ON booking_attachments(booking_id)
+    `)
+
     // Add image_url and description columns to rooms if they don't exist (for existing databases)
     await client.query(`
       ALTER TABLE rooms ADD COLUMN IF NOT EXISTS image_url TEXT DEFAULT NULL;
@@ -87,6 +105,15 @@ async function initDB() {
     // Add member_id column if it doesn't exist
     await client.query(`
       ALTER TABLE users ADD COLUMN IF NOT EXISTS member_id TEXT
+    `)
+
+    // Add extended profile columns if they don't exist
+    await client.query(`
+      ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS position TEXT DEFAULT NULL,
+        ADD COLUMN IF NOT EXISTS gender TEXT DEFAULT NULL,
+        ADD COLUMN IF NOT EXISTS phone TEXT DEFAULT NULL,
+        ADD COLUMN IF NOT EXISTS avatar_url TEXT DEFAULT NULL
     `)
     try {
       await client.query(`

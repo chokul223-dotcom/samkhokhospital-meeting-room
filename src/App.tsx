@@ -1,7 +1,8 @@
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom"
 import { AppProvider, useApp } from "./context/AppContext"
 import { KcmhNavbar } from "./components/layout/KcmhNavbar"
+import { KcmhSidebar } from "./components/layout/KcmhSidebar"
 import { KcmhHeroHeader } from "./components/layout/KcmhHeroHeader"
 import { KcmhFooter } from "./components/layout/KcmhFooter"
 import { Toast } from "./components/common/Toast"
@@ -17,6 +18,7 @@ import { ProfileView } from "./views/ProfileView"
 import { ResetPasswordView } from "./views/ResetPasswordView"
 import { VerifyEmailView } from "./views/VerifyEmailView"
 import { EvaluationView } from "./views/EvaluationView"
+import { EvaluationResultsView } from "./views/EvaluationResultsView"
 import { AboutView } from "./views/AboutView"
 
 import { BookingModal } from "./components/modals/BookingModal"
@@ -72,6 +74,7 @@ function MainShell() {
     "/settings": "settings",
     "/profile": "profile",
     "/evaluation": "evaluation",
+    "/evaluation-results": "evaluation-results",
     "/about": "about",
     "/login": "login",
     "/register": "register",
@@ -105,6 +108,20 @@ function MainShell() {
   }>({ open: false, title: "", message: "", onConfirm: () => {} })
 
   const [initialBookingFilter, setInitialBookingFilter] = useState("all")
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem("samkhok_sidebar_collapsed") === "true"
+    } catch {
+      return false
+    }
+  })
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("samkhok_sidebar_collapsed", String(sidebarCollapsed))
+    } catch {}
+  }, [sidebarCollapsed])
 
   const handleNavigateWithFilter = (tab: string, filter?: string) => {
     const tabToPath: Record<string, string> = {
@@ -116,6 +133,7 @@ function MainShell() {
       settings: "/settings",
       profile: "/profile",
       evaluation: "/evaluation",
+      "evaluation-results": "/evaluation-results",
       about: "/about",
       login: "/login",
       register: "/register",
@@ -135,13 +153,27 @@ function MainShell() {
   const showHeroHeader = !currentUser && ["/", "/rooms"].includes(location.pathname)
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-100/70 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors">
-      <KcmhNavbar activeTab={activeTab} setActiveTab={(tab) => handleNavigateWithFilter(tab)} />
+    <div className="min-h-screen flex bg-slate-100/70 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors">
+      <KcmhSidebar
+        activeTab={activeTab}
+        setActiveTab={(tab) => handleNavigateWithFilter(tab)}
+        collapsed={sidebarCollapsed}
+        setCollapsed={setSidebarCollapsed}
+        mobileOpen={mobileSidebarOpen}
+        setMobileOpen={setMobileSidebarOpen}
+      />
 
-      <div className="flex-1 flex flex-col max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
-        {showHeroHeader && <KcmhHeroHeader />}
+      <div className="flex-1 min-w-0 flex flex-col min-h-screen">
+        <KcmhNavbar
+          activeTab={activeTab}
+          setActiveTab={(tab) => handleNavigateWithFilter(tab)}
+          onOpenMobileMenu={() => setMobileSidebarOpen(true)}
+        />
 
-        <main className="flex-1 w-full">
+        <div className="flex-1 flex flex-col max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+          {showHeroHeader && <KcmhHeroHeader />}
+
+          <main className="flex-1 w-full">
           <Routes>
             {/* Public routes */}
             <Route
@@ -164,6 +196,14 @@ function MainShell() {
               }
             />
             <Route path="/evaluation" element={<EvaluationView />} />
+            <Route
+              path="/evaluation-results"
+              element={
+                <RequireAdmin>
+                  <EvaluationResultsView />
+                </RequireAdmin>
+              }
+            />
             <Route path="/about" element={<AboutView />} />
 
             {/* Protected routes */}
@@ -222,11 +262,12 @@ function MainShell() {
             {/* Fallback */}
             <Route path="*" element={<Navigate to={currentUser ? "/dashboard" : "/"} replace />} />
           </Routes>
-        </main>
+          </main>
 
+        </div>
+
+        <KcmhFooter />
       </div>
-
-      <KcmhFooter />
 
       {/* Global Modals */}
       {bookingModalConfig.open && (

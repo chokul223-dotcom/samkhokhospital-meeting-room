@@ -352,7 +352,7 @@ export const CookieConsentBanner: React.FC = () => {
           setPreferences((p) => ({ ...p, hasAnswered: false }))
         }}
         title={language === "th" ? "ตั้งค่าคุกกี้" : "Cookie Settings"}
-        className="fixed bottom-4 left-4 z-50 flex h-11 w-11 items-center justify-center rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl shadow-slate-900/10 dark:shadow-black/30 text-amber-600 dark:text-amber-400 hover:scale-110 active:scale-95 transition-all cursor-pointer group"
+        className="fixed bottom-4 right-4 z-50 flex h-11 w-11 items-center justify-center rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl shadow-slate-900/10 dark:shadow-black/30 text-amber-600 dark:text-amber-400 hover:scale-110 active:scale-95 transition-all cursor-pointer group"
       >
         <Cookie className="h-5 w-5 group-hover:rotate-12 transition-transform" />
       </button>

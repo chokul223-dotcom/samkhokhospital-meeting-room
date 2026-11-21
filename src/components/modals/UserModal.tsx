@@ -112,7 +112,7 @@ export const UserModal: React.FC<UserModalProps> = ({ user, onClose }) => {
         zipcode: zipcode.trim(),
         avatarUrl,
         username: username.trim(),
-        email: username.trim(),
+        email: user ? user.email || username.trim() : username.trim(),
         ...(password.trim() ? { password: password.trim() } : {}),
       })
       onClose()
@@ -159,6 +159,7 @@ export const UserModal: React.FC<UserModalProps> = ({ user, onClose }) => {
         {/* Modal Body */}
         <form
           onSubmit={handleSubmit}
+          autoComplete="off"
           className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 text-xs"
         >
           {/* Avatar Upload */}
@@ -360,6 +361,8 @@ export const UserModal: React.FC<UserModalProps> = ({ user, onClose }) => {
                   </label>
                   <input
                     type="text"
+                    name="new-user-account"
+                    autoComplete="off"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     placeholder={t.usernamePlaceholder}
@@ -380,6 +383,8 @@ export const UserModal: React.FC<UserModalProps> = ({ user, onClose }) => {
                   </label>
                   <input
                     type="password"
+                    name="new-user-password"
+                    autoComplete="new-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder={user ? "••••••••" : t.passwordPlaceholder}

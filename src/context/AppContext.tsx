@@ -7,7 +7,7 @@ import React, {
   useMemo,
   useCallback,
 } from "react"
-import { Language, ThemeOption, User, Room, Booking } from "../types"
+import { Language, ThemeOption, User, Room, Booking, BookingAttachmentUpload } from "../types"
 import { getTranslation, translations, toLocalDateStr } from "../constants/translations"
 import * as api from "../services/api"
 import { API_URL, setUnauthorizedHandler } from "../services/api"
@@ -149,12 +149,20 @@ interface AppContextType {
     chairman?: string
     onlineMeeting?: string
     contactPerson?: string
+    relatedLinks?: { title: string; url: string }[]
+    attachments?: BookingAttachmentUpload[]
   }) => Promise<void>
   handleApprove: (id: string) => Promise<void>
   handleReject: (id: string, reason?: string) => Promise<void>
   handleCancel: (id: string) => Promise<void>
   handleDeleteBooking: (id: string) => Promise<void>
-  handleUpdateBooking: (id: string, data: Partial<Booking>) => Promise<void>
+  handleUpdateBooking: (
+    id: string,
+    data: Partial<Booking> & {
+      newAttachments?: BookingAttachmentUpload[]
+      removeAttachmentIds?: string[]
+    },
+  ) => Promise<void>
   handleSaveRoom: (r: Room) => Promise<void>
   handleDeleteRoom: (id: string) => Promise<void>
   handleSaveUser: (
@@ -301,7 +309,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
             prev.email !== fresh.email ||
             prev.username !== fresh.username ||
             Boolean(prev.emailVerified) !== Boolean(fresh.emailVerified) ||
-            prev.member_id !== fresh.member_id
+            prev.member_id !== fresh.member_id ||
+            (prev.position || "") !== (fresh.position || "") ||
+            (prev.gender || "") !== (fresh.gender || "") ||
+            (prev.phone || "") !== (fresh.phone || "") ||
+            (prev.avatarUrl || "") !== (fresh.avatarUrl || "")
           if (!changed) return prev
           const merged = { ...prev, ...fresh }
           localStorage.setItem("user", JSON.stringify(merged))
@@ -399,6 +411,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     chairman?: string
     onlineMeeting?: string
     contactPerson?: string
+    relatedLinks?: { title: string; url: string }[]
+    attachments?: BookingAttachmentUpload[]
   }) => {
     try {
       const created = await api.createBooking(data)
@@ -423,6 +437,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
           chairman: data.chairman,
           onlineMeeting: data.onlineMeeting,
           contactPerson: data.contactPerson,
+          relatedLinks: data.relatedLinks || [],
+          attachments: (data.attachments || []).map((a, idx) => ({
+            id: `local_${Date.now()}_${idx}`,
+            name: a.name,
+            mimeType: a.mimeType,
+            size: a.size,
+            data: a.data,
+          })),
           createdAt: TODAY,
         }
         setBookings((prev) => [newB, ...prev])
@@ -487,14 +509,47 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     showToast(language === 'th' ? 'ลบการจองเรียบร้อยแล้ว' : 'Booking deleted')
   }
 
-  const handleUpdateBooking = async (id: string, data: Partial<Booking>) => {
+  const handleUpdateBooking = async (
+    id: string,
+    data: Partial<Booking> & {
+      newAttachments?: BookingAttachmentUpload[]
+      removeAttachmentIds?: string[]
+    },
+  ) => {
+    let updatedAttachments: Booking["attachments"] | undefined
     try {
-      await api.updateBookingDetails(id, data)
-    } catch {
-      // Offline fallback
+      const res = await api.updateBookingDetails(id, data)
+      updatedAttachments = res.attachments
+    } catch (err: any) {
+      if (
+        !err?.message?.includes("Failed to fetch") &&
+        !err?.message?.includes("NetworkError")
+      ) {
+        showToast(err?.message || (language === "th" ? "บันทึกข้อมูลไม่สำเร็จ" : "Failed to save"))
+        throw err
+      }
     }
+    const { newAttachments, removeAttachmentIds, ...bookingPatch } = data
     setBookings((prev) =>
-      prev.map((b) => (b.id === id ? { ...b, ...data } : b)),
+      prev.map((b) => {
+        if (b.id !== id) return b
+        const nextAttachments =
+          updatedAttachments !== undefined
+            ? updatedAttachments
+            : [
+                ...(b.attachments || []).filter(
+                  (a) => !(removeAttachmentIds || []).includes(a.id),
+                ),
+                ...(newAttachments || []).map((a, idx) => ({
+                  id: `local_${Date.now()}_${idx}`,
+                  name: a.name,
+                  mimeType: a.mimeType,
+                  size: a.size,
+                  data: a.data,
+                })),
+              ]
+        return { ...b, ...bookingPatch, attachments: nextAttachments }
+      }),
     )
     showToast(language === "th" ? "บันทึกข้อมูลการจองเรียบร้อย" : "Booking updated successfully")
   }
@@ -538,6 +593,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         setUsers((prev) =>
           prev.map((u) => (u.id === updated.id ? { ...u, ...updated } : u)),
         )
+        if (currentUser?.id === updated.id) {
+          setCurrentUserState((prev) => {
+            if (!prev) return prev
+            const merged = { ...prev, ...updated }
+            localStorage.setItem("user", JSON.stringify(merged))
+            return merged
+          })
+        }
       } else {
         const created = await api.createUser(userData as any)
         setUsers((prev) => [...prev, created])
@@ -596,22 +659,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   const handleUpdateProfile = async (
     userData: Partial<User> & { id: string },
   ) => {
+    let savedUser: Partial<User> = userData
+    try {
+      const serverUser = await api.updateUser(userData.id, userData as any)
+      savedUser = { ...userData, ...serverUser }
+    } catch (err: any) {
+      const isNetworkOffline =
+        err?.message?.includes("Failed to fetch") ||
+        err?.message?.includes("NetworkError")
+      if (!isNetworkOffline) {
+        // Real backend validation/conflict error (e.g. duplicate email) — do NOT fake success
+        throw err
+      }
+    }
+
     setCurrentUserState((prev) => {
       if (!prev) return null
-      const updated = { ...prev, ...userData }
+      const updated = { ...prev, ...savedUser }
       localStorage.setItem("user", JSON.stringify(updated))
       return updated
     })
 
     setUsers((prev) =>
-      prev.map((u) => (u.id === userData.id ? ({ ...u, ...userData } as User) : u)),
+      prev.map((u) => (u.id === userData.id ? ({ ...u, ...savedUser } as User) : u)),
     )
-
-    try {
-      await api.updateUser(userData.id, userData as any)
-    } catch {
-      // Offline fallback
-    }
 
     showToast(language === "th" ? "บันทึกข้อมูลส่วนตัวเรียบร้อยแล้ว" : "Profile updated successfully")
   }

@@ -4,12 +4,12 @@ import {
   User as UserIcon,
   Mail,
   Building2,
+  Briefcase,
   CreditCard,
   Phone,
   Home,
   MapPin,
   ShieldCheck,
-  Calendar,
   CheckCircle,
   Edit2,
   Clock,
@@ -68,7 +68,7 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200 select-none"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div
@@ -204,9 +204,15 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
                   </span>
                 </span>
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+              <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5 flex-wrap">
                 <Building2 className="h-3.5 w-3.5 text-slate-400" />
                 <span>{formatDepartment(user.department, user.role, language)}</span>
+                {user.position && (
+                  <>
+                    <span className="text-slate-300 dark:text-slate-600">•</span>
+                    <span className="font-medium text-slate-600 dark:text-slate-300">{user.position}</span>
+                  </>
+                )}
               </p>
             </div>
           </div>
@@ -215,17 +221,17 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
           <div className="rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden text-xs">
             <table className="w-full text-left">
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {/* Username / Email */}
+                {/* Email / Username */}
                 <tr>
                   <td className="px-3 sm:px-4 py-2.5 font-bold text-slate-600 dark:text-slate-400 bg-slate-50/70 dark:bg-slate-800/40 w-28 sm:w-36 whitespace-nowrap">
                     <span className="flex items-center gap-1.5">
                       <Mail className="h-3.5 w-3.5 text-slate-400" />
-                      <span>{language === "th" ? "อีเมล / ชื่อผู้ใช้" : "Username"}</span>
+                      <span>{language === "th" ? "อีเมล / ชื่อผู้ใช้" : "Email / Username"}</span>
                     </span>
                   </td>
                   <td className="px-3 sm:px-4 py-2.5 text-slate-800 dark:text-slate-200 font-mono font-bold break-all">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span>{user.username}</span>
+                      <span>{user.email || user.username}</span>
                       {user.emailVerified ? (
                         <span title={language === "th" ? "ยืนยันแล้ว" : "Verified"}>
                           <CheckCircle className="h-3.5 w-3.5 text-emerald-500" />
@@ -252,6 +258,19 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
                   </td>
                 </tr>
 
+                {/* Job Position */}
+                <tr>
+                  <td className="px-4 py-2.5 font-bold text-slate-600 dark:text-slate-400 bg-slate-50/70 dark:bg-slate-800/40 whitespace-nowrap">
+                    <span className="flex items-center gap-1.5">
+                      <Briefcase className="h-3.5 w-3.5 text-slate-400" />
+                      <span>{language === "th" ? "ตำแหน่งงาน" : "Position"}</span>
+                    </span>
+                  </td>
+                  <td className="px-4 py-2.5 text-slate-800 dark:text-slate-200">
+                    {user.position || "-"}
+                  </td>
+                </tr>
+
                 {/* Gender */}
                 <tr>
                   <td className="px-4 py-2.5 font-bold text-slate-600 dark:text-slate-400 bg-slate-50/70 dark:bg-slate-800/40 whitespace-nowrap">
@@ -265,25 +284,12 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
                   </td>
                 </tr>
 
-                {/* Citizen ID */}
-                <tr>
-                  <td className="px-4 py-2.5 font-bold text-slate-600 dark:text-slate-400 bg-slate-50/70 dark:bg-slate-800/40 whitespace-nowrap">
-                    <span className="flex items-center gap-1.5">
-                      <CreditCard className="h-3.5 w-3.5 text-slate-400" />
-                      <span>{language === "th" ? "เลขประชาชน" : "Citizen ID"}</span>
-                    </span>
-                  </td>
-                  <td className="px-4 py-2.5 text-slate-800 dark:text-slate-200 font-mono">
-                    {user.citizenId || "-"}
-                  </td>
-                </tr>
-
                 {/* Phone */}
                 <tr>
                   <td className="px-4 py-2.5 font-bold text-slate-600 dark:text-slate-400 bg-slate-50/70 dark:bg-slate-800/40 whitespace-nowrap">
                     <span className="flex items-center gap-1.5">
                       <Phone className="h-3.5 w-3.5 text-slate-400" />
-                      <span>{language === "th" ? "โทรศัพท์" : "Phone"}</span>
+                      <span>{language === "th" ? "โทรศัพท์ / ภายใน" : "Phone"}</span>
                     </span>
                   </td>
                   <td className="px-4 py-2.5 text-slate-800 dark:text-slate-200">
@@ -300,33 +306,50 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
                   </td>
                 </tr>
 
-                {/* Address */}
-                <tr>
-                  <td className="px-4 py-2.5 font-bold text-slate-600 dark:text-slate-400 bg-slate-50/70 dark:bg-slate-800/40 whitespace-nowrap align-top">
-                    <span className="flex items-center gap-1.5">
-                      <Home className="h-3.5 w-3.5 text-slate-400" />
-                      <span>{language === "th" ? "ที่อยู่" : "Address"}</span>
-                    </span>
-                  </td>
-                  <td className="px-4 py-2.5 text-slate-800 dark:text-slate-200">
-                    {user.address || "-"}
-                  </td>
-                </tr>
+                {/* Legacy optional fields — only shown if previously stored */}
+                {user.citizenId && (
+                  <tr>
+                    <td className="px-4 py-2.5 font-bold text-slate-600 dark:text-slate-400 bg-slate-50/70 dark:bg-slate-800/40 whitespace-nowrap">
+                      <span className="flex items-center gap-1.5">
+                        <CreditCard className="h-3.5 w-3.5 text-slate-400" />
+                        <span>{language === "th" ? "เลขประชาชน" : "Citizen ID"}</span>
+                      </span>
+                    </td>
+                    <td className="px-4 py-2.5 text-slate-800 dark:text-slate-200 font-mono">
+                      {user.citizenId}
+                    </td>
+                  </tr>
+                )}
 
-                {/* Province & Zipcode */}
-                <tr>
-                  <td className="px-4 py-2.5 font-bold text-slate-600 dark:text-slate-400 bg-slate-50/70 dark:bg-slate-800/40 whitespace-nowrap">
-                    <span className="flex items-center gap-1.5">
-                      <MapPin className="h-3.5 w-3.5 text-slate-400" />
-                      <span>{language === "th" ? "จังหวัด / รหัส" : "Province"}</span>
-                    </span>
-                  </td>
-                  <td className="px-4 py-2.5 text-slate-800 dark:text-slate-200">
-                    {user.province || "ปทุมธานี"}{" "}
-                    {user.zipcode ? `(${user.zipcode})` : ""}{" "}
-                    {user.country ? `• ${user.country}` : ""}
-                  </td>
-                </tr>
+                {user.address && (
+                  <tr>
+                    <td className="px-4 py-2.5 font-bold text-slate-600 dark:text-slate-400 bg-slate-50/70 dark:bg-slate-800/40 whitespace-nowrap align-top">
+                      <span className="flex items-center gap-1.5">
+                        <Home className="h-3.5 w-3.5 text-slate-400" />
+                        <span>{language === "th" ? "ที่อยู่" : "Address"}</span>
+                      </span>
+                    </td>
+                    <td className="px-4 py-2.5 text-slate-800 dark:text-slate-200">
+                      {user.address}
+                    </td>
+                  </tr>
+                )}
+
+                {(user.province || user.zipcode || user.country) && (
+                  <tr>
+                    <td className="px-4 py-2.5 font-bold text-slate-600 dark:text-slate-400 bg-slate-50/70 dark:bg-slate-800/40 whitespace-nowrap">
+                      <span className="flex items-center gap-1.5">
+                        <MapPin className="h-3.5 w-3.5 text-slate-400" />
+                        <span>{language === "th" ? "จังหวัด / รหัส" : "Province"}</span>
+                      </span>
+                    </td>
+                    <td className="px-4 py-2.5 text-slate-800 dark:text-slate-200">
+                      {user.province || ""}{" "}
+                      {user.zipcode ? `(${user.zipcode})` : ""}{" "}
+                      {user.country ? `• ${user.country}` : ""}
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>

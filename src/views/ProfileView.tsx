@@ -6,11 +6,8 @@ import {
   Eye,
   EyeOff,
   Building2,
-  CreditCard,
+  Briefcase,
   Phone,
-  Home,
-  Globe,
-  MapPin,
   Hash,
   Camera,
   CameraOff,
@@ -21,6 +18,15 @@ import {
   AlertCircle,
   ChevronRight,
   ArrowLeft,
+  Copy,
+  Check,
+  Send,
+  ShieldCheck,
+  KeyRound,
+  Trash2,
+  RotateCcw,
+  X,
+  Clock,
 } from "lucide-react"
 import { useApp } from "../context/AppContext"
 import { User } from "../types"
@@ -31,45 +37,98 @@ interface ProfileViewProps {
   onBack?: () => void
 }
 
-const PROVINCES = [
-  "ปทุมธานี",
-  "กรุงเทพมหานคร",
-  "นนทบุรี",
-  "พระนครศรีอยุธยา",
-  "สมุทรปราการ",
-  "สมุทรสาคร",
-  "นครปฐม",
-  "สระบุรี",
-  "ลพบุรี",
-  "สุพรรณบุรี",
-  "นครนายก",
-  "ฉะเชิงเทรา",
-  "ชลบุรี",
-]
+const MAX_AVATAR_DIMENSION = 360
+const MAX_UPLOAD_BYTES = 5 * 1024 * 1024
+
+function resizeAvatarImage(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(file)
+    const img = new Image()
+    img.onload = () => {
+      try {
+        let { width, height } = img
+        if (width > MAX_AVATAR_DIMENSION || height > MAX_AVATAR_DIMENSION) {
+          const ratio = Math.min(MAX_AVATAR_DIMENSION / width, MAX_AVATAR_DIMENSION / height)
+          width = Math.max(1, Math.round(width * ratio))
+          height = Math.max(1, Math.round(height * ratio))
+        }
+        const canvas = document.createElement("canvas")
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext("2d")
+        if (!ctx) {
+          reject(new Error("Canvas not supported"))
+          return
+        }
+        ctx.fillStyle = "#ffffff"
+        ctx.fillRect(0, 0, width, height)
+        ctx.drawImage(img, 0, 0, width, height)
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.84)
+        resolve(dataUrl)
+      } catch (err) {
+        reject(err)
+      } finally {
+        URL.revokeObjectURL(objectUrl)
+      }
+    }
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl)
+      reject(new Error("Invalid image file"))
+    }
+    img.src = objectUrl
+  })
+}
+
+function getPasswordStrength(pwd: string, th: boolean): { label: string; color: string; level: number } {
+  if (!pwd) return { label: "", color: "", level: 0 }
+  let score = 0
+  if (pwd.length >= 6) score += 1
+  if (pwd.length >= 10) score += 1
+  if (/[A-Z]/.test(pwd) && /[a-z]/.test(pwd)) score += 1
+  if (/[0-9]/.test(pwd)) score += 1
+  if (/[^A-Za-z0-9]/.test(pwd)) score += 1
+
+  if (pwd.length < 6) {
+    return {
+      label: th ? "สั้นเกินไป (อย่างน้อย 6 ตัวอักษร)" : "Too short (min 6 chars)",
+      color: "text-rose-500",
+      level: 1,
+    }
+  }
+  if (score <= 2) {
+    return {
+      label: th ? "ความปลอดภัย: พอใช้" : "Strength: Fair",
+      color: "text-amber-500",
+      level: 2,
+    }
+  }
+  if (score <= 3) {
+    return {
+      label: th ? "ความปลอดภัย: ดี" : "Strength: Good",
+      color: "text-blue-500",
+      level: 3,
+    }
+  }
+  return {
+    label: th ? "ความปลอดภัย: แข็งแรงมาก" : "Strength: Strong",
+    color: "text-emerald-500",
+    level: 4,
+  }
+}
 
 export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
   const { currentUser, language, handleUpdateProfile, showToast } = useApp()
+  const th = language === "th"
 
-  // Form state
+  // Profile form state
   const [username, setUsername] = useState("")
   const [email, setEmail] = useState("")
-  const [oldPassword, setOldPassword] = useState("")
-  const [newPassword, setNewPassword] = useState("")
-  const [showOldPassword, setShowOldPassword] = useState(false)
-  const [showNewPassword, setShowNewPassword] = useState(false)
-  const [isChangingPassword, setIsChangingPassword] = useState(false)
-
   const [name, setName] = useState("")
+  const [position, setPosition] = useState("")
   const [gender, setGender] = useState("ไม่ระบุ")
   const [department, setDepartment] = useState("ทั่วไป")
   const [customDepartment, setCustomDepartment] = useState("")
-  const [citizenId, setCitizenId] = useState("")
   const [phone, setPhone] = useState("")
-  const [address, setAddress] = useState("")
-  const [country, setCountry] = useState("ไทย")
-  const [province, setProvince] = useState("ปทุมธานี")
-  const [zipcode, setZipcode] = useState("")
-
   const [avatarUrl, setAvatarUrl] = useState<string>("")
   const [deleteAvatar, setDeleteAvatar] = useState(false)
   const [role, setRole] = useState<"admin" | "user">("user")
@@ -77,14 +136,32 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
   const [sendingVerify, setSendingVerify] = useState(false)
 
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [error, setError] = useState("")
-  const [success, setSuccess] = useState("")
+  const [profileError, setProfileError] = useState("")
+  const [profileSuccess, setProfileSuccess] = useState("")
+  const [copiedId, setCopiedId] = useState(false)
 
+  // Email unlock modal state
   const [isEmailUnlocked, setIsEmailUnlocked] = useState(false)
   const [showEmailUnlockModal, setShowEmailUnlockModal] = useState(false)
   const [unlockPassword, setUnlockPassword] = useState("")
+  const [unlockPwdEditable, setUnlockPwdEditable] = useState(false)
   const [showUnlockPassword, setShowUnlockPassword] = useState(false)
   const [unlockError, setUnlockError] = useState("")
+  const [isVerifyingUnlock, setIsVerifyingUnlock] = useState(false)
+
+  // Standalone Change Password form state
+  const [oldPassword, setOldPassword] = useState("")
+  const [newPassword, setNewPassword] = useState("")
+  const [confirmNewPassword, setConfirmNewPassword] = useState("")
+  const [showOldPassword, setShowOldPassword] = useState(false)
+  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [oldPwdEditable, setOldPwdEditable] = useState(false)
+  const [newPwdEditable, setNewPwdEditable] = useState(false)
+  const [confirmPwdEditable, setConfirmPwdEditable] = useState(false)
+  const [isChangingPassword, setIsChangingPassword] = useState(false)
+  const [pwdError, setPwdError] = useState("")
+  const [pwdSuccess, setPwdSuccess] = useState("")
 
   // ผู้ใช้ที่ยังรอแอดมินอนุมัติ — ห้ามแก้ไขแผนกเอง (แอดมินเป็นผู้กำหนดเมื่ออนุมัติ)
   const PENDING_DEPARTMENT = "รอการตรวจสอบ"
@@ -100,17 +177,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
       setUsername(currentUser.username || "")
       setEmail(currentUser.email || currentUser.username || "")
       setName(currentUser.name || "")
+      setPosition(currentUser.position || "")
       setRole(currentUser.role || "user")
       setGender(currentUser.gender || "ไม่ระบุ")
-      setCitizenId(currentUser.citizenId || "")
       setPhone(currentUser.phone || "")
-      setAddress(currentUser.address || "")
-      setCountry(currentUser.country || "ไทย")
-      setProvince(currentUser.province || "ปทุมธานี")
-      setZipcode(currentUser.zipcode || "")
       setAvatarUrl(currentUser.avatarUrl || "")
       setDeleteAvatar(false)
-      setEmailVerified(!!currentUser.emailVerified)
+      setEmailVerified(Boolean(currentUser.emailVerified))
 
       const dept = currentUser.department || "ทั่วไป"
       if (DEPARTMENTS.includes(dept)) {
@@ -123,24 +196,59 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
     }
   }, [currentUser])
 
-  // Handle avatar upload
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const normalizedSavedEmail = (currentUser?.email || "").trim().toLowerCase()
+  const normalizedInputEmail = email.trim().toLowerCase()
+  const isEmailDirty = Boolean(isEmailUnlocked && normalizedInputEmail !== normalizedSavedEmail)
+  const canSendVerifyEmail = Boolean(
+    !emailVerified &&
+      normalizedSavedEmail &&
+      normalizedInputEmail === normalizedSavedEmail,
+  )
+
+  const handleCopyMemberId = async () => {
+    if (!currentUser?.member_id) return
+    try {
+      await navigator.clipboard.writeText(currentUser.member_id)
+      setCopiedId(true)
+      showToast(th ? "คัดลอกรหัสสมาชิกแล้ว" : "Member ID copied")
+      setTimeout(() => setCopiedId(false), 1800)
+    } catch {
+      showToast(th ? "ไม่สามารถคัดลอกได้ กรุณาคัดลอกด้วยตนเอง" : "Unable to copy")
+    }
+  }
+
+  // Handle avatar upload with client-side canvas resize
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file) {
-      if (file.size > 3 * 1024 * 1024) {
-        setError(
-          language === "th"
-            ? "ขนาดไฟล์รูปภาพต้องไม่เกิน 3MB"
-            : "Image file size must be less than 3MB",
-        )
-        return
-      }
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setAvatarUrl(reader.result as string)
-        setDeleteAvatar(false)
-      }
-      reader.readAsDataURL(file)
+    e.target.value = ""
+    if (!file) return
+
+    setProfileError("")
+    if (!["image/jpeg", "image/jpg", "image/png", "image/webp"].includes(file.type)) {
+      setProfileError(
+        th
+          ? "รองรับเฉพาะไฟล์รูปภาพ JPG, PNG หรือ WEBP เท่านั้น"
+          : "Only JPG, PNG, or WEBP images are supported",
+      )
+      return
+    }
+    if (file.size > MAX_UPLOAD_BYTES) {
+      setProfileError(
+        th ? "ขนาดไฟล์รูปภาพต้องไม่เกิน 5MB" : "Image file size must be less than 5MB",
+      )
+      return
+    }
+
+    try {
+      const resized = await resizeAvatarImage(file)
+      setAvatarUrl(resized)
+      setDeleteAvatar(false)
+    } catch {
+      setProfileError(
+        th
+          ? "ไม่สามารถอ่านไฟล์รูปภาพนี้ได้ กรุณาลองเลือกไฟล์อื่น"
+          : "Could not process this image file",
+      )
     }
   }
 
@@ -149,53 +257,76 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
     setSendingVerify(true)
     try {
       const res = await api.sendVerifyEmail(currentUser.id)
-      showToast(language === "th" ? "ส่งลิงก์ยืนยันไปยังอีเมลของคุณแล้ว กรุณาตรวจสอบกล่องข้อความ" : "Verification link sent to your email")
+      showToast(
+        th
+          ? "ส่งลิงก์ยืนยันไปยังอีเมลของคุณแล้ว กรุณาตรวจสอบกล่องข้อความ"
+          : "Verification link sent to your email",
+      )
       if (res.dev_token) {
         console.log("DEV VERIFY LINK:", res.verify_link)
-        // Show alert in dev mode so user can click it if they don't have Resend API configured
-        alert(`[Dev Mode]\nไม่ได้ตั้งค่า RESEND_API_KEY\nคุณสามารถคลิกลิงก์นี้เพื่อยืนยันอีเมล:\n\n${res.verify_link}`)
+        alert(
+          `[Dev Mode]\nไม่ได้ตั้งค่า RESEND_API_KEY\nคุณสามารถคลิกลิงก์นี้เพื่อยืนยันอีเมล:\n\n${res.verify_link}`,
+        )
       }
     } catch (err: any) {
-      showToast(err.message || (language === "th" ? "ไม่สามารถส่งอีเมลยืนยันได้" : "Failed to send verification email"))
+      showToast(
+        err.message ||
+          (th ? "ไม่สามารถส่งอีเมลยืนยันได้" : "Failed to send verification email"),
+      )
     } finally {
       setSendingVerify(false)
     }
   }
 
-  const handleChangePassword = async () => {
-    if (!currentUser) return
-    if (!oldPassword) {
-      setError(language === "th" ? "กรุณาระบุรหัสผ่านเดิม" : "Please specify old password")
+  const handleVerifyUnlockEmail = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!unlockPassword) {
+      setUnlockError(th ? "กรุณากรอกรหัสผ่านของคุณ" : "Please enter your password")
       return
     }
-    if (newPassword.length < 4) {
-      setError(language === "th" ? "รหัสผ่านใหม่ต้องมีอย่างน้อย 4 ตัวอักษร" : "New password must be at least 4 characters")
-      return
-    }
+    if (!currentUser?.id) return
 
-    setError("")
-    setSuccess("")
-    setIsChangingPassword(true)
-
+    setUnlockError("")
+    setIsVerifyingUnlock(true)
     try {
-      await api.changePassword(currentUser.id, oldPassword, newPassword)
-      setSuccess(language === "th" ? "เปลี่ยนรหัสผ่านสำเร็จ" : "Password changed successfully")
-      setOldPassword("")
-      setNewPassword("")
+      await api.verifyPassword(currentUser.id, unlockPassword)
+      setIsEmailUnlocked(true)
+      setShowEmailUnlockModal(false)
+      setUnlockPassword("")
     } catch (err: any) {
-      setError(err.message || (language === "th" ? "เกิดข้อผิดพลาดในการเปลี่ยนรหัสผ่าน" : "Failed to change password"))
+      const isNetworkError =
+        err?.message?.includes("Failed to fetch") ||
+        err?.message?.includes("NetworkError")
+      setUnlockError(
+        isNetworkError
+          ? th
+            ? "ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์เพื่อตรวจสอบรหัสผ่านได้ กรุณาลองใหม่อีกครั้ง"
+            : "Cannot connect to server to verify password. Please try again."
+          : err.message || (th ? "รหัสผ่านไม่ถูกต้อง" : "Invalid password"),
+      )
     } finally {
-      setIsChangingPassword(false)
+      setIsVerifyingUnlock(false)
     }
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleCancelEmailChange = () => {
+    setIsEmailUnlocked(false)
+    setEmail(currentUser?.email || currentUser?.username || "")
+  }
+
+  const handleSubmitProfile = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError("")
-    setSuccess("")
+    setProfileError("")
+    setProfileSuccess("")
 
     if (!name.trim()) {
-      setError(language === "th" ? "กรุณาระบุ ชื่อ-นามสกุล" : "Please specify Name")
+      setProfileError(th ? "กรุณาระบุชื่อ-นามสกุล" : "Please specify your full name")
+      return
+    }
+
+    const trimmedEmail = email.trim().toLowerCase()
+    if (!trimmedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      setProfileError(th ? "รูปแบบอีเมลไม่ถูกต้อง" : "Invalid email address")
       return
     }
 
@@ -209,67 +340,126 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
     try {
       if (!currentUser) throw new Error("User not found")
 
+      const emailChanged = trimmedEmail !== normalizedSavedEmail
       const updateData: Partial<User> & { id: string } = {
         id: currentUser.id,
         name: name.trim(),
-        username: username.trim(),
-        email: email.trim().toLowerCase(),
-        ...(email.trim().toLowerCase() !== (currentUser.email || "").toLowerCase()
-          ? { emailVerified: false }
-          : {}),
+        username: username.trim() || currentUser.username,
+        email: trimmedEmail,
+        ...(emailChanged ? { emailVerified: false } : {}),
         department: finalDepartment,
+        position: position.trim(),
         gender,
-        citizenId: citizenId.trim(),
         phone: phone.trim(),
-        address: address.trim(),
-        country: country.trim(),
-        province: province.trim(),
-        zipcode: zipcode.trim(),
         role: currentUser.role === "admin" ? role : currentUser.role,
         avatarUrl: deleteAvatar ? "" : avatarUrl,
       }
 
       await handleUpdateProfile(updateData)
-      setSuccess(
-        language === "th"
-          ? "บันทึกข้อมูลส่วนตัวสำเร็จเรียบร้อยแล้ว"
-          : "Profile updated successfully",
+      setIsEmailUnlocked(false)
+      setDeleteAvatar(false)
+      setProfileSuccess(
+        emailChanged
+          ? th
+            ? "บันทึกข้อมูลและอัปเดตอีเมลใหม่เรียบร้อยแล้ว กรุณากดปุ่มยืนยันอีเมลเพื่อยืนยันที่อยู่อีเมลใหม่"
+            : "Profile and new email saved. Please verify your new email address."
+          : th
+            ? "บันทึกข้อมูลส่วนตัวเรียบร้อยแล้ว"
+            : "Profile updated successfully",
       )
     } catch (err: any) {
-      setError(err.message || (language === "th" ? "เกิดข้อผิดพลาดในการบันทึก" : "Failed to update profile"))
+      setProfileError(
+        err.message ||
+          (th ? "เกิดข้อผิดพลาดในการบันทึกข้อมูล" : "Failed to update profile"),
+      )
     } finally {
       setIsSubmitting(false)
     }
   }
 
-  return (
-    <div className="max-w-4xl mx-auto space-y-6 pb-12 animate-in fade-in duration-200 select-none">
-      {/* ─── Top Hospital Header Brand ─── */}
-      <div className="text-center pt-2 pb-1">
-        <div className="mx-auto mb-2 flex h-14 w-14 items-center justify-center rounded-full bg-white p-1 shadow-md border border-slate-200 dark:border-slate-700">
-          <img
-            src="/logo.png"
-            alt="Hospital Logo"
-            className="h-full w-full object-contain rounded-full"
-          />
-        </div>
-        <h2 className="text-sm font-bold text-slate-700 dark:text-slate-200">
-          {language === "th" ? "ระบบจองห้องประชุมออนไลน์" : "Online Meeting Room Booking System"}
-        </h2>
-      </div>
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!currentUser) return
 
-      {/* ─── Main Profile Form Card ─── */}
-      <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xl overflow-hidden">
+    setPwdError("")
+    setPwdSuccess("")
+
+    if (!oldPassword) {
+      setPwdError(th ? "กรุณาระบุรหัสผ่านเดิม" : "Please enter your current password")
+      return
+    }
+    if (newPassword.length < 6) {
+      setPwdError(
+        th
+          ? "รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร"
+          : "New password must be at least 6 characters",
+      )
+      return
+    }
+    if (newPassword === oldPassword) {
+      setPwdError(
+        th
+          ? "รหัสผ่านใหม่ต้องไม่ซ้ำกับรหัสผ่านเดิม"
+          : "New password must be different from your current password",
+      )
+      return
+    }
+    if (newPassword !== confirmNewPassword) {
+      setPwdError(
+        th
+          ? "ยืนยันรหัสผ่านใหม่ไม่ตรงกัน กรุณาตรวจสอบอีกครั้ง"
+          : "New passwords do not match",
+      )
+      return
+    }
+
+    setIsChangingPassword(true)
+    try {
+      await api.changePassword(currentUser.id, oldPassword, newPassword)
+      setPwdSuccess(
+        th ? "เปลี่ยนรหัสผ่านเรียบร้อยแล้ว" : "Password changed successfully",
+      )
+      showToast(th ? "เปลี่ยนรหัสผ่านเรียบร้อยแล้ว" : "Password changed successfully")
+      setOldPassword("")
+      setNewPassword("")
+      setConfirmNewPassword("")
+      setShowOldPassword(false)
+      setShowNewPassword(false)
+      setShowConfirmPassword(false)
+      setOldPwdEditable(false)
+      setNewPwdEditable(false)
+      setConfirmPwdEditable(false)
+    } catch (err: any) {
+      setPwdError(
+        err.message ||
+          (th ? "เกิดข้อผิดพลาดในการเปลี่ยนรหัสผ่าน" : "Failed to change password"),
+      )
+    } finally {
+      setIsChangingPassword(false)
+    }
+  }
+
+  const pwdStrength = getPasswordStrength(newPassword, th)
+  const passwordsMatch =
+    confirmNewPassword.length > 0 && newPassword === confirmNewPassword
+  const passwordsMismatch =
+    confirmNewPassword.length > 0 && newPassword !== confirmNewPassword
+
+  const previewAvatar = deleteAvatar ? "" : avatarUrl
+  const initials = (name || currentUser?.name || "U").trim().slice(0, 2).toUpperCase()
+
+  return (
+    <div className="max-w-4xl mx-auto space-y-5 pb-12 animate-in fade-in duration-200">
+      {/* ─── Top Breadcrumb & Profile Summary Card ─── */}
+      <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-lg overflow-hidden">
         {/* Breadcrumb Bar */}
-        <div className="flex items-center justify-between gap-2 px-4 sm:px-6 py-3 bg-slate-100/80 dark:bg-slate-800/80 border-b border-slate-200/80 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300">
+        <div className="flex items-center justify-between gap-2 px-4 sm:px-6 py-3 bg-slate-50/90 dark:bg-slate-800/70 border-b border-slate-200/80 dark:border-slate-700/80 text-xs font-semibold text-slate-600 dark:text-slate-300">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <UserIcon className="h-3.5 w-3.5 text-slate-500" />
-            <span>{language === "th" ? "สมาชิก" : "Members"}</span>
+            <UserIcon className="h-3.5 w-3.5 text-purple-500" />
+            <span>{th ? "บัญชีของฉัน" : "My Account"}</span>
             <ChevronRight className="h-3 w-3 text-slate-400" />
-            <span>{language === "th" ? "รายชื่อสมาชิก" : "Member List"}</span>
-            <ChevronRight className="h-3 w-3 text-slate-400" />
-            <span className="text-blue-600 dark:text-blue-400 font-bold">
-              {language === "th" ? "แก้ไข" : "Edit"}
+            <span className="text-purple-600 dark:text-purple-400 font-bold">
+              {th ? "ข้อมูลส่วนตัว" : "Profile"}
             </span>
           </div>
 
@@ -280,200 +470,346 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
               className="flex-none flex items-center gap-1 text-slate-500 hover:text-slate-800 dark:hover:text-white transition-colors cursor-pointer"
             >
               <ArrowLeft className="h-3.5 w-3.5" />
-              <span>{language === "th" ? "ย้อนกลับ" : "Back"}</span>
+              <span>{th ? "ย้อนกลับ" : "Back"}</span>
             </button>
           )}
         </div>
 
-        {/* Card Header Title */}
-        <div className="px-4 sm:px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2.5">
-          <span className="text-lg">📋</span>
-          <h3 className="text-base font-bold text-slate-900 dark:text-white">
-            {language === "th" ? "แก้ไขข้อมูลส่วนตัว" : "Edit Personal Information"}
-          </h3>
+        {/* Profile Overview Hero */}
+        <div className="p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center gap-4">
+          <div className="relative h-16 w-16 sm:h-[72px] sm:w-[72px] flex-none rounded-2xl overflow-hidden bg-gradient-to-br from-purple-600 to-indigo-600 border-2 border-slate-200 dark:border-slate-700 shadow-md flex items-center justify-center">
+            {previewAvatar ? (
+              <img
+                src={previewAvatar}
+                alt={name || "Avatar"}
+                className="h-full w-full object-cover"
+                onError={() => setAvatarUrl("")}
+              />
+            ) : (
+              <span className="text-lg font-black text-white tracking-wider">
+                {initials}
+              </span>
+            )}
+          </div>
+
+          <div className="min-w-0 flex-1 space-y-1.5">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white truncate">
+                {name || currentUser?.name || (th ? "ผู้ใช้งาน" : "User")}
+              </h2>
+              <span
+                className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
+                  currentUser?.role === "admin"
+                    ? "bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800"
+                    : isPendingDepartment
+                      ? "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
+                      : "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
+                }`}
+              >
+                {currentUser?.role === "admin" ? (
+                  <ShieldCheck className="h-3 w-3" />
+                ) : isPendingDepartment ? (
+                  <Clock className="h-3 w-3" />
+                ) : (
+                  <CheckCircle2 className="h-3 w-3" />
+                )}
+                <span>
+                  {currentUser?.role === "admin"
+                    ? th
+                      ? "ผู้ดูแลระบบ"
+                      : "Admin"
+                    : isPendingDepartment
+                      ? th
+                        ? "รอการตรวจสอบสิทธิ์"
+                        : "Pending Approval"
+                      : th
+                        ? "บัญชีอนุมัติแล้ว"
+                        : "Approved Staff"}
+                </span>
+              </span>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+              {position.trim() && (
+                <span className="inline-flex items-center gap-1 font-medium text-slate-700 dark:text-slate-300">
+                  <Briefcase className="h-3.5 w-3.5 text-slate-400" />
+                  <span>{position.trim()}</span>
+                </span>
+              )}
+              <span className="inline-flex items-center gap-1">
+                <Building2 className="h-3.5 w-3.5 text-slate-400" />
+                <span>
+                  {isPendingDepartment
+                    ? th
+                      ? PENDING_DEPARTMENT
+                      : "Pending Approval"
+                    : department === "อื่นๆ"
+                      ? customDepartment || "ทั่วไป"
+                      : department}
+                </span>
+              </span>
+            </div>
+          </div>
+
+          {/* Copyable Member ID Pill */}
+          {currentUser?.member_id && (
+            <div className="flex-none flex items-center gap-2 rounded-2xl bg-slate-100/90 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-3.5 py-2 self-start sm:self-center">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  {th ? "รหัสสมาชิก" : "Member ID"}
+                </p>
+                <p className="text-xs sm:text-sm font-mono font-bold tracking-wider text-slate-800 dark:text-slate-100">
+                  #{currentUser.member_id}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleCopyMemberId}
+                title={th ? "คัดลอกรหัสสมาชิก" : "Copy Member ID"}
+                className="flex h-8 w-8 items-center justify-center rounded-xl bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-200 hover:text-purple-600 dark:hover:text-purple-300 hover:border-purple-300 transition-colors cursor-pointer"
+              >
+                {copiedId ? (
+                  <Check className="h-3.5 w-3.5 text-emerald-500" />
+                ) : (
+                  <Copy className="h-3.5 w-3.5" />
+                )}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ─── Card 1 & 2: Account Email + Personal & Work Profile Form ─── */}
+      <form
+        onSubmit={handleSubmitProfile}
+        autoComplete="off"
+        className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-lg overflow-hidden"
+      >
+        {/* Header */}
+        <div className="px-4 sm:px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400">
+              <UserIcon className="h-4 w-4" />
+            </div>
+            <div>
+              <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white leading-tight">
+                {th ? "ข้อมูลส่วนตัวและการทำงาน" : "Personal & Work Information"}
+              </h3>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                {th
+                  ? "ข้อมูลจะถูกบันทึกในระบบและซิงก์ทุกอุปกรณ์อัตโนมัติ"
+                  : "Saved directly to the server and synced across devices"}
+              </p>
+            </div>
+          </div>
         </div>
 
-        {/* ─── Form Body ─── */}
-        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-6">
-          {/* ── Section 1: Account / Email & Password ── */}
-          <div className="space-y-4">
-            {/* Email / Username */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <span>{language === "th" ? "อีเมล / ชื่อผู้ใช้" : "Email / Username"}</span>
-                  {emailVerified ? (
-                    <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-0.5 rounded-full">
-                      <CheckCircle2 className="h-3 w-3" />
-                      {language === "th" ? "ยืนยันแล้ว" : "Verified"}
-                    </span>
-                  ) : (
-                    <span className="flex items-center gap-1 text-[10px] font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/30 px-2 py-0.5 rounded-full">
-                      <AlertCircle className="h-3 w-3" />
-                      {language === "th" ? "ยังไม่ยืนยันอีเมล" : "Unverified"}
-                    </span>
-                  )}
-                </div>
+        <div className="p-4 sm:p-6 space-y-6">
+          {/* ── Email & Verification Section ── */}
+          <div className="rounded-2xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700/70 p-4 space-y-2.5">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                {th ? "อีเมลบัญชีผู้ใช้" : "Account Email"}
               </label>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <div className="relative flex-1">
-                  <Mail className="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    readOnly={!isEmailUnlocked}
-                    className={`w-full rounded-xl border pl-10 pr-4 py-2.5 text-xs sm:text-sm font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${!isEmailUnlocked
-                      ? "bg-slate-100 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 cursor-not-allowed"
-                      : "bg-slate-50 dark:bg-slate-800 border-blue-400 dark:border-blue-500 text-slate-900 dark:text-white"
-                      }`}
-                  />
-                </div>
+              {emailVerified && !isEmailDirty ? (
+                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200/70 dark:border-emerald-800/60 px-2.5 py-0.5 rounded-full">
+                  <CheckCircle2 className="h-3 w-3" />
+                  {th ? "ยืนยันอีเมลแล้ว" : "Email Verified"}
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/30 border border-rose-200/70 dark:border-rose-800/60 px-2.5 py-0.5 rounded-full">
+                  <AlertCircle className="h-3 w-3" />
+                  {isEmailDirty
+                    ? th
+                      ? "รอบันทึกอีเมลใหม่"
+                      : "Unsaved new email"
+                    : th
+                      ? "ยังไม่ยืนยันอีเมล"
+                      : "Email Unverified"}
+                </span>
+              )}
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-2">
+              <div className="relative flex-1">
+                <Mail className="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
+                <input
+                  type={isEmailUnlocked ? "email" : "text"}
+                  name="profile-contact-email"
+                  autoComplete="off"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  readOnly={!isEmailUnlocked}
+                  className={`w-full rounded-xl border pl-10 pr-4 py-2.5 text-xs sm:text-sm font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-purple-500/25 ${
+                    !isEmailUnlocked
+                      ? "bg-slate-100 dark:bg-slate-800/70 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300"
+                      : "bg-white dark:bg-slate-900 border-purple-400 dark:border-purple-500 text-slate-900 dark:text-white"
+                  }`}
+                />
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                {canSendVerifyEmail && (
+                  <button
+                    type="button"
+                    onClick={handleSendVerifyEmail}
+                    disabled={sendingVerify}
+                    className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 text-xs font-bold shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+                  >
+                    <Send className="h-3.5 w-3.5" />
+                    <span>
+                      {sendingVerify
+                        ? th
+                          ? "กำลังส่ง..."
+                          : "Sending..."
+                        : th
+                          ? "ยืนยันอีเมล"
+                          : "Verify Email"}
+                    </span>
+                  </button>
+                )}
+
                 {!isEmailUnlocked ? (
                   <button
                     type="button"
                     onClick={() => {
                       setUnlockPassword("")
+                      setUnlockPwdEditable(false)
+                      setShowUnlockPassword(false)
                       setUnlockError("")
                       setShowEmailUnlockModal(true)
                     }}
-                    className="flex-none flex items-center justify-center rounded-xl bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 px-4 py-2.5 text-xs font-bold transition-colors cursor-pointer"
+                    className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 rounded-xl bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 px-4 py-2.5 text-xs font-bold transition-colors cursor-pointer"
                   >
-                    <Lock className="h-3.5 w-3.5 mr-1.5" />
-                    {language === "th" ? "เปลี่ยนอีเมล" : "Change Email"}
+                    <Lock className="h-3.5 w-3.5" />
+                    <span>{th ? "เปลี่ยนอีเมล" : "Change Email"}</span>
                   </button>
-                ) : !emailVerified && email === currentUser?.email && (
+                ) : (
                   <button
                     type="button"
-                    onClick={handleSendVerifyEmail}
-                    disabled={sendingVerify}
-                    className="flex-none flex items-center justify-center rounded-xl bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/40 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300 px-4 py-2.5 text-xs font-bold transition-colors cursor-pointer disabled:opacity-50"
+                    onClick={handleCancelEmailChange}
+                    className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 rounded-xl bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 px-4 py-2.5 text-xs font-bold transition-colors cursor-pointer"
                   >
-                    {sendingVerify ? "..." : (language === "th" ? "ยืนยันอีเมล" : "Verify")}
+                    <X className="h-3.5 w-3.5" />
+                    <span>{th ? "ยกเลิก" : "Cancel"}</span>
                   </button>
                 )}
               </div>
-              <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mt-1">
-                {language === "th"
-                  ? "เมื่อเปลี่ยนอีเมล คุณจะต้องทำการยืนยันอีเมลใหม่อีกครั้ง"
-                  : "If you change your email, you will need to verify it again"}
+            </div>
+
+            <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+              {isEmailDirty
+                ? th
+                  ? "กรุณากดปุ่ม \"บันทึกข้อมูลส่วนตัว\" ด้านล่างเพื่อบันทึกอีเมลใหม่ จากนั้นทำการยืนยันอีเมลใหม่อีกครั้ง"
+                  : "Click \"Save Profile\" below to save your new email, then verify it again."
+                : !emailVerified
+                  ? th
+                    ? "กดปุ่ม \"ยืนยันอีเมล\" เพื่อรับลิงก์ยืนยันตัวตนและเปิดใช้ระบบความปลอดภัย 2FA"
+                    : "Click \"Verify Email\" to confirm your email address and enable 2FA security."
+                  : th
+                    ? "เมื่อเปลี่ยนอีเมล ระบบจะขอให้คุณยืนยันอีเมลใหม่อีกครั้งเพื่อความปลอดภัย"
+                    : "Changing your email requires verifying the new address."}
+            </p>
+          </div>
+
+          {/* ── Avatar Uploader ── */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 pt-1">
+            <div className="h-24 w-24 flex-none rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800 border-2 border-dashed border-slate-300 dark:border-slate-700 flex items-center justify-center shadow-inner">
+              {deleteAvatar ? (
+                <div className="flex flex-col items-center text-slate-400">
+                  <CameraOff className="h-7 w-7 stroke-1.5" />
+                  <span className="text-[10px] mt-1 font-bold">
+                    {th ? "จะลบรูปนี้" : "Will remove"}
+                  </span>
+                </div>
+              ) : avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt="Avatar Preview"
+                  className="h-full w-full object-cover"
+                  onError={() => setAvatarUrl("")}
+                />
+              ) : (
+                <div className="flex flex-col items-center text-slate-400">
+                  <Camera className="h-7 w-7 stroke-1.5" />
+                  <span className="text-[10px] mt-1 font-semibold">
+                    {th ? "ไม่มีรูป" : "No photo"}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <div className="flex-1 space-y-2">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                {th ? "รูปโปรไฟล์สมาชิก" : "Profile Photo"}
+              </label>
+              <div className="flex flex-wrap items-center gap-2">
+                <label className="cursor-pointer inline-flex items-center gap-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all shadow-xs">
+                  <ImageIcon className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                  <span>{th ? "เลือกรูปภาพ" : "Upload Photo"}</span>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/jpg"
+                    onChange={handleAvatarChange}
+                    className="hidden"
+                  />
+                </label>
+
+                {avatarUrl && !deleteAvatar && (
+                  <button
+                    type="button"
+                    onClick={() => setDeleteAvatar(true)}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 dark:border-rose-800/70 bg-rose-50 dark:bg-rose-950/30 hover:bg-rose-100 dark:hover:bg-rose-900/40 px-3 py-2 text-xs font-bold text-rose-600 dark:text-rose-300 transition-colors cursor-pointer"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    <span>{th ? "ลบรูปโปรไฟล์" : "Remove"}</span>
+                  </button>
+                )}
+
+                {deleteAvatar && (
+                  <button
+                    type="button"
+                    onClick={() => setDeleteAvatar(false)}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 transition-colors cursor-pointer"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                    <span>{th ? "ยกเลิกการลบ" : "Restore"}</span>
+                  </button>
+                )}
+              </div>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                {th
+                  ? "รองรับไฟล์ JPG, PNG, WEBP ไม่เกิน 5MB (ระบบปรับขนาดและบีบอัดให้อัตโนมัติ)"
+                  : "Supports JPG, PNG, WEBP up to 5MB (auto-resized & optimized)"}
               </p>
-            </div>
-
-            {/* Password Row */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  {language === "th" ? "รหัสผ่านเดิม" : "Old Password"}
-                </label>
-                <div className="relative">
-                  <Lock className="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
-                  <input
-                    type={showOldPassword ? "text" : "password"}
-                    value={oldPassword}
-                    onChange={(e) => setOldPassword(e.target.value)}
-                    placeholder={
-                      language === "th"
-                        ? "รหัสผ่านเดิมของคุณ"
-                        : "Your old password"
-                    }
-                    className="w-full rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 pl-10 pr-10 py-2.5 text-xs sm:text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowOldPassword((v) => !v)}
-                    className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
-                  >
-                    {showOldPassword ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
-                  </button>
-                </div>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-                  {language === "th"
-                    ? "ถ้าต้องการเปลี่ยนรหัสผ่าน กรุณากรอกรหัสผ่านเดิม"
-                    : "To change password, please enter your old password"}
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  {language === "th" ? "รหัสผ่านใหม่" : "New Password"}
-                </label>
-                <div className="relative">
-                  <Lock className="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
-                  <input
-                    type={showNewPassword ? "text" : "password"}
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder={
-                      language === "th"
-                        ? "รหัสผ่านใหม่ (อย่างน้อย 4 ตัวอักษร)"
-                        : "New password (min 4 chars)"
-                    }
-                    className="w-full rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 pl-10 pr-10 py-2.5 text-xs sm:text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowNewPassword((v) => !v)}
-                    className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
-                  >
-                    {showNewPassword ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-end pt-1">
-              <button
-                type="button"
-                onClick={handleChangePassword}
-                disabled={isChangingPassword || !oldPassword || !newPassword}
-                className="flex items-center justify-center rounded-xl bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white px-5 py-2 text-xs font-bold transition-colors cursor-pointer disabled:opacity-50"
-              >
-                {isChangingPassword
-                  ? (language === "th" ? "กำลังเปลี่ยน..." : "Changing...")
-                  : (language === "th" ? "ยืนยันการเปลี่ยนรหัสผ่าน" : "Confirm Password Change")
-                }
-              </button>
             </div>
           </div>
 
           <hr className="border-slate-100 dark:border-slate-800" />
 
-          {/* ── Section 2: Member Details ── */}
+          {/* ── Work & Personal Details Grid (PDPA-safe) ── */}
           <div className="space-y-4">
-            <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">
-              {language === "th" ? "รายละเอียดของ สมาชิก" : "Member Details"}
-            </h4>
-
-            {/* ID, Name and Gender */}
+            {/* Row 1: Member ID, Full Name, Gender */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  {language === "th" ? "รหัสสมาชิก" : "Member ID"}
+                  {th ? "รหัสสมาชิก" : "Member ID"}
                 </label>
                 <div className="relative">
                   <Hash className="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
                   <input
                     type="text"
                     readOnly
-                    value={currentUser?.member_id || (language === "th" ? "ไม่ระบุ" : "N/A")}
-                    className="w-full rounded-xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 pl-10 pr-4 py-2.5 text-xs sm:text-sm font-bold tracking-wider text-slate-500 dark:text-slate-400 cursor-not-allowed"
+                    value={currentUser?.member_id || (th ? "ไม่ระบุ" : "N/A")}
+                    className="w-full rounded-xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 pl-10 pr-4 py-2.5 text-xs sm:text-sm font-mono font-bold tracking-wider text-slate-600 dark:text-slate-300"
                   />
                 </div>
               </div>
 
               <div className="md:col-span-2">
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  {language === "th" ? "ชื่อ นามสกุล" : "Full Name"}{" "}
+                  {th ? "ชื่อ - นามสกุล" : "Full Name"}{" "}
                   <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
@@ -484,390 +820,466 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder={
-                      language === "th" ? "เช่น พว. สมศรี ใจดี" : "e.g. John Doe"
+                      th ? "เช่น พว. สมศรี ใจดี" : "e.g. Dr. Somchai Jaidee"
                     }
-                    className="w-full rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 pl-10 pr-4 py-2.5 text-xs sm:text-sm font-medium text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    className="w-full rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 pl-10 pr-4 py-2.5 text-xs sm:text-sm font-medium text-slate-900 dark:text-white focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
                   />
                 </div>
               </div>
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  {language === "th" ? "เพศ" : "Gender"}
+                  {th ? "เพศ" : "Gender"}
                 </label>
-                <div className="relative">
-                  <span className="pointer-events-none absolute left-3.5 top-2.5 text-xs font-bold text-slate-400">
-                    #
-                  </span>
-                  <select
-                    value={gender}
-                    onChange={(e) => setGender(e.target.value)}
-                    className="w-full rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 pl-10 pr-8 py-2.5 text-xs sm:text-sm font-medium text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
-                  >
-                    <option value="ไม่ระบุ">{language === "th" ? "ไม่ระบุ" : "Not specified"}</option>
-                    <option value="ชาย">{language === "th" ? "ชาย" : "Male"}</option>
-                    <option value="หญิง">{language === "th" ? "หญิง" : "Female"}</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            {/* Department */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                {language === "th" ? "แผนก / หน่วยงาน" : "Department"}
-              </label>
-              {isDepartmentLocked ? (
-                <div>
-                  <div className="relative">
-                    <Building2 className="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
-                    <input
-                      type="text"
-                      value={language === "th" ? PENDING_DEPARTMENT : "Pending Approval"}
-                      readOnly
-                      disabled
-                      className="w-full rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/60 pl-10 pr-4 py-2.5 text-xs sm:text-sm font-semibold text-amber-700 dark:text-amber-300 cursor-not-allowed"
-                    />
-                    <Lock className="pointer-events-none absolute right-3.5 top-3 h-4 w-4 text-amber-500" />
-                  </div>
-                  <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mt-1">
-                    {language === "th"
-                      ? "แผนกจะถูกกำหนดโดยผู้ดูแลระบบเมื่อบัญชีของคุณได้รับการอนุมัติ"
-                      : "Your department will be assigned by an administrator once your account is approved"}
-                  </p>
-                </div>
-              ) : (
-              <>
-              <div className="relative">
-                <Building2 className="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
                 <select
-                  value={department}
-                  onChange={(e) => setDepartment(e.target.value)}
-                  className="w-full rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 pl-10 pr-8 py-2.5 text-xs sm:text-sm font-medium text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
+                  value={gender}
+                  onChange={(e) => setGender(e.target.value)}
+                  className="w-full rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3.5 py-2.5 text-xs sm:text-sm font-medium text-slate-900 dark:text-white focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 cursor-pointer"
                 >
-                  {DEPARTMENTS.map((dept) => (
-                    <option key={dept} value={dept}>
-                      {dept}
-                    </option>
-                  ))}
-                  <option value="อื่นๆ">{language === "th" ? "อื่นๆ (ระบุเอง)" : "Other (Custom)"}</option>
+                  <option value="ไม่ระบุ">{th ? "ไม่ระบุ" : "Not specified"}</option>
+                  <option value="ชาย">{th ? "ชาย" : "Male"}</option>
+                  <option value="หญิง">{th ? "หญิง" : "Female"}</option>
                 </select>
               </div>
-
-              {department === "อื่นๆ" && (
-                <div className="mt-2">
-                  <input
-                    type="text"
-                    value={customDepartment}
-                    onChange={(e) => setCustomDepartment(e.target.value)}
-                    placeholder={
-                      language === "th"
-                        ? "ระบุชื่อแผนกของคุณ"
-                        : "Specify your department"
-                    }
-                    className="w-full rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-xs sm:text-sm text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none"
-                  />
-                </div>
-              )}
-              </>
-              )}
             </div>
 
-            {/* Citizen ID & Phone */}
+            {/* Row 2: Position & Phone/Internal Ext */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  {language === "th" ? "เลขประจำตัวประชาชน" : "Citizen ID"}
+                  {th ? "ตำแหน่งงาน" : "Job Position"}
                 </label>
                 <div className="relative">
-                  <CreditCard className="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
+                  <Briefcase className="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
                   <input
                     type="text"
-                    maxLength={13}
-                    value={citizenId}
-                    onChange={(e) =>
-                      setCitizenId(e.target.value.replace(/[^0-9]/g, ""))
-                    }
+                    maxLength={100}
+                    value={position}
+                    onChange={(e) => setPosition(e.target.value)}
                     placeholder={
-                      language === "th" ? "เลข 13 หลัก" : "13-digit ID"
+                      th
+                        ? "เช่น พยาบาลวิชาชีพชำนาญการ, นักวิชาการคอมพิวเตอร์"
+                        : "e.g. Registered Nurse, IT Officer"
                     }
-                    className="w-full rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 pl-10 pr-4 py-2.5 text-xs sm:text-sm font-medium text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    className="w-full rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 pl-10 pr-4 py-2.5 text-xs sm:text-sm font-medium text-slate-900 dark:text-white focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
                   />
                 </div>
               </div>
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  {language === "th" ? "โทรศัพท์" : "Phone Number"}
+                  {th ? "เบอร์โทรศัพท์ / เบอร์ภายใน" : "Phone / Internal Ext."}
                 </label>
                 <div className="relative">
                   <Phone className="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
                   <input
                     type="tel"
+                    maxLength={40}
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder={
-                      language === "th" ? "เช่น 081-234-5678" : "e.g. 081-234-5678"
+                      th
+                        ? "เช่น 081-234-5678 หรือ ต่อ 1234"
+                        : "e.g. 081-234-5678 or Ext. 1234"
                     }
-                    className="w-full rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 pl-10 pr-4 py-2.5 text-xs sm:text-sm font-medium text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    className="w-full rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 pl-10 pr-4 py-2.5 text-xs sm:text-sm font-medium text-slate-900 dark:text-white focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
                   />
                 </div>
               </div>
             </div>
 
-            {/* Address */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                {language === "th" ? "ที่อยู่" : "Address"}
-              </label>
-              <div className="relative">
-                <Home className="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
-                <input
-                  type="text"
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  placeholder={
-                    language === "th"
-                      ? "บ้านเลขที่ ถนน ตำบล/แขวง อำเภอ/เขต"
-                      : "Address details"
-                  }
-                  className="w-full rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 pl-10 pr-4 py-2.5 text-xs sm:text-sm font-medium text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                />
-              </div>
-            </div>
-
-            {/* Country, Province, Zipcode */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* Row 3: Department & Member Role */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  {language === "th" ? "ประเทศ" : "Country"}
+                  {th ? "แผนก / หน่วยงาน" : "Department"}
                 </label>
-                <div className="relative">
-                  <Globe className="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
-                  <input
-                    type="text"
-                    value={country}
-                    onChange={(e) => setCountry(e.target.value)}
-                    placeholder="ไทย"
-                    className="w-full rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 pl-10 pr-4 py-2.5 text-xs sm:text-sm font-medium text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                  />
-                </div>
+                {isDepartmentLocked ? (
+                  <div>
+                    <div className="relative">
+                      <Building2 className="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-amber-500" />
+                      <input
+                        type="text"
+                        value={th ? PENDING_DEPARTMENT : "Pending Approval"}
+                        readOnly
+                        disabled
+                        className="w-full rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/60 pl-10 pr-10 py-2.5 text-xs sm:text-sm font-semibold text-amber-700 dark:text-amber-300 cursor-not-allowed"
+                      />
+                      <Lock className="pointer-events-none absolute right-3.5 top-3 h-4 w-4 text-amber-500" />
+                    </div>
+                    <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mt-1">
+                      {th
+                        ? "แผนกจะถูกกำหนดโดยผู้ดูแลระบบเมื่อบัญชีของคุณได้รับการอนุมัติ"
+                        : "Assigned by an administrator once your account is approved"}
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="relative">
+                      <Building2 className="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
+                      <select
+                        value={department}
+                        onChange={(e) => setDepartment(e.target.value)}
+                        className="w-full rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 pl-10 pr-8 py-2.5 text-xs sm:text-sm font-medium text-slate-900 dark:text-white focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20 cursor-pointer"
+                      >
+                        {DEPARTMENTS.map((dept) => (
+                          <option key={dept} value={dept}>
+                            {dept}
+                          </option>
+                        ))}
+                        <option value="อื่นๆ">
+                          {th ? "อื่นๆ (ระบุเอง)" : "Other (Custom)"}
+                        </option>
+                      </select>
+                    </div>
+
+                    {department === "อื่นๆ" && (
+                      <div className="mt-2">
+                        <input
+                          type="text"
+                          value={customDepartment}
+                          onChange={(e) => setCustomDepartment(e.target.value)}
+                          placeholder={
+                            th ? "ระบุชื่อแผนกของคุณ" : "Specify your department"
+                          }
+                          className="w-full rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-xs sm:text-sm text-slate-900 dark:text-white focus:border-purple-500 focus:outline-none"
+                        />
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  {language === "th" ? "จังหวัด" : "Province"}
+                  {th ? "สถานะสมาชิก" : "Member Role"}
                 </label>
                 <div className="relative">
-                  <MapPin className="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
+                  <Star className="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-amber-500" />
                   <select
-                    value={province}
-                    onChange={(e) => setProvince(e.target.value)}
-                    className="w-full rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 pl-10 pr-8 py-2.5 text-xs sm:text-sm font-medium text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
+                    value={role}
+                    disabled={currentUser?.role !== "admin"}
+                    onChange={(e) => setRole(e.target.value as "admin" | "user")}
+                    className={`w-full rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 pl-10 pr-8 py-2.5 text-xs sm:text-sm font-medium text-slate-900 dark:text-white ${
+                      currentUser?.role !== "admin"
+                        ? "cursor-not-allowed opacity-75"
+                        : "cursor-pointer focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                    }`}
                   >
-                    {PROVINCES.map((p) => (
-                      <option key={p} value={p}>
-                        {p}
-                      </option>
-                    ))}
+                    <option value="user">
+                      {th ? "สมาชิก (บุคลากรทั่วไป)" : "Member (Staff)"}
+                    </option>
+                    <option value="admin">
+                      {th ? "ผู้ดูแลระบบ (Admin)" : "Administrator (Admin)"}
+                    </option>
                   </select>
                 </div>
               </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  {language === "th" ? "รหัสไปรษณีย์" : "Zipcode"}
-                </label>
-                <div className="relative">
-                  <Hash className="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
-                  <input
-                    type="text"
-                    maxLength={5}
-                    value={zipcode}
-                    onChange={(e) =>
-                      setZipcode(e.target.value.replace(/[^0-9]/g, ""))
-                    }
-                    placeholder="12160"
-                    className="w-full rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 pl-10 pr-4 py-2.5 text-xs sm:text-sm font-medium text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Avatar Section */}
-            <div className="pt-2 space-y-3">
-              {/* Checkbox: Delete Avatar */}
-              <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={deleteAvatar}
-                  onChange={(e) => setDeleteAvatar(e.target.checked)}
-                  className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                />
-                <span>{language === "th" ? "ลบ รูปสมาชิก" : "Delete Member Avatar"}</span>
-              </label>
-
-              {/* Avatar Preview Box */}
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                <div className="h-24 w-24 flex-none rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800 border-2 border-dashed border-slate-300 dark:border-slate-700 flex items-center justify-center shadow-inner">
-                  {deleteAvatar ? (
-                    <div className="flex flex-col items-center text-slate-400">
-                      <CameraOff className="h-8 w-8 stroke-1" />
-                      <span className="text-[10px] mt-1 font-bold">
-                        {language === "th" ? "ไม่มีรูป" : "No photo"}
-                      </span>
-                    </div>
-                  ) : avatarUrl ? (
-                    <img
-                      src={avatarUrl}
-                      alt="Avatar Preview"
-                      className="h-full w-full object-cover"
-                      onError={() => setAvatarUrl("")}
-                    />
-                  ) : (
-                    <div className="flex flex-col items-center text-slate-400">
-                      <Camera className="h-8 w-8 stroke-1" />
-                    </div>
-                  )}
-                </div>
-
-                {/* Upload Action */}
-                <div className="flex-1 space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                    {language === "th" ? "รูปสมาชิก" : "Member Photo"}
-                  </label>
-                  <label className="cursor-pointer inline-flex items-center gap-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all shadow-xs">
-                    <ImageIcon className="h-4 w-4 text-blue-600" />
-                    <span>
-                      {language === "th"
-                        ? "เลือกรูปภาพอัปโหลด"
-                        : "Choose image to upload"}
-                    </span>
-                    <input
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp,image/jpg"
-                      onChange={handleAvatarChange}
-                      className="hidden"
-                    />
-                  </label>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                    {language === "th"
-                      ? "เลือกรูปภาพอัปโหลด ชนิด jpg, jpeg, png, webp (ปรับขนาดอัตโนมัติ)"
-                      : "Supports jpg, jpeg, png, webp (auto-resized)"}
-                  </p>
-                </div>
-              </div>
             </div>
           </div>
 
-          <hr className="border-slate-100 dark:border-slate-800" />
-
-          {/* ── Section 3: Others ── */}
-          <div className="space-y-3">
-            <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">
-              {language === "th" ? "อื่นๆ" : "Others"}
-            </h4>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                {language === "th" ? "สถานะสมาชิก" : "Member Status"}
-              </label>
-              <div className="relative max-w-sm">
-                <Star className="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-amber-500" />
-                <select
-                  value={role}
-                  disabled={currentUser?.role !== "admin"}
-                  onChange={(e) => setRole(e.target.value as any)}
-                  className={`w-full rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 pl-10 pr-8 py-2.5 text-xs sm:text-sm font-medium text-slate-900 dark:text-white ${currentUser?.role !== "admin"
-                    ? "cursor-not-allowed opacity-80"
-                    : "cursor-pointer focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                    }`}
-                >
-                  <option value="user">
-                    {language === "th" ? "สมาชิก (บุคลากรทั่วไป)" : "Member (Staff)"}
-                  </option>
-                  <option value="admin">
-                    {language === "th" ? "ผู้ดูแลระบบ (Admin)" : "Administrator (Admin)"}
-                  </option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          {/* Alerts */}
-          {error && (
+          {/* Profile Form Alerts */}
+          {profileError && (
             <div className="rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 p-3.5 text-xs font-semibold text-rose-600 dark:text-rose-300 flex items-center gap-2 animate-in fade-in">
               <AlertCircle className="h-4 w-4 flex-none" />
-              <span>{error}</span>
+              <span>{profileError}</span>
             </div>
           )}
 
-          {success && (
+          {profileSuccess && (
             <div className="rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/50 p-3.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300 flex items-center gap-2 animate-in fade-in">
               <CheckCircle2 className="h-4 w-4 flex-none" />
-              <span>{success}</span>
+              <span>{profileSuccess}</span>
             </div>
           )}
 
-          {/* ── Submit Action Button (Green button like in Picture 2) ── */}
-          <div className="pt-3">
+          {/* Save Profile Submit */}
+          <div className="flex justify-end pt-1">
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl bg-[#2e7d32] hover:bg-[#256629] text-white px-6 py-2.5 text-sm font-bold shadow-md shadow-green-900/20 active:scale-[0.98] transition-all disabled:opacity-50 cursor-pointer"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-[#2e7d32] hover:bg-[#256629] text-white px-6 py-2.5 text-sm font-bold shadow-md shadow-green-900/20 active:scale-[0.98] transition-all disabled:opacity-50 cursor-pointer"
             >
               <Save className="h-4 w-4" />
               <span>
                 {isSubmitting
-                  ? language === "th"
+                  ? th
                     ? "กำลังบันทึก..."
                     : "Saving..."
-                  : language === "th"
-                    ? "บันทึก"
-                    : "Save"}
+                  : th
+                    ? "บันทึกข้อมูลส่วนตัว"
+                    : "Save Profile"}
               </span>
             </button>
           </div>
-        </form>
-      </div>
+        </div>
+      </form>
 
-      {/* Password Modal for Unlocking Email */}
+      {/* ─── Card 3: Standalone Change Password Form ─── */}
+      <form
+        onSubmit={handleChangePassword}
+        autoComplete="off"
+        className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-lg overflow-hidden"
+      >
+        <div className="px-4 sm:px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2.5">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400">
+            <KeyRound className="h-4 w-4" />
+          </div>
+          <div>
+            <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white leading-tight">
+              {th ? "เปลี่ยนรหัสผ่าน" : "Change Password"}
+            </h3>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400">
+              {th
+                ? "รหัสผ่านใหม่ต้องมีความยาวอย่างน้อย 6 ตัวอักษร และแนะนำให้ผสมตัวอักษรกับตัวเลข"
+                : "New password must be at least 6 characters"}
+            </p>
+          </div>
+        </div>
+
+        <div className="p-4 sm:p-6 space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Old Password */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                {th ? "รหัสผ่านเดิม" : "Current Password"}
+              </label>
+              <div className="relative">
+                <Lock className="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
+                <input
+                  type={showOldPassword ? "text" : "password"}
+                  name="profile-old-pwd"
+                  autoComplete="new-password"
+                  readOnly={!oldPwdEditable}
+                  onFocus={() => setOldPwdEditable(true)}
+                  onPointerDown={() => setOldPwdEditable(true)}
+                  value={oldPassword}
+                  onChange={(e) => setOldPassword(e.target.value)}
+                  placeholder={th ? "กรอกรหัสผ่านเดิม" : "Current password"}
+                  className="w-full rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 pl-10 pr-10 py-2.5 text-xs sm:text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowOldPassword((v) => !v)}
+                  className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                >
+                  {showOldPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* New Password */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                {th ? "รหัสผ่านใหม่" : "New Password"}
+              </label>
+              <div className="relative">
+                <Lock className="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
+                <input
+                  type={showNewPassword ? "text" : "password"}
+                  name="profile-new-pwd"
+                  autoComplete="new-password"
+                  readOnly={!newPwdEditable}
+                  onFocus={() => setNewPwdEditable(true)}
+                  onPointerDown={() => setNewPwdEditable(true)}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder={
+                    th ? "อย่างน้อย 6 ตัวอักษร" : "At least 6 characters"
+                  }
+                  className="w-full rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 pl-10 pr-10 py-2.5 text-xs sm:text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword((v) => !v)}
+                  className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                >
+                  {showNewPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
+              {newPassword.length > 0 && (
+                <div className="mt-1.5 space-y-1">
+                  <div className="flex gap-1">
+                    {[1, 2, 3, 4].map((seg) => (
+                      <div
+                        key={seg}
+                        className={`h-1 flex-1 rounded-full transition-colors ${
+                          seg <= pwdStrength.level
+                            ? pwdStrength.level === 1
+                              ? "bg-rose-500"
+                              : pwdStrength.level === 2
+                                ? "bg-amber-500"
+                                : pwdStrength.level === 3
+                                  ? "bg-blue-500"
+                                  : "bg-emerald-500"
+                            : "bg-slate-200 dark:bg-slate-700"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <p className={`text-[11px] font-semibold ${pwdStrength.color}`}>
+                    {pwdStrength.label}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Confirm New Password */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                {th ? "ยืนยันรหัสผ่านใหม่" : "Confirm New Password"}
+              </label>
+              <div className="relative">
+                <Lock className="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
+                <input
+                  type={showConfirmPassword ? "text" : "password"}
+                  name="profile-confirm-pwd"
+                  autoComplete="new-password"
+                  readOnly={!confirmPwdEditable}
+                  onFocus={() => setConfirmPwdEditable(true)}
+                  onPointerDown={() => setConfirmPwdEditable(true)}
+                  value={confirmNewPassword}
+                  onChange={(e) => setConfirmNewPassword(e.target.value)}
+                  placeholder={th ? "พิมพ์รหัสผ่านใหม่อีกครั้ง" : "Re-enter new password"}
+                  className={`w-full rounded-xl bg-slate-50 dark:bg-slate-800 border pl-10 pr-10 py-2.5 text-xs sm:text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 ${
+                    passwordsMismatch
+                      ? "border-rose-400 focus:border-rose-500 focus:ring-rose-500/20"
+                      : passwordsMatch
+                        ? "border-emerald-400 focus:border-emerald-500 focus:ring-emerald-500/20"
+                        : "border-slate-200 dark:border-slate-700 focus:border-purple-500 focus:ring-purple-500/20"
+                  }`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword((v) => !v)}
+                  className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
+              {passwordsMatch && (
+                <p className="mt-1.5 flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                  <CheckCircle2 className="h-3 w-3" />
+                  <span>{th ? "รหัสผ่านใหม่ตรงกัน" : "Passwords match"}</span>
+                </p>
+              )}
+              {passwordsMismatch && (
+                <p className="mt-1.5 flex items-center gap-1 text-[11px] font-semibold text-rose-500">
+                  <AlertCircle className="h-3 w-3" />
+                  <span>{th ? "รหัสผ่านใหม่ไม่ตรงกัน" : "Passwords do not match"}</span>
+                </p>
+              )}
+            </div>
+          </div>
+
+          {pwdError && (
+            <div className="rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 p-3.5 text-xs font-semibold text-rose-600 dark:text-rose-300 flex items-center gap-2 animate-in fade-in">
+              <AlertCircle className="h-4 w-4 flex-none" />
+              <span>{pwdError}</span>
+            </div>
+          )}
+
+          {pwdSuccess && (
+            <div className="rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/50 p-3.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300 flex items-center gap-2 animate-in fade-in">
+              <CheckCircle2 className="h-4 w-4 flex-none" />
+              <span>{pwdSuccess}</span>
+            </div>
+          )}
+
+          <div className="flex justify-end pt-1">
+            <button
+              type="submit"
+              disabled={
+                isChangingPassword ||
+                !oldPassword ||
+                newPassword.length < 6 ||
+                newPassword !== confirmNewPassword
+              }
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-slate-800 hover:bg-slate-900 dark:bg-purple-600 dark:hover:bg-purple-500 text-white px-5 py-2.5 text-xs sm:text-sm font-bold shadow-sm transition-colors cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed"
+            >
+              <KeyRound className="h-4 w-4" />
+              <span>
+                {isChangingPassword
+                  ? th
+                    ? "กำลังเปลี่ยนรหัสผ่าน..."
+                    : "Changing password..."
+                  : th
+                    ? "ยืนยันการเปลี่ยนรหัสผ่าน"
+                    : "Update Password"}
+              </span>
+            </button>
+          </div>
+        </div>
+      </form>
+
+      {/* ─── Password Modal for Unlocking Email ─── */}
       {showEmailUnlockModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-sm rounded-3xl bg-white dark:bg-slate-900 shadow-2xl p-6 border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200">
-            <div className="flex flex-col items-center text-center mb-6">
-              <div className="h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center mb-3">
-                <Lock className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          onClick={() => setShowEmailUnlockModal(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-3xl bg-white dark:bg-slate-900 shadow-2xl p-6 border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex flex-col items-center text-center mb-5">
+              <div className="h-12 w-12 rounded-full bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center mb-3">
+                <Lock className="h-6 w-6 text-purple-600 dark:text-purple-400" />
               </div>
               <h3 className="text-lg font-black text-slate-900 dark:text-white">
-                {language === "th" ? "ยืนยันตัวตนเพื่อเปลี่ยนอีเมล" : "Verify Identity"}
+                {th ? "ยืนยันตัวตนเพื่อเปลี่ยนอีเมล" : "Verify Identity"}
               </h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                {language === "th" ? "กรุณากรอกรหัสผ่านเพื่อยืนยันการปลดล็อกอีเมล" : "Please enter your password to unlock the email field."}
+              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
+                {th
+                  ? "กรุณากรอกรหัสผ่านปัจจุบันเพื่อปลดล็อกการแก้ไขอีเมล"
+                  : "Enter your current password to unlock the email field."}
               </p>
             </div>
 
-            <div className="space-y-4">
+            <form onSubmit={handleVerifyUnlockEmail} autoComplete="off" className="space-y-4">
               <div className="relative">
-                <Lock className="absolute left-3 top-2.5 h-5 w-5 text-slate-400" />
+                <Lock className="pointer-events-none absolute left-3 top-2.5 h-5 w-5 text-slate-400" />
                 <input
                   type={showUnlockPassword ? "text" : "password"}
+                  name="unlock-email-pwd"
+                  autoComplete="new-password"
+                  readOnly={!unlockPwdEditable}
+                  onFocus={() => setUnlockPwdEditable(true)}
+                  onPointerDown={() => setUnlockPwdEditable(true)}
                   value={unlockPassword}
                   onChange={(e) => setUnlockPassword(e.target.value)}
-                  placeholder={language === "th" ? "รหัสผ่านของคุณ" : "Your Password"}
-                  className="w-full rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 pl-10 pr-10 py-2.5 text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  placeholder={th ? "รหัสผ่านปัจจุบันของคุณ" : "Your current password"}
+                  className="w-full rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 pl-10 pr-10 py-2.5 text-sm font-medium text-slate-900 dark:text-white focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
                 />
                 <button
                   type="button"
                   onClick={() => setShowUnlockPassword((prev) => !prev)}
-                  className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
                 >
-                  {showUnlockPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  {showUnlockPassword ? (
+                    <EyeOff className="h-5 w-5" />
+                  ) : (
+                    <Eye className="h-5 w-5" />
+                  )}
                 </button>
               </div>
 
               {unlockError && (
-                <p className="text-xs font-bold text-rose-500 text-center">{unlockError}</p>
+                <p className="text-xs font-bold text-rose-500 text-center">
+                  {unlockError}
+                </p>
               )}
 
               <div className="flex gap-2">
@@ -876,39 +1288,23 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onBack }) => {
                   onClick={() => setShowEmailUnlockModal(false)}
                   className="flex-1 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 py-2.5 text-sm font-bold transition-colors cursor-pointer"
                 >
-                  {language === "th" ? "ยกเลิก" : "Cancel"}
+                  {th ? "ยกเลิก" : "Cancel"}
                 </button>
                 <button
-                  type="button"
-                  onClick={async () => {
-                    if (!unlockPassword || unlockPassword.length < 4) {
-                      setUnlockError(language === "th" ? "รหัสผ่านไม่ถูกต้อง" : "Invalid password")
-                      return
-                    }
-                    try {
-                      if (currentUser?.id) {
-                        await api.verifyPassword(currentUser.id, unlockPassword)
-                      }
-                      setUnlockError("")
-                      setIsEmailUnlocked(true)
-                      setShowEmailUnlockModal(false)
-                    } catch (err: any) {
-                      if (err.message?.includes("Failed to fetch") || err.message?.includes("NetworkError")) {
-                        // Offline fallback
-                        setUnlockError("")
-                        setIsEmailUnlocked(true)
-                        setShowEmailUnlockModal(false)
-                        return
-                      }
-                      setUnlockError(err.message || (language === "th" ? "รหัสผ่านไม่ถูกต้อง" : "Invalid password"))
-                    }
-                  }}
-                  className="flex-1 rounded-xl bg-blue-600 hover:bg-blue-700 text-white py-2.5 text-sm font-bold transition-colors cursor-pointer"
+                  type="submit"
+                  disabled={isVerifyingUnlock || !unlockPassword}
+                  className="flex-1 rounded-xl bg-purple-600 hover:bg-purple-700 text-white py-2.5 text-sm font-bold transition-colors cursor-pointer disabled:opacity-50"
                 >
-                  {language === "th" ? "ยืนยัน" : "Verify"}
+                  {isVerifyingUnlock
+                    ? th
+                      ? "กำลังตรวจ..."
+                      : "Verifying..."
+                    : th
+                      ? "ยืนยัน"
+                      : "Verify"}
                 </button>
               </div>
-            </div>
+            </form>
           </div>
         </div>
       )}

@@ -4,20 +4,68 @@ const { pool } = require("../database")
 const { authMiddleware } = require("../middleware/auth")
 const { validateUserCreate } = require("../middleware/validate")
 
+const USER_SELECT_COLS =
+  "id, member_id, name, department, role, username, email, email_verified, position, gender, phone, avatar_url, created_at"
+
+const ALLOWED_GENDERS = new Set(["", "ไม่ระบุ", "ชาย", "หญิง"])
+const MAX_AVATAR_LEN = 500_000
+
+function serializeUser(u) {
+  return {
+    id: u.id,
+    member_id: u.member_id || null,
+    name: u.name,
+    department: u.department,
+    role: u.role,
+    username: u.username,
+    email: u.email,
+    emailVerified: Boolean(u.email_verified),
+    email_verified: Boolean(u.email_verified),
+    position: u.position || "",
+    gender: u.gender || "",
+    phone: u.phone || "",
+    avatarUrl: u.avatar_url || "",
+    createdAt: u.created_at,
+  }
+}
+
+function sanitizeOptionalText(val, maxLen) {
+  if (val === undefined) return { provided: false }
+  if (val === null) return { provided: true, value: null }
+  if (typeof val !== "string") return { error: "รูปแบบข้อมูลไม่ถูกต้อง" }
+  const cleaned = val.replace(/\0/g, "").trim()
+  if (cleaned.length > maxLen) {
+    return { error: `ข้อมูลต้องมีความยาวไม่เกิน ${maxLen} ตัวอักษร` }
+  }
+  return { provided: true, value: cleaned || null }
+}
+
+function sanitizeAvatarUrl(raw) {
+  if (raw === undefined) return { provided: false }
+  if (raw === null || raw === "") return { provided: true, value: null }
+  if (typeof raw !== "string") return { error: "รูปแบบรูปโปรไฟล์ไม่ถูกต้อง" }
+  const trimmed = raw.trim()
+  if (!trimmed) return { provided: true, value: null }
+  if (trimmed.length > MAX_AVATAR_LEN) {
+    return { error: "ขนาดรูปโปรไฟล์ใหญ่เกินไป กรุณาเลือกรูปภาพที่มีขนาดเล็กลง" }
+  }
+  const isImageDataUrl = /^data:image\/(jpeg|jpg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(trimmed)
+  const isSafeRelativePath = /^\/[A-Za-z0-9/_.-]+$/.test(trimmed) && !trimmed.includes("..")
+  if (!isImageDataUrl && !isSafeRelativePath) {
+    return { error: "รองรับเฉพาะไฟล์รูปภาพ JPG, PNG หรือ WEBP เท่านั้น" }
+  }
+  return { provided: true, value: trimmed }
+}
+
 // GET /api/users/me — current authenticated user profile
 router.get("/me", authMiddleware, async (req, res) => {
   try {
     const result = await pool.query(
-      "SELECT id, member_id, name, department, role, username, email, email_verified, created_at FROM users WHERE id = $1",
+      `SELECT ${USER_SELECT_COLS} FROM users WHERE id = $1`,
       [req.user.id],
     )
     if (result.rows.length === 0) return res.status(404).json({ error: "User not found" })
-    const u = result.rows[0]
-    res.json({
-      ...u,
-      emailVerified: Boolean(u.email_verified),
-      createdAt: u.created_at,
-    })
+    res.json(serializeUser(result.rows[0]))
   } catch (err) {
     res.status(500).json({ error: "Server error" })
   }
@@ -29,15 +77,9 @@ router.get("/", authMiddleware, async (req, res) => {
     return res.status(403).json({ error: "Admin only" })
   try {
     const result = await pool.query(
-      "SELECT id, member_id, name, department, role, username, email, email_verified, created_at FROM users ORDER BY name",
+      `SELECT ${USER_SELECT_COLS} FROM users ORDER BY name`,
     )
-    res.json(
-      result.rows.map((u) => ({
-        ...u,
-        emailVerified: Boolean(u.email_verified),
-        createdAt: u.created_at,
-      })),
-    )
+    res.json(result.rows.map(serializeUser))
   } catch (err) {
     res.status(500).json({ error: "Server error" })
   }
@@ -50,6 +92,18 @@ router.post("/", authMiddleware, validateUserCreate, async (req, res) => {
   const { name, department, role, username, email, password } = req.body
   if (!name || !email || !password)
     return res.status(400).json({ error: "Missing fields" })
+
+  const posCheck = sanitizeOptionalText(req.body.position, 100)
+  if (posCheck.error) return res.status(400).json({ error: posCheck.error })
+  const genderCheck = sanitizeOptionalText(req.body.gender, 20)
+  if (genderCheck.error) return res.status(400).json({ error: genderCheck.error })
+  if (genderCheck.provided && genderCheck.value && !ALLOWED_GENDERS.has(genderCheck.value)) {
+    return res.status(400).json({ error: "ค่าเพศไม่ถูกต้อง" })
+  }
+  const phoneCheck = sanitizeOptionalText(req.body.phone, 40)
+  if (phoneCheck.error) return res.status(400).json({ error: phoneCheck.error })
+  const avatarCheck = sanitizeAvatarUrl(req.body.avatarUrl)
+  if (avatarCheck.error) return res.status(400).json({ error: avatarCheck.error })
 
   try {
     const hash = await bcrypt.hash(password, 10)
@@ -65,15 +119,31 @@ router.post("/", authMiddleware, validateUserCreate, async (req, res) => {
       if (check.rows.length === 0) isUnique = true
     }
 
-    await pool.query(
-      "INSERT INTO users (id, name, department, role, username, email, password, member_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)",
-      [id, name, department || "-", role || "user", uname, email.toLowerCase().trim(), hash, memberId],
+    const emailNorm = email.toLowerCase().trim()
+    const inserted = await pool.query(
+      `INSERT INTO users (id, name, department, role, username, email, password, member_id, position, gender, phone, avatar_url)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+       RETURNING ${USER_SELECT_COLS}`,
+      [
+        id,
+        name,
+        department || "-",
+        role || "user",
+        uname,
+        emailNorm,
+        hash,
+        memberId,
+        posCheck.provided ? posCheck.value : null,
+        genderCheck.provided ? genderCheck.value : null,
+        phoneCheck.provided ? phoneCheck.value : null,
+        avatarCheck.provided ? avatarCheck.value : null,
+      ],
     )
     if (req.notifyClients) req.notifyClients()
-    res.status(201).json({ id, member_id: memberId, name, department: department || "-", role: role || "user", username: uname, email: email.toLowerCase().trim(), emailVerified: false })
+    res.status(201).json(serializeUser(inserted.rows[0]))
   } catch (err) {
     if (err.code === "23505")
-      return res.status(409).json({ error: "Email or username already exists" })
+      return res.status(409).json({ error: "อีเมลหรือชื่อผู้ใช้นี้มีอยู่ในระบบแล้ว" })
     res.status(500).json({ error: "Server error" })
   }
 })
@@ -84,29 +154,68 @@ router.put("/:id", authMiddleware, async (req, res) => {
     return res.status(403).json({ error: "Forbidden" })
   const { name, role: reqRole, username, email, password } = req.body
   let { department } = req.body
-  if (!name || !reqRole)
-    return res.status(400).json({ error: "Missing fields" })
+  if (!name || !String(name).trim() || !reqRole)
+    return res.status(400).json({ error: "กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน" })
+
+  const cleanName = String(name).replace(/\0/g, "").trim()
+  if (cleanName.length > 100) {
+    return res.status(400).json({ error: "ชื่อ-นามสกุลต้องไม่เกิน 100 ตัวอักษร" })
+  }
+
+  if (email !== undefined && email !== null && String(email).trim() !== "") {
+    const emailCandidate = String(email).trim()
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailCandidate)) {
+      return res.status(400).json({ error: "รูปแบบอีเมลไม่ถูกต้อง" })
+    }
+  }
+
+  if (password !== undefined && password !== null && password !== "") {
+    if (typeof password !== "string" || password.length < 6 || password.length > 200) {
+      return res.status(400).json({ error: "รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร" })
+    }
+  }
+
+  const posCheck = sanitizeOptionalText(req.body.position, 100)
+  if (posCheck.error) return res.status(400).json({ error: posCheck.error })
+  const genderCheck = sanitizeOptionalText(req.body.gender, 20)
+  if (genderCheck.error) return res.status(400).json({ error: genderCheck.error })
+  if (genderCheck.provided && genderCheck.value && !ALLOWED_GENDERS.has(genderCheck.value)) {
+    return res.status(400).json({ error: "ค่าเพศไม่ถูกต้อง" })
+  }
+  const phoneCheck = sanitizeOptionalText(req.body.phone, 40)
+  if (phoneCheck.error) return res.status(400).json({ error: phoneCheck.error })
+  const avatarCheck = sanitizeAvatarUrl(req.body.avatarUrl)
+  if (avatarCheck.error) return res.status(400).json({ error: avatarCheck.error })
 
   try {
-    const userRes = await pool.query("SELECT username, email, department, role, email_verified, member_id FROM users WHERE id = $1", [req.params.id])
+    const userRes = await pool.query(
+      `SELECT ${USER_SELECT_COLS} FROM users WHERE id = $1`,
+      [req.params.id],
+    )
     if (userRes.rows.length === 0) return res.status(404).json({ error: "User not found" })
 
-    const prevDepartment = userRes.rows[0].department
+    const existing = userRes.rows[0]
+    const prevDepartment = existing.department
     const isAdmin = req.user.role === "admin"
     // Non-admins cannot change their own role
-    const role = isAdmin ? reqRole : userRes.rows[0].role
+    const role = isAdmin && (reqRole === "admin" || reqRole === "user") ? reqRole : existing.role
     // Non-admins cannot change department while pending admin approval
     const prevIsPending = !prevDepartment || prevDepartment === "รอการตรวจสอบ" || prevDepartment === "-"
     if (!isAdmin && prevIsPending) department = prevDepartment
-    const newEmail = email ? email.toLowerCase().trim() : userRes.rows[0].email
-    const newUsername = username || userRes.rows[0].username
+    const newEmail = email && String(email).trim() ? String(email).toLowerCase().trim() : existing.email
+    const newUsername = username && String(username).trim() ? String(username).trim() : existing.username
     // email_verified: reset to false only when email actually changes
-    const isEmailChanged = Boolean(email && userRes.rows[0].email !== newEmail)
-    const nextEmailVerified = isEmailChanged ? false : Boolean(userRes.rows[0].email_verified)
+    const isEmailChanged = Boolean(email && existing.email !== newEmail)
 
+    const nextPosition = posCheck.provided ? posCheck.value : existing.position
+    const nextGender = genderCheck.provided ? genderCheck.value : existing.gender
+    const nextPhone = phoneCheck.provided ? phoneCheck.value : existing.phone
+    const nextAvatarUrl = avatarCheck.provided ? avatarCheck.value : existing.avatar_url
+
+    let updatedRow
     if (password) {
       const hash = await bcrypt.hash(password, 10)
-      await pool.query(
+      const q = await pool.query(
         `UPDATE users
          SET name = $1,
              department = $2,
@@ -114,22 +223,59 @@ router.put("/:id", authMiddleware, async (req, res) => {
              username = $4,
              email = $5,
              password = $6,
-             email_verified = CASE WHEN $7 THEN FALSE ELSE email_verified END
-         WHERE id = $8`,
-        [name, department || "-", role, newUsername, newEmail, hash, isEmailChanged, req.params.id],
+             email_verified = CASE WHEN $7 THEN FALSE ELSE email_verified END,
+             position = $8,
+             gender = $9,
+             phone = $10,
+             avatar_url = $11
+         WHERE id = $12
+         RETURNING ${USER_SELECT_COLS}`,
+        [
+          cleanName,
+          department || "-",
+          role,
+          newUsername,
+          newEmail,
+          hash,
+          isEmailChanged,
+          nextPosition,
+          nextGender,
+          nextPhone,
+          nextAvatarUrl,
+          req.params.id,
+        ],
       )
+      updatedRow = q.rows[0]
     } else {
-      await pool.query(
+      const q = await pool.query(
         `UPDATE users
          SET name = $1,
              department = $2,
              role = $3,
              username = $4,
              email = $5,
-             email_verified = CASE WHEN $6 THEN FALSE ELSE email_verified END
-         WHERE id = $7`,
-        [name, department || "-", role, newUsername, newEmail, isEmailChanged, req.params.id],
+             email_verified = CASE WHEN $6 THEN FALSE ELSE email_verified END,
+             position = $7,
+             gender = $8,
+             phone = $9,
+             avatar_url = $10
+         WHERE id = $11
+         RETURNING ${USER_SELECT_COLS}`,
+        [
+          cleanName,
+          department || "-",
+          role,
+          newUsername,
+          newEmail,
+          isEmailChanged,
+          nextPosition,
+          nextGender,
+          nextPhone,
+          nextAvatarUrl,
+          req.params.id,
+        ],
       )
+      updatedRow = q.rows[0]
     }
 
     // Notify all clients about user list change
@@ -142,20 +288,10 @@ router.put("/:id", authMiddleware, async (req, res) => {
       req.notifyUser(req.params.id, "user_approved")
     }
 
-    res.json({
-      id: req.params.id,
-      member_id: userRes.rows[0].member_id,
-      name,
-      department: department || "-",
-      role,
-      username: newUsername,
-      email: newEmail,
-      emailVerified: nextEmailVerified,
-      email_verified: nextEmailVerified,
-    })
+    res.json(serializeUser(updatedRow))
   } catch (err) {
     if (err.code === "23505")
-      return res.status(409).json({ error: "Email or username already exists" })
+      return res.status(409).json({ error: "อีเมลหรือชื่อผู้ใช้นี้มีอยู่ในระบบแล้ว" })
     res.status(500).json({ error: "Server error" })
   }
 })
@@ -201,12 +337,20 @@ router.patch("/:id/password", authMiddleware, async (req, res) => {
     return res.status(403).json({ error: "Forbidden" })
   }
   const { oldPassword, password } = req.body
-  if (!password) return res.status(400).json({ error: "Missing password" })
-  
+  if (!password || typeof password !== "string") {
+    return res.status(400).json({ error: "กรุณาระบุรหัสผ่านใหม่" })
+  }
+  if (password.length < 6 || password.length > 200) {
+    return res.status(400).json({ error: "รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร" })
+  }
+
   try {
     // If user is changing their own password, verify old password
     if (req.params.id === req.user.id) {
-      if (!oldPassword) return res.status(400).json({ error: "Missing old password" })
+      if (!oldPassword) return res.status(400).json({ error: "กรุณาระบุรหัสผ่านเดิม" })
+      if (oldPassword === password) {
+        return res.status(400).json({ error: "รหัสผ่านใหม่ต้องไม่ซ้ำกับรหัสผ่านเดิม" })
+      }
       const userRes = await pool.query("SELECT password FROM users WHERE id = $1", [req.params.id])
       if (userRes.rows.length === 0) return res.status(404).json({ error: "User not found" })
       const match = await bcrypt.compare(oldPassword, userRes.rows[0].password)

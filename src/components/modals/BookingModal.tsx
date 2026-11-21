@@ -1,6 +1,20 @@
-import React, { useState, useMemo } from 'react'
-import { X, Calendar, AlertCircle, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react'
-import { Room } from '../../types'
+import React, { useState, useMemo, useRef } from 'react'
+import {
+  X,
+  Calendar,
+  AlertCircle,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Link2,
+  Plus,
+  Trash2,
+  Paperclip,
+  Upload,
+  FileText,
+  Lock,
+} from 'lucide-react'
+import { BookingAttachmentUpload } from '../../types'
 import { useApp } from '../../context/AppContext'
 import {
   formatRoomName,
@@ -9,6 +23,13 @@ import {
   toLocalDateStr,
 } from '../../constants/translations'
 import { getRoomImage } from '../../constants/roomColors'
+import {
+  ACCEPTED_ATTACHMENT_ATTR,
+  MAX_ATTACHMENTS,
+  formatFileSize,
+  normalizeLinkUrl,
+  readFilesAsUploads,
+} from '../../utils/attachments'
 
 interface BookingModalProps {
   initialRoomId?: string
@@ -245,8 +266,52 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const [onlineMeeting, setOnlineMeeting] = useState('none')
   const [onlineMeetingOther, setOnlineMeetingOther] = useState('')
   const [contactPerson, setContactPerson] = useState(currentUser?.name || '')
+  const [relatedLinks, setRelatedLinks] = useState<{ title: string; url: string }[]>([])
+  const [newLinkTitle, setNewLinkTitle] = useState('')
+  const [newLinkUrl, setNewLinkUrl] = useState('')
+  const [attachments, setAttachments] = useState<BookingAttachmentUpload[]>([])
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const handleAddLink = () => {
+    const normalized = normalizeLinkUrl(newLinkUrl)
+    if (!normalized) {
+      if (newLinkUrl.trim()) {
+        setError(
+          language === 'th'
+            ? 'รูปแบบลิงก์ไม่ถูกต้อง กรุณาระบุ URL เช่น https://...'
+            : 'Invalid URL format (e.g. https://...)'
+        )
+      }
+      return
+    }
+    setError('')
+    setRelatedLinks(prev => [
+      ...prev,
+      { title: newLinkTitle.trim() || normalized, url: normalized },
+    ])
+    setNewLinkTitle('')
+    setNewLinkUrl('')
+  }
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files || files.length === 0) return
+    setError('')
+    const { uploads, errors } = await readFilesAsUploads(
+      files,
+      attachments.length,
+      language
+    )
+    if (uploads.length > 0) {
+      setAttachments(prev => [...prev, ...uploads])
+    }
+    if (errors.length > 0) {
+      setError(errors[0])
+    }
+    e.target.value = ''
+  }
 
   const selectedRoom = rooms.find(r => r.id === roomId)
 
@@ -322,6 +387,21 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       return
     }
 
+    // Auto-include any pending link typed in the URL box
+    const finalLinks = [...relatedLinks]
+    if (newLinkUrl.trim()) {
+      const normalized = normalizeLinkUrl(newLinkUrl)
+      if (!normalized) {
+        setError(
+          language === 'th'
+            ? 'รูปแบบลิงก์ที่เกี่ยวข้องไม่ถูกต้อง กรุณาระบุ URL เช่น https://...'
+            : 'Invalid related link URL (e.g. https://...)'
+        )
+        return
+      }
+      finalLinks.push({ title: newLinkTitle.trim() || normalized, url: normalized })
+    }
+
     setIsSubmitting(true)
     try {
       await handleBookingSubmit({
@@ -336,6 +416,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
           ? onlineMeetingOther.trim()
           : onlineMeeting === 'none' ? '' : onlineMeeting.trim(),
         contactPerson: contactPerson.trim(),
+        relatedLinks: finalLinks,
+        attachments,
       })
       onClose()
     } catch (err: any) {
@@ -603,6 +685,164 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 placeholder={language === 'th' ? 'เช่น สมหญิง เบอร์ 1234' : 'e.g. Jane, Ext 1234'}
                 className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
               />
+            </div>
+
+            {/* Related Links */}
+            <div className="rounded-2xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700/80 p-3.5 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                  <Link2 className="h-3.5 w-3.5 text-blue-500" />
+                  <span>{language === 'th' ? 'ลิงก์ที่เกี่ยวข้อง (ไม่บังคับ)' : 'Related Links (Optional)'}</span>
+                </label>
+                {relatedLinks.length > 0 && (
+                  <span className="text-[11px] font-semibold text-blue-600 dark:text-blue-400">
+                    {relatedLinks.length} {language === 'th' ? 'ลิงก์' : 'link(s)'}
+                  </span>
+                )}
+              </div>
+
+              {relatedLinks.length > 0 && (
+                <ul className="space-y-1.5">
+                  {relatedLinks.map((link, idx) => (
+                    <li
+                      key={idx}
+                      className="flex items-center justify-between gap-2 rounded-xl bg-white dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-700 px-3 py-2 text-xs"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Link2 className="h-3.5 w-3.5 text-blue-500 flex-none" />
+                        <div className="min-w-0">
+                          <p className="font-semibold text-slate-800 dark:text-slate-100 truncate">
+                            {link.title}
+                          </p>
+                          <p className="text-[11px] text-slate-400 truncate">{link.url}</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setRelatedLinks(prev => prev.filter((_, i) => i !== idx))}
+                        className="p-1 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer flex-none"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-[1fr_1.3fr_auto] gap-2">
+                <input
+                  type="text"
+                  value={newLinkTitle}
+                  onChange={e => setNewLinkTitle(e.target.value)}
+                  placeholder={language === 'th' ? 'ชื่อลิงก์ เช่น วาระการประชุม' : 'Link label (e.g. Agenda)'}
+                  className="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-3 py-2 text-xs font-medium text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                />
+                <input
+                  type="url"
+                  value={newLinkUrl}
+                  onChange={e => setNewLinkUrl(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      handleAddLink()
+                    }
+                  }}
+                  placeholder="https://drive.google.com/..."
+                  className="rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-3 py-2 text-xs font-medium text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddLink}
+                  disabled={!newLinkUrl.trim()}
+                  className="inline-flex items-center justify-center gap-1 rounded-xl bg-blue-600 hover:bg-blue-700 px-3 py-2 text-xs font-bold text-white disabled:opacity-40 transition-colors cursor-pointer"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>{language === 'th' ? 'เพิ่ม' : 'Add'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Document Attachments */}
+            <div className="rounded-2xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700/80 p-3.5 space-y-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                  <Paperclip className="h-3.5 w-3.5 text-purple-500" />
+                  <span>{language === 'th' ? 'แนบไฟล์เอกสารที่เกี่ยวข้อง (ไม่บังคับ)' : 'Attach Documents (Optional)'}</span>
+                </label>
+                <span className="text-[11px] font-semibold text-slate-400">
+                  {attachments.length}/{MAX_ATTACHMENTS}
+                </span>
+              </div>
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept={ACCEPTED_ATTACHMENT_ATTR}
+                onChange={handleFileChange}
+                className="hidden"
+              />
+
+              {attachments.length < MAX_ATTACHMENTS && (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full flex flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-600 hover:border-purple-400 dark:hover:border-purple-500 bg-white/70 dark:bg-slate-900/50 py-4 px-3 text-center transition-colors cursor-pointer group"
+                >
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-300 group-hover:scale-105 transition-transform">
+                    <Upload className="h-4 w-4" />
+                  </div>
+                  <p className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                    {language === 'th' ? 'คลิกเพื่อเลือกไฟล์เอกสารประกอบการประชุม' : 'Click to upload meeting documents'}
+                  </p>
+                  <p className="text-[11px] text-slate-400">
+                    {language === 'th'
+                      ? 'รองรับ PDF, Word, Excel, PowerPoint, รูปภาพ (สูงสุด 5 ไฟล์, ไฟล์ละไม่เกิน 8 MB)'
+                      : 'PDF, Word, Excel, PowerPoint, Images (up to 5 files, max 8 MB each)'}
+                  </p>
+                </button>
+              )}
+
+              {attachments.length > 0 && (
+                <ul className="space-y-1.5">
+                  {attachments.map((file, idx) => (
+                    <li
+                      key={`${file.name}-${idx}`}
+                      className="flex items-center justify-between gap-2 rounded-xl bg-white dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-700 px-3 py-2 text-xs"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="flex h-8 w-8 flex-none items-center justify-center rounded-lg bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-300">
+                          <FileText className="h-4 w-4" />
+                        </span>
+                        <div className="min-w-0">
+                          <p className="font-semibold text-slate-800 dark:text-slate-100 truncate">
+                            {file.name}
+                          </p>
+                          <p className="text-[11px] text-slate-400">
+                            {formatFileSize(file.size)}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setAttachments(prev => prev.filter((_, i) => i !== idx))}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer flex-none"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              <p className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+                <Lock className="h-3 w-3 text-amber-500 flex-none" />
+                <span>
+                  {language === 'th'
+                    ? 'เฉพาะผู้ใช้งานที่ได้รับการอนุมัติจากผู้ดูแลระบบแล้วเท่านั้น จึงจะสามารถเปิดดูหรือดาวน์โหลดไฟล์เอกสารได้'
+                    : 'Only admin-approved users can view or download attached documents.'}
+                </span>
+              </p>
             </div>
 
             {/* Room Maintenance Warning — Real-time */}

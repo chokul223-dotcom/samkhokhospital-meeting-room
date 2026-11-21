@@ -1,4 +1,12 @@
-import { Booking, Room, User, LoginResponse, EvaluationSummary } from "../types"
+import {
+  Booking,
+  BookingAttachment,
+  BookingAttachmentUpload,
+  Room,
+  User,
+  LoginResponse,
+  EvaluationSummary,
+} from "../types"
 
 const BASE_URL = (
   import.meta.env.VITE_API_URL || "http://localhost:3001"
@@ -195,6 +203,8 @@ export async function createBooking(data: {
   chairman?: string
   onlineMeeting?: string
   contactPerson?: string
+  relatedLinks?: { title: string; url: string }[]
+  attachments?: BookingAttachmentUpload[]
 }): Promise<Booking> {
   return request<Booking>("/api/bookings", {
     method: "POST",
@@ -215,12 +225,44 @@ export async function updateBookingStatus(
 
 export async function updateBookingDetails(
   id: string,
-  data: Partial<Booking>,
-): Promise<{ success: boolean }> {
-  return request<{ success: boolean }>(`/api/bookings/${id}`, {
-    method: "PUT",
-    body: JSON.stringify(data),
-  })
+  data: Partial<Booking> & {
+    newAttachments?: BookingAttachmentUpload[]
+    removeAttachmentIds?: string[]
+  },
+): Promise<{ success: boolean; attachments?: BookingAttachment[] }> {
+  return request<{ success: boolean; attachments?: BookingAttachment[] }>(
+    `/api/bookings/${id}`,
+    {
+      method: "PUT",
+      body: JSON.stringify(data),
+    },
+  )
+}
+
+export async function fetchBookingAttachmentBlob(
+  bookingId: string,
+  attachmentId: string,
+  mode: "view" | "download" = "download",
+): Promise<{ blob: Blob; mimeType: string }> {
+  const token = getToken()
+  const res = await fetch(
+    `${BASE_URL}/api/bookings/${encodeURIComponent(bookingId)}/attachments/${encodeURIComponent(attachmentId)}?mode=${mode}`,
+    {
+      headers: {
+        "ngrok-skip-browser-warning": "true",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    },
+  )
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }))
+    throw new Error(err.error || `HTTP ${res.status}`)
+  }
+  const blob = await res.blob()
+  return {
+    blob,
+    mimeType: res.headers.get("Content-Type") || blob.type || "application/octet-stream",
+  }
 }
 
 export async function deleteBooking(id: string): Promise<{ success: boolean }> {
@@ -252,6 +294,10 @@ export async function createUser(data: {
   username?: string
   email: string
   password?: string
+  position?: string
+  gender?: string
+  phone?: string
+  avatarUrl?: string
 }): Promise<User> {
   return request<User>("/api/users", {
     method: "POST",
@@ -268,6 +314,10 @@ export async function updateUser(
     username?: string
     email?: string
     password?: string
+    position?: string
+    gender?: string
+    phone?: string
+    avatarUrl?: string
   },
 ): Promise<User> {
   return request<User>(`/api/users/${id}`, {

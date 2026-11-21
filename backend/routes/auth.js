@@ -4,6 +4,23 @@ const jwt = require("jsonwebtoken")
 const { pool } = require("../database")
 const { validateLogin, validateRegister } = require("../middleware/validate")
 
+function serializeAuthUser(user) {
+  return {
+    id: user.id,
+    name: user.name,
+    department: user.department,
+    role: user.role,
+    username: user.username,
+    email: user.email,
+    emailVerified: Boolean(user.email_verified),
+    member_id: user.member_id || null,
+    position: user.position || "",
+    gender: user.gender || "",
+    phone: user.phone || "",
+    avatarUrl: user.avatar_url || "",
+  }
+}
+
 // POST /api/auth/register — public, register new user (pending approval)
 router.post("/register", validateRegister, async (req, res) => {
   const { email, username, password, name } = req.body
@@ -91,16 +108,7 @@ router.post("/login", validateLogin, async (req, res) => {
           )
           return res.json({
             token,
-            user: {
-              id: user.id,
-              name: user.name,
-              department: user.department,
-              role: user.role,
-              username: user.username,
-              email: user.email,
-              emailVerified: user.email_verified,
-              member_id: user.member_id,
-            }
+            user: serializeAuthUser(user),
           })
         }
       } catch (e) {
@@ -124,16 +132,7 @@ router.post("/login", validateLogin, async (req, res) => {
       )
       return res.json({
         token,
-        user: {
-          id: user.id,
-          name: user.name,
-          department: user.department,
-          role: user.role,
-          username: user.username,
-          email: user.email,
-          emailVerified: user.email_verified,
-          member_id: user.member_id,
-        }
+        user: serializeAuthUser(user),
       })
     }
 
@@ -227,16 +226,7 @@ router.post("/verify-2fa", async (req, res) => {
     res.json({
       token,
       trustedDeviceToken,
-      user: {
-        id: user.id,
-        name: user.name,
-        department: user.department,
-        role: user.role,
-        username: user.username,
-        email: user.email,
-        emailVerified: user.email_verified,
-        member_id: user.member_id,
-      }
+      user: serializeAuthUser(user),
     })
   } catch (err) {
     console.error(err)
