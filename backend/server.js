@@ -58,12 +58,13 @@ const authLimiter = rateLimit({
   message: { error: "Too many requests, please try again later" },
 })
 
-/** General API: 200 requests / 15 min ต่อ IP */
+/** General API: 1000 requests / 15 min ต่อ IP (รองรับหลายเครื่องบน Wi-Fi โรงพยาบาลและ real-time sync) */
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 200,
+  max: 1000,
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => req.path === "/stream" || req.path === "/health",
   message: { error: "Too many requests, please try again later" },
 })
 
@@ -79,12 +80,22 @@ const userClients = new Map() // userId -> Set<res>
 
 app.get("/api/stream", (req, res) => {
   res.setHeader("Content-Type", "text/event-stream")
-  res.setHeader("Cache-Control", "no-cache")
+  res.setHeader("Cache-Control", "no-cache, no-transform")
   res.setHeader("Connection", "keep-alive")
+  res.setHeader("X-Accel-Buffering", "no")
   res.flushHeaders()
 
   // Send initial connected message
   res.write("data: connected\n\n")
+
+  // Keep-alive heartbeat every 25s so ngrok / proxies do not close idle SSE streams
+  const heartbeat = setInterval(() => {
+    try {
+      res.write(": ping\n\n")
+    } catch {
+      clearInterval(heartbeat)
+    }
+  }, 25000)
 
   // Register in broadcast channel
   clients.add(res)
@@ -97,6 +108,7 @@ app.get("/api/stream", (req, res) => {
   }
 
   req.on("close", () => {
+    clearInterval(heartbeat)
     clients.delete(res)
     if (userId && userClients.has(userId)) {
       userClients.get(userId).delete(res)
@@ -108,14 +120,20 @@ app.get("/api/stream", (req, res) => {
 app.use((req, res, next) => {
   // Broadcast to all connected clients
   req.notifyClients = () => {
-    clients.forEach((client) => client.write("data: update\n\n"))
+    clients.forEach((client) => {
+      try {
+        client.write("data: update\n\n")
+      } catch {}
+    })
   }
   // Send targeted notification to a specific user
   req.notifyUser = (userId, event) => {
     if (userClients.has(userId)) {
-      userClients.get(userId).forEach((client) =>
-        client.write(`data: ${event}\n\n`)
-      )
+      userClients.get(userId).forEach((client) => {
+        try {
+          client.write(`data: ${event}\n\n`)
+        } catch {}
+      })
     }
   }
   next()

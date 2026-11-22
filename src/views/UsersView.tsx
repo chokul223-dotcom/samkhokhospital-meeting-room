@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react"
+import React, { useState, useMemo, useEffect } from "react"
 import {
   Users as UsersIcon,
   Search,
@@ -11,6 +11,9 @@ import {
   Edit2,
   Trash2,
   Plus,
+  RefreshCw,
+  Hash,
+  X,
 } from "lucide-react"
 import { User } from "../types"
 import { useApp } from "../context/AppContext"
@@ -30,20 +33,67 @@ export const UsersView: React.FC<UsersViewProps> = ({
   onOpenUserModal,
   onOpenConfirmModal,
 }) => {
-  const { t, language, users, currentUser, handleDeleteUser, handleSaveUser } =
-    useApp()
+  const {
+    t,
+    language,
+    users,
+    currentUser,
+    handleDeleteUser,
+    handleSaveUser,
+    refreshData,
+    showToast,
+  } = useApp()
   const [searchQuery, setSearchQuery] = useState("")
   const [inspectingUser, setInspectingUser] = useState<User | null>(null)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+
+  // Always load latest user list when opening Users page
+  useEffect(() => {
+    refreshData()
+  }, [refreshData])
+
+  const handleManualRefresh = async () => {
+    setIsRefreshing(true)
+    try {
+      await refreshData()
+      showToast(
+        language === "th"
+          ? "อัปเดตรายชื่อผู้ใช้งานล่าสุดแล้ว"
+          : "User list refreshed",
+      )
+    } finally {
+      setIsRefreshing(false)
+    }
+  }
+
+  const isPendingUser = (u: User) =>
+    !u.department || u.department === "รอการตรวจสอบ" || u.department === "-"
 
   const filteredUsers = useMemo(() => {
-    if (!searchQuery.trim()) return users
-    const q = searchQuery.toLowerCase()
-    return users.filter(
-      (u) =>
-        u.name.toLowerCase().includes(q) ||
-        u.department.toLowerCase().includes(q) ||
-        u.username.toLowerCase().includes(q),
-    )
+    const q = searchQuery.trim().toLowerCase()
+    const qNoHash = q.replace(/^#+/, "")
+    const list = q
+      ? users.filter((u) => {
+          const memberId = (u.member_id || "").toLowerCase()
+          return (
+            u.name.toLowerCase().includes(q) ||
+            (qNoHash.length > 0 && memberId.includes(qNoHash)) ||
+            (u.department || "").toLowerCase().includes(q) ||
+            (u.position || "").toLowerCase().includes(q) ||
+            u.username.toLowerCase().includes(q) ||
+            (u.email || "").toLowerCase().includes(q) ||
+            (u.phone || "").toLowerCase().includes(q)
+          )
+        })
+      : [...users]
+
+    // Keep newly registered pending users at the very top so admin sees them immediately
+    return list.sort((a, b) => {
+      const aPending = isPendingUser(a) ? 0 : 1
+      const bPending = isPendingUser(b) ? 0 : 1
+      if (aPending !== bPending) return aPending - bPending
+      return (a.name || "").localeCompare(b.name || "", "th")
+    })
   }, [users, searchQuery])
 
   const adminCount = users.filter((u) => u.role === "admin").length
@@ -73,9 +123,19 @@ export const UsersView: React.FC<UsersViewProps> = ({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={t.searchUsers}
-            className="w-full rounded-2xl bg-slate-50 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 pl-11 pr-4 py-2.5 text-xs font-medium text-slate-900 dark:text-white placeholder-slate-400 focus:border-blue-500 focus:outline-none"
+            className="w-full rounded-2xl bg-slate-50 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 pl-11 pr-9 py-2.5 text-xs font-medium text-slate-900 dark:text-white placeholder-slate-400 focus:border-blue-500 focus:outline-none"
           />
           <Search className="pointer-events-none absolute left-4 top-3 h-4 w-4 text-slate-400" />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery("")}
+              title={language === "th" ? "ล้างคำค้นหา" : "Clear search"}
+              className="absolute right-3 top-2.5 flex h-5 w-5 items-center justify-center rounded-full text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-700 dark:hover:text-slate-200 transition-colors cursor-pointer"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
 
         <div className="flex items-center justify-between sm:justify-end gap-3 flex-wrap">
@@ -94,19 +154,56 @@ export const UsersView: React.FC<UsersViewProps> = ({
               </>
             )}
           </div>
-          <button
-            type="button"
-            onClick={() => onOpenUserModal()}
-            className="flex items-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-95 px-3.5 py-2 text-xs font-bold text-white shadow-sm transition-all cursor-pointer"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            <span>{t.addUser}</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleManualRefresh}
+              disabled={isRefreshing}
+              title={
+                language === "th"
+                  ? "รีเฟรชรายชื่อผู้สมัครใหม่"
+                  : "Refresh user list"
+              }
+              className="flex items-center gap-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 active:scale-95 px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 transition-all disabled:opacity-60 cursor-pointer"
+            >
+              <RefreshCw
+                className={`h-3.5 w-3.5 ${isRefreshing ? "animate-spin text-blue-600 dark:text-blue-400" : ""}`}
+              />
+              <span>
+                {isRefreshing
+                  ? language === "th"
+                    ? "กำลังโหลด..."
+                    : "Refreshing..."
+                  : language === "th"
+                    ? "รีเฟรช"
+                    : "Refresh"}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onOpenUserModal()}
+              className="flex items-center gap-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-95 px-3.5 py-2 text-xs font-bold text-white shadow-sm transition-all cursor-pointer"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span>{t.addUser}</span>
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Users Table / Directory Cards */}
       <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
+        {filteredUsers.length === 0 ? (
+          <div className="py-14 text-center text-slate-400 dark:text-slate-500 space-y-2">
+            <UsersIcon className="mx-auto h-8 w-8 text-slate-300 dark:text-slate-600" />
+            <p className="text-sm font-semibold">
+              {language === "th"
+                ? "ไม่พบผู้ใช้งานที่ตรงกับคำค้นหา"
+                : "No users match your search"}
+            </p>
+          </div>
+        ) : (
         <div className="divide-y divide-slate-100 dark:divide-slate-800/80">
           {filteredUsers.map((user) => {
             const isAdmin = user.role === "admin"
@@ -182,6 +279,15 @@ export const UsersView: React.FC<UsersViewProps> = ({
                         <Building2 className="h-3.5 w-3.5 flex-none" />
                         <span>{formatDepartment(user.department, user.role, language)}</span>
                       </span>
+                      {user.member_id && (
+                        <>
+                          <span className="hidden sm:inline">•</span>
+                          <span className="inline-flex items-center gap-0.5 font-mono font-semibold text-purple-600 dark:text-purple-400">
+                            <Hash className="h-3 w-3 flex-none" />
+                            <span>{user.member_id}</span>
+                          </span>
+                        </>
+                      )}
                       <span className="hidden sm:inline">•</span>
                       <span className="break-all sm:break-normal">
                         {t.username}:{" "}
@@ -234,6 +340,7 @@ export const UsersView: React.FC<UsersViewProps> = ({
             )
           })}
         </div>
+        )}
       </div>
 
       {/* User Detail / Inspection Modal */}

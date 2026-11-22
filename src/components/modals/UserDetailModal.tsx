@@ -38,8 +38,10 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
 }) => {
   const { language, showToast } = useApp()
   const [resetting, setResetting] = useState(false)
+  const [approving, setApproving] = useState(false)
   const [selectedDept, setSelectedDept] = useState<string>("กลุ่มงานการพยาบาล")
   const [customDept, setCustomDept] = useState<string>("")
+  const [deptError, setDeptError] = useState<string>("")
 
   if (!user) return null
 
@@ -122,42 +124,87 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
               </div>
 
               {onApproveUser && (
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1 border-t border-amber-200/60 dark:border-amber-900/40">
-                  <div className="flex-1 flex flex-col sm:flex-row gap-2">
+                <div className="flex flex-col gap-2.5 pt-2.5 border-t border-amber-200/60 dark:border-amber-900/40">
+                  <div className="space-y-2 min-w-0">
                     <select
                       value={selectedDept}
-                      onChange={(e) => setSelectedDept(e.target.value)}
-                      className="flex-1 rounded-xl bg-white dark:bg-slate-800 border border-amber-300 dark:border-amber-700/70 px-3 py-1.5 text-xs font-medium text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500/30"
+                      onChange={(e) => {
+                        setSelectedDept(e.target.value)
+                        setDeptError("")
+                      }}
+                      className="w-full min-w-0 rounded-xl bg-white dark:bg-slate-800 border border-amber-300 dark:border-amber-700/70 px-3 py-2 text-xs sm:text-sm font-medium text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500/30 cursor-pointer"
                     >
                       {DEPARTMENTS.map((dept) => (
                         <option key={dept} value={dept}>
                           {dept}
                         </option>
                       ))}
-                      <option value="อื่นๆ">{language === "th" ? "อื่นๆ (ระบุเอง)" : "Other (Specify)"}</option>
+                      <option value="อื่นๆ">
+                        {language === "th" ? "อื่นๆ (ระบุเอง)" : "Other (Specify)"}
+                      </option>
                     </select>
 
                     {selectedDept === "อื่นๆ" && (
                       <input
                         type="text"
                         value={customDept}
-                        onChange={(e) => setCustomDept(e.target.value)}
-                        placeholder={language === "th" ? "ระบุชื่อแผนก..." : "Specify department..."}
-                        className="flex-1 rounded-xl bg-white dark:bg-slate-800 border border-amber-300 dark:border-amber-700/70 px-3 py-1.5 text-xs font-medium text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500/30"
+                        onChange={(e) => {
+                          setCustomDept(e.target.value)
+                          setDeptError("")
+                        }}
+                        placeholder={
+                          language === "th"
+                            ? "ระบุชื่อกลุ่มงาน / แผนก..."
+                            : "Specify department name..."
+                        }
+                        className="w-full min-w-0 rounded-xl bg-white dark:bg-slate-800 border border-amber-300 dark:border-amber-700/70 px-3 py-2 text-xs sm:text-sm font-medium text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500/30"
                       />
+                    )}
+
+                    {deptError && (
+                      <p className="text-[11px] font-semibold text-rose-600 dark:text-rose-400">
+                        {deptError}
+                      </p>
                     )}
                   </div>
 
                   <button
                     type="button"
-                    onClick={() => {
-                      const finalDept = selectedDept === "อื่นๆ" ? (customDept.trim() || "ทั่วไป") : selectedDept
-                      onApproveUser(user, finalDept)
+                    disabled={approving}
+                    onClick={async () => {
+                      if (selectedDept === "อื่นๆ" && !customDept.trim()) {
+                        setDeptError(
+                          language === "th"
+                            ? "กรุณาระบุชื่อกลุ่มงาน/แผนกก่อนยืนยันอนุมัติ"
+                            : "Please specify a department name",
+                        )
+                        return
+                      }
+                      const finalDept =
+                        selectedDept === "อื่นๆ" ? customDept.trim() : selectedDept
+                      setApproving(true)
+                      try {
+                        await onApproveUser(user, finalDept)
+                      } finally {
+                        setApproving(false)
+                      }
                     }}
-                    className="flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 text-xs font-bold shadow-xs active:scale-95 transition-all cursor-pointer flex-none"
+                    className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 text-xs sm:text-sm font-bold shadow-sm active:scale-[0.99] transition-all disabled:opacity-60 cursor-pointer"
                   >
-                    <CheckCircle className="h-3.5 w-3.5" />
-                    <span>{language === "th" ? "ยืนยันอนุมัติ" : "Approve User"}</span>
+                    {approving ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <CheckCircle className="h-4 w-4" />
+                    )}
+                    <span>
+                      {approving
+                        ? language === "th"
+                          ? "กำลังอนุมัติ..."
+                          : "Approving..."
+                        : language === "th"
+                          ? "ยืนยันอนุมัติ"
+                          : "Approve User"}
+                    </span>
                   </button>
                 </div>
               )}

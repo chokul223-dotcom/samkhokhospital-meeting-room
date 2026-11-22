@@ -310,6 +310,7 @@ function MainShell() {
         <ApprovalBanner
           language={language as "th" | "en"}
           onDismiss={dismissApproval}
+          onStartBooking={() => navigate("/rooms")}
         />
       )}
 

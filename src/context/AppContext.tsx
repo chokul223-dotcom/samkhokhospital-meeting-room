@@ -277,15 +277,47 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, [currentUser])
 
+  const isPendingDept = (dept?: string | null) =>
+    !dept || dept.trim() === "" || dept === "รอการตรวจสอบ" || dept === "-"
+
+  // Refs for stable access inside SSE / polling closures without tearing down connections
+  const currentUserRef = useRef(currentUser)
+  const languageRef = useRef(language)
+  const showToastRef = useRef(showToast)
+  const approvalNotifiedUserRef = useRef<string | null>(null)
+  const sseConnectedRef = useRef(false)
+
+  useEffect(() => {
+    currentUserRef.current = currentUser
+    // Reset approval-notified marker when logging out or switching accounts
+    if (!currentUser) {
+      approvalNotifiedUserRef.current = null
+    }
+  }, [currentUser])
+  useEffect(() => { languageRef.current = language }, [language])
+  useEffect(() => { showToastRef.current = showToast }, [showToast])
+
+  const triggerApprovalCelebration = useCallback((userId: string) => {
+    if (approvalNotifiedUserRef.current === userId) return
+    approvalNotifiedUserRef.current = userId
+    setApprovalVisible(true)
+    showToastRef.current(
+      languageRef.current === "th"
+        ? "🎉 บัญชีของคุณได้รับการอนุมัติแล้ว! สามารถจองห้องประชุมได้เลย"
+        : "🎉 Your account has been approved! You can now book meeting rooms.",
+    )
+  }, [])
+
   // Authenticated data fetcher — full data for logged-in users
   const refreshData = useCallback(async () => {
-    if (!currentUser) return
+    const activeUser = currentUserRef.current
+    if (!activeUser) return
     setLoading(true)
     try {
       const [b, r, u, me] = await Promise.allSettled([
         api.fetchBookings(),
         api.fetchRooms(),
-        currentUser.role === "admin" ? api.fetchUsers() : Promise.resolve([]),
+        activeUser.role === "admin" ? api.fetchUsers() : Promise.resolve([]),
         api.fetchCurrentUser(),
       ])
 
@@ -299,9 +331,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         setUsers(u.value)
       }
       if (me.status === "fulfilled" && me.value && me.value.id) {
+        let justApprovedId: string | null = null
         setCurrentUserState((prev) => {
           if (!prev) return prev
           const fresh = me.value
+          if (
+            prev.role !== "admin" &&
+            isPendingDept(prev.department) &&
+            !isPendingDept(fresh.department)
+          ) {
+            justApprovedId = fresh.id
+          }
           const changed =
             prev.department !== fresh.department ||
             prev.role !== fresh.role ||
@@ -319,13 +359,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
           localStorage.setItem("user", JSON.stringify(merged))
           return merged
         })
+        if (justApprovedId) {
+          triggerApprovalCelebration(justApprovedId)
+        }
       }
     } catch (err) {
       console.warn("API fetch warning, using existing cache:", err)
     } finally {
       setLoading(false)
     }
-  }, [currentUser])
+  }, [triggerApprovalCelebration])
 
   // Always poll public data (even when not logged in)
   useEffect(() => {
@@ -334,78 +377,137 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     return () => clearInterval(poll)
   }, [refreshPublicData])
 
-  // Refs to always access latest values inside SSE closure without re-connecting
-  const languageRef = useRef(language)
-  const showToastRef = useRef(showToast)
-  useEffect(() => { languageRef.current = language }, [language])
-  useEffect(() => { showToastRef.current = showToast }, [showToast])
+  const currentUserId = currentUser?.id
+  const currentUserRole = currentUser?.role
+  const isCurrentUserPending = Boolean(
+    currentUser &&
+      currentUser.role !== "admin" &&
+      isPendingDept(currentUser.department),
+  )
 
-  // Real-time EventSource — ทำงานเฉพาะเมื่อมีเหตุการณ์จาก backend เท่านั้น
+  // Real-time Fetch-based SSE (supports ngrok-skip-browser-warning header unlike native EventSource!)
   useEffect(() => {
-    if (!currentUser) return
-    // Initial load — fetch data immediately
+    if (!currentUserId) return
     refreshData()
 
-    let es: EventSource | null = null
+    let cancelled = false
+    let abortController: AbortController | null = null
     let retryTimeout: ReturnType<typeof setTimeout> | null = null
-    let retryDelay = 2000 // เริ่มต้น 2 วินาที
+    let retryDelay = 2000
 
-    const connect = () => {
+    const handleSsePayload = (payload: string) => {
+      if (payload === "update") {
+        refreshData()
+        setHasPendingUpdate(true)
+      } else if (payload === "user_approved") {
+        triggerApprovalCelebration(currentUserId)
+        refreshData()
+      } else if (payload === "booking_auto_rejected") {
+        showToastRef.current(
+          languageRef.current === "th"
+            ? "⚠️ คำขอจองของคุณถูกยกเลิกอัตโนมัติ เนื่องจากผู้ดูแลระบบได้อนุมัติการจองในช่วงเวลาดังกล่าวให้ผู้จองท่านอื่นแล้ว"
+            : "⚠️ Your booking request was automatically rejected because an admin approved another overlapping booking.",
+        )
+        refreshData()
+      }
+    }
+
+    const scheduleReconnect = () => {
+      sseConnectedRef.current = false
+      if (cancelled) return
+      retryTimeout = setTimeout(() => {
+        retryDelay = Math.min(retryDelay * 2, 20000)
+        connect()
+      }, retryDelay)
+    }
+
+    const connect = async () => {
+      if (cancelled) return
+      abortController = new AbortController()
       try {
-        // ส่ง userId ไปด้วยเพื่อ subscribe user-specific channel
-        const streamUrl = `${API_URL}/api/stream?userId=${encodeURIComponent(currentUser.id)}`
-        es = new EventSource(streamUrl)
+        const streamUrl = `${API_URL}/api/stream?userId=${encodeURIComponent(currentUserId)}`
+        const res = await fetch(streamUrl, {
+          headers: {
+            Accept: "text/event-stream",
+            "ngrok-skip-browser-warning": "true",
+          },
+          cache: "no-store",
+          signal: abortController.signal,
+        })
 
-        es.onopen = () => {
-          retryDelay = 2000 // reset delay เมื่อเชื่อมต่อสำเร็จ
+        const contentType = res.headers.get("content-type") || ""
+        if (!res.ok || !res.body || !contentType.includes("text/event-stream")) {
+          scheduleReconnect()
+          return
         }
 
-        es.onmessage = (e) => {
-          if (e.data === "update") {
-            // โหลดข้อมูลใหม่ทันทีแบบ background
-            refreshData()
-            // แสดง banner ว่ามีข้อมูลใหม่ (ถ้าต้องการให้เห็นชัดเจน)
-            setHasPendingUpdate(true)
-          } else if (e.data === "user_approved") {
-            // แจ้งเตือนผู้ใช้ทันทีเมื่อแอดมินอนุมัติบัญชี — real-time via SSE
-            setApprovalVisible(true)
-            showToastRef.current(
-              languageRef.current === "th"
-                ? "🎉 บัญชีของคุณได้รับการอนุมัติแล้ว! คุณสามารถใช้งานระบบได้เต็มรูปแบบ"
-                : "🎉 Your account has been approved! You can now use the full system."
-            )
-            // Refresh ข้อมูลเพื่ออัปเดต department และสถานะล่าสุด
-            refreshData()
-          } else if (e.data === "booking_auto_rejected") {
-            showToastRef.current(
-              languageRef.current === "th"
-                ? "⚠️ คำขอจองของคุณถูกยกเลิกอัตโนมัติ เนื่องจากผู้ดูแลระบบได้อนุมัติการจองในช่วงเวลาดังกล่าวให้ผู้จองท่านอื่นแล้ว"
-                : "⚠️ Your booking request was automatically rejected because an admin approved another overlapping booking.",
-            )
-            refreshData()
+        sseConnectedRef.current = true
+        retryDelay = 2000
+
+        const reader = res.body.getReader()
+        const decoder = new TextDecoder("utf-8")
+        let buffer = ""
+
+        while (!cancelled) {
+          const { value, done } = await reader.read()
+          if (done) break
+          buffer += decoder.decode(value, { stream: true })
+          const lines = buffer.split(/\r?\n/)
+          buffer = lines.pop() ?? ""
+          for (const rawLine of lines) {
+            const line = rawLine.trim()
+            if (line.startsWith("data:")) {
+              const payload = line.slice(5).trim()
+              if (payload && payload !== "connected") {
+                handleSsePayload(payload)
+              }
+            }
           }
         }
-
-        es.onerror = () => {
-          if (es) { es.close(); es = null }
-          // Auto-reconnect ด้วย exponential backoff (สูงสุด 30 วินาที)
-          retryTimeout = setTimeout(() => {
-            retryDelay = Math.min(retryDelay * 2, 30000)
-            connect()
-          }, retryDelay)
-        }
+        scheduleReconnect()
       } catch {
-        // Ignore SSE failure if backend is offline
+        scheduleReconnect()
       }
     }
 
     connect()
 
-    return () => {
-      if (es) es.close()
-      if (retryTimeout) clearTimeout(retryTimeout)
+    // Instant sync when user returns to this browser tab / unlocks phone
+    const handleVisibilityOrFocus = () => {
+      if (document.visibilityState === "visible") {
+        refreshData()
+      }
     }
-  }, [currentUser, refreshData])
+    window.addEventListener("focus", handleVisibilityOrFocus)
+    document.addEventListener("visibilitychange", handleVisibilityOrFocus)
+
+    return () => {
+      cancelled = true
+      sseConnectedRef.current = false
+      if (abortController) abortController.abort()
+      if (retryTimeout) clearTimeout(retryTimeout)
+      window.removeEventListener("focus", handleVisibilityOrFocus)
+      document.removeEventListener("visibilitychange", handleVisibilityOrFocus)
+    }
+  }, [currentUserId, refreshData, triggerApprovalCelebration])
+
+  // Lightweight fallback polling:
+  // - Pending users: check every 8s while tab is visible so approval unlocks immediately even if SSE dropped
+  // - Admins: check every 15s while tab is visible if SSE is disconnected so new signups appear automatically
+  useEffect(() => {
+    if (!currentUserId) return
+    if (!isCurrentUserPending && currentUserRole !== "admin") return
+
+    const intervalMs = isCurrentUserPending ? 8000 : 15000
+    const timer = setInterval(() => {
+      if (document.visibilityState !== "visible") return
+      if (isCurrentUserPending || !sseConnectedRef.current) {
+        refreshData()
+      }
+    }, intervalMs)
+
+    return () => clearInterval(timer)
+  }, [currentUserId, currentUserRole, isCurrentUserPending, refreshData])
 
   // Actions
   const handleBookingSubmit = async (data: {

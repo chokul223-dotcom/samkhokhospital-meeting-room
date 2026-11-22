@@ -53,12 +53,18 @@ export const KcmhSidebar: React.FC<KcmhSidebarProps> = ({
   mobileOpen,
   setMobileOpen,
 }) => {
-  const { t, language, currentUser, setCurrentUser, bookings } = useApp()
+  const { t, language, currentUser, setCurrentUser, bookings, users } = useApp()
   const navigate = useNavigate()
   const [moreOpen, setMoreOpen] = useState(true)
 
   const isAdmin = currentUser?.role === "admin"
   const pendingCount = bookings.filter((b) => b.status === "pending").length
+  const pendingUsersCount = isAdmin
+    ? users.filter(
+        (u) =>
+          !u.department || u.department === "รอการตรวจสอบ" || u.department === "-",
+      ).length
+    : 0
   const th = language === "th"
 
   const userDisplayName = useMemo(
@@ -168,6 +174,7 @@ export const KcmhSidebar: React.FC<KcmhSidebarProps> = ({
                 label: t.users,
                 icon: Users,
                 active: activeTab === "users",
+                badge: pendingUsersCount,
                 onClick: () => handleNavClick("users"),
               },
             ]

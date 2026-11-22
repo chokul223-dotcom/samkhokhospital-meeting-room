@@ -281,9 +281,11 @@ router.put("/:id", authMiddleware, async (req, res) => {
     // Notify all clients about user list change
     if (req.notifyClients) req.notifyClients()
 
-    // If admin is approving a pending user (department changed from "รอการตรวจสอบ")
-    const wasPending = prevDepartment === "รอการตรวจสอบ" || prevDepartment === "-"
-    const isNowApproved = department && department !== "รอการตรวจสอบ" && department !== "-"
+    // If admin is approving a pending user (department changed from pending/empty)
+    const wasPending = !prevDepartment || prevDepartment === "รอการตรวจสอบ" || prevDepartment === "-"
+    const isNowApproved = Boolean(
+      department && String(department).trim() !== "" && department !== "รอการตรวจสอบ" && department !== "-",
+    )
     if (req.user.role === "admin" && wasPending && isNowApproved && req.notifyUser) {
       req.notifyUser(req.params.id, "user_approved")
     }

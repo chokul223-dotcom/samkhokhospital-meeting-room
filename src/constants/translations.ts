@@ -147,7 +147,7 @@ export const translations = {
 
     // Users Admin
     userList: "รายชื่อบุคลากรผู้ใช้งาน",
-    searchUsers: "ค้นหาผู้ใช้ (ชื่อ, แผนก, username)...",
+    searchUsers: "ค้นหาผู้ใช้ (ชื่อ, รหัสสมาชิก, แผนก, อีเมล)...",
     addUser: "เพิ่มผู้ใช้งาน",
     editUser: "แก้ไขข้อมูลผู้ใช้",
     fullName: "ชื่อ-นามสกุล",
@@ -366,7 +366,7 @@ export const translations = {
 
     // Users Admin
     userList: "Hospital Staff Directory",
-    searchUsers: "Search users (name, department, username)...",
+    searchUsers: "Search users (name, member ID, department, email)...",
     addUser: "Add New User",
     editUser: "Edit User Info",
     fullName: "Full Name",

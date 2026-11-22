@@ -1,16 +1,21 @@
 import React, { useState, useEffect } from "react"
-import { CheckCircle2, X, PartyPopper } from "lucide-react"
+import { CheckCircle2, X, PartyPopper, CalendarPlus } from "lucide-react"
 
 interface ApprovalBannerProps {
   onDismiss: () => void
+  onStartBooking?: () => void
   language?: "th" | "en"
 }
 
 /**
  * ApprovalBanner — แสดงเมื่อแอดมินอนุมัติบัญชีผู้ใช้ใหม่
- * Real-time banner ที่ค้างอยู่จนผู้ใช้กด dismiss เอง
+ * Real-time banner ที่เด้งแจ้งเตือนทันทีโดยไม่ต้องรีเฟรชหน้าเว็บ
  */
-export const ApprovalBanner: React.FC<ApprovalBannerProps> = ({ onDismiss, language = "th" }) => {
+export const ApprovalBanner: React.FC<ApprovalBannerProps> = ({
+  onDismiss,
+  onStartBooking,
+  language = "th",
+}) => {
   const [visible, setVisible] = useState(false)
 
   useEffect(() => {
@@ -86,12 +91,29 @@ export const ApprovalBanner: React.FC<ApprovalBannerProps> = ({ onDismiss, langu
             </button>
           </div>
 
-          {/* Refresh hint */}
-          <div className="mt-3 ml-16 flex items-center gap-1.5">
-            <div className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            <p className="text-[11px] font-medium text-emerald-600/70 dark:text-emerald-400/70">
-              {language === "th" ? "ข้อมูลโปรไฟล์อัปเดตอัตโนมัติแล้ว" : "Profile data automatically refreshed"}
-            </p>
+          {/* Action button + auto-sync hint */}
+          <div className="mt-3.5 sm:ml-16 flex flex-wrap items-center justify-between gap-2.5">
+            <div className="flex items-center gap-1.5">
+              <div className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <p className="text-[11px] font-medium text-emerald-600/80 dark:text-emerald-400/80">
+                {language === "th"
+                  ? "อัปเดตสิทธิ์ให้อัตโนมัติแล้ว ไม่ต้องรีเฟรชหน้าเว็บ"
+                  : "Access updated live — no refresh needed"}
+              </p>
+            </div>
+            {onStartBooking && (
+              <button
+                type="button"
+                onClick={() => {
+                  handleDismiss()
+                  onStartBooking()
+                }}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 px-3.5 py-2 text-xs font-bold text-white shadow-sm transition-all cursor-pointer"
+              >
+                <CalendarPlus className="h-3.5 w-3.5" />
+                <span>{language === "th" ? "จองห้องประชุมได้เลย" : "Book a Room Now"}</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
