@@ -132,7 +132,7 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
 
   const [editPurpose, setEditPurpose] = useState("")
   const [editChairman, setEditChairman] = useState("")
-  const [editAttendees, setEditAttendees] = useState(0)
+  const [editAttendees, setEditAttendees] = useState<string>("")
   const [editOnlineMeeting, setEditOnlineMeeting] = useState("")
   const [editContactPerson, setEditContactPerson] = useState("")
   const [editLinks, setEditLinks] = useState<{ title: string; url: string }[]>([])
@@ -154,7 +154,7 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
     if (booking) {
       setEditPurpose(booking.purpose || "")
       setEditChairman(booking.chairman || "")
-      setEditAttendees(booking.attendees || 0)
+      setEditAttendees(booking.attendees ? String(booking.attendees) : "")
       setEditOnlineMeeting(
         booking.onlineMeeting && booking.onlineMeeting !== ""
           ? booking.onlineMeeting
@@ -212,7 +212,7 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
     setIsEditing(false)
     setEditPurpose(booking.purpose || "")
     setEditChairman(booking.chairman || "")
-    setEditAttendees(booking.attendees || 0)
+    setEditAttendees(booking.attendees ? String(booking.attendees) : "")
     setEditOnlineMeeting(
       booking.onlineMeeting && booking.onlineMeeting !== ""
         ? booking.onlineMeeting
@@ -239,10 +239,16 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
 
     setIsSaving(true)
     try {
+      const parsedAttendees = Number(editAttendees)
+      if (!editAttendees.trim() || !Number.isFinite(parsedAttendees) || parsedAttendees < 1) {
+        showToast(isTh ? "กรุณาระบุจำนวนผู้เข้าร่วมอย่างน้อย 1 คน" : "Please specify at least 1 attendee")
+        setIsSaving(false)
+        return
+      }
       await handleUpdateBooking(booking.id, {
         purpose: editPurpose.trim(),
         chairman: editChairman.trim(),
-        attendees: editAttendees,
+        attendees: Math.floor(parsedAttendees),
         onlineMeeting:
           editOnlineMeeting === "none" ? "" : editOnlineMeeting.trim(),
         contactPerson: editContactPerson.trim(),
@@ -570,10 +576,19 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({
                       editing={
                         <input
                           type="number"
+                          inputMode="numeric"
                           min={1}
                           max={room?.capacity || 200}
                           value={editAttendees}
-                          onChange={(e) => setEditAttendees(Number(e.target.value))}
+                          onChange={(e) => {
+                            const raw = e.target.value
+                            if (raw === "") {
+                              setEditAttendees("")
+                              return
+                            }
+                            const digitsOnly = raw.replace(/[^0-9]/g, "")
+                            setEditAttendees(digitsOnly.replace(/^0+(?=\d)/, ""))
+                          }}
                           className={inputClass}
                         />
                       }

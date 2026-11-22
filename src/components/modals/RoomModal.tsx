@@ -21,7 +21,9 @@ export const RoomModal: React.FC<RoomModalProps> = ({ room, onClose }) => {
           ? (language === 'th' ? 'ห้องประชุมขนาดเล็ก พร้อมอุปกรณ์นำเสนอและไวท์บอร์ด' : 'Small meeting room with presentation equipment and whiteboard')
           : ''
   )
-  const [capacity, setCapacity] = useState(room?.capacity || 20)
+  const [capacity, setCapacity] = useState<string>(
+    room?.capacity !== undefined && room?.capacity !== null ? String(room.capacity) : '20'
+  )
   const [location, setLocation] = useState(room?.location || '')
   const [equipment, setEquipment] = useState(room?.equipment.join(', ') || '')
   const [status, setStatus] = useState<Room['status']>(room?.status || 'available')
@@ -84,7 +86,8 @@ export const RoomModal: React.FC<RoomModalProps> = ({ room, onClose }) => {
       setError(t.errLocation)
       return
     }
-    if (capacity < 1) {
+    const parsedCapacity = Number(capacity)
+    if (!capacity.trim() || !Number.isFinite(parsedCapacity) || parsedCapacity < 1) {
       setError(t.errCapacityZero)
       return
     }
@@ -95,7 +98,7 @@ export const RoomModal: React.FC<RoomModalProps> = ({ room, onClose }) => {
         id: room?.id || 'r' + Date.now(),
         name: name.trim(),
         description: description.trim(),
-        capacity,
+        capacity: Math.floor(parsedCapacity),
         location: location.trim(),
         equipment: equipment
           .split(',')
@@ -214,9 +217,19 @@ export const RoomModal: React.FC<RoomModalProps> = ({ room, onClose }) => {
               </label>
               <input
                 type="number"
+                inputMode="numeric"
                 min={1}
                 value={capacity}
-                onChange={e => setCapacity(Number(e.target.value))}
+                placeholder={language === 'th' ? 'เช่น 20' : 'e.g. 20'}
+                onChange={e => {
+                  const raw = e.target.value
+                  if (raw === '') {
+                    setCapacity('')
+                    return
+                  }
+                  const digitsOnly = raw.replace(/[^0-9]/g, '')
+                  setCapacity(digitsOnly.replace(/^0+(?=\d)/, ''))
+                }}
                 className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
               />
             </div>
